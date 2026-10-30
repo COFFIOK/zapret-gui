@@ -635,6 +635,24 @@ $HostReady = Ensure-HostExe
 # Задание планировщика с наивысшими правами: ярлык запускает его, и Windows больше не спрашивает разрешение
 $TaskName = 'ZapretGUI'
 $LauncherBat = "@echo off`r`nschtasks /run /tn `"$TaskName`" >nul 2>&1 && exit /b`r`nif exist `"%~dp0app\Zapret.exe`" ( start `"`" `"%~dp0app\Zapret.exe`" & exit /b )`r`npowershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command `"Start-Process powershell -Verb RunAs -WindowStyle Hidden -ArgumentList '-NoProfile -ExecutionPolicy Bypass -STA -WindowStyle Hidden -File \`"%~dp0app\zapret-gui.ps1\`"'`"`r`n"
+# ---- автозапуск вместе с Windows (по умолчанию выключен) ----
+$AutoRunTask = 'ZapretGUI Autostart'
+function Get-AutoRunTask { try { Get-ScheduledTask -TaskName $AutoRunTask -ErrorAction Stop } catch { $null } }
+function Enable-AutoRun {
+    $ps1 = Join-Path $GuiDir 'zapret-gui.ps1'
+    if ($HostReady -and (Test-Path -LiteralPath $HostExe)) { $exe = $HostExe; $arg = '-AutoStart -Tray' }
+    else { $exe = 'powershell.exe'; $arg = "-NoProfile -ExecutionPolicy Bypass -STA -WindowStyle Hidden -File `"$ps1`" -AutoStart -Tray" }
+    $ex = Get-AutoRunTask
+    if ($ex -and $ex.Actions[0].Execute -eq $exe -and "$($ex.Actions[0].Arguments)" -eq $arg) { return }
+    $act = New-ScheduledTaskAction -Execute $exe -Argument $arg -WorkingDirectory $GuiDir
+    $user = [Security.Principal.WindowsIdentity]::GetCurrent().Name
+    $trg = New-ScheduledTaskTrigger -AtLogOn -User $user
+    $trg.Delay = 'PT5S'
+    $pr = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Highest
+    $set = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -Priority 4
+    Register-ScheduledTask -TaskName $AutoRunTask -Action $act -Trigger $trg -Principal $pr -Settings $set -Description 'Запуск Zapret вместе с Windows' -Force | Out-Null
+}
+function Disable-AutoRun { if (Get-AutoRunTask) { Unregister-ScheduledTask -TaskName $AutoRunTask -Confirm:$false } }
 function Get-ElevTask { try { Get-ScheduledTask -TaskName $TaskName -ErrorAction Stop } catch { $null } }
 function Enable-NoPrompt {
     $ps1 = Join-Path $GuiDir 'zapret-gui.ps1'
@@ -2455,24 +2473,6 @@ $ui.CloseToTray.Add_Click({ Safe {
 } })
 $ui.CloseToExit.Add_Click({ Safe { Set-CloseAction 'exit'; Exit-App } })
 
-# ---- автозапуск вместе с Windows (по умолчанию выключен) ----
-$AutoRunTask = 'ZapretGUI Autostart'
-function Get-AutoRunTask { try { Get-ScheduledTask -TaskName $AutoRunTask -ErrorAction Stop } catch { $null } }
-function Enable-AutoRun {
-    $ps1 = Join-Path $GuiDir 'zapret-gui.ps1'
-    if ($HostReady -and (Test-Path -LiteralPath $HostExe)) { $exe = $HostExe; $arg = '-AutoStart -Tray' }
-    else { $exe = 'powershell.exe'; $arg = "-NoProfile -ExecutionPolicy Bypass -STA -WindowStyle Hidden -File `"$ps1`" -AutoStart -Tray" }
-    $ex = Get-AutoRunTask
-    if ($ex -and $ex.Actions[0].Execute -eq $exe -and "$($ex.Actions[0].Arguments)" -eq $arg) { return }
-    $act = New-ScheduledTaskAction -Execute $exe -Argument $arg -WorkingDirectory $GuiDir
-    $user = [Security.Principal.WindowsIdentity]::GetCurrent().Name
-    $trg = New-ScheduledTaskTrigger -AtLogOn -User $user
-    $trg.Delay = 'PT5S'
-    $pr = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Highest
-    $set = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -Priority 4
-    Register-ScheduledTask -TaskName $AutoRunTask -Action $act -Trigger $trg -Principal $pr -Settings $set -Description 'Запуск Zapret вместе с Windows' -Force | Out-Null
-}
-function Disable-AutoRun { if (Get-AutoRunTask) { Unregister-ScheduledTask -TaskName $AutoRunTask -Confirm:$false } }
 
 
 # ---- Внешний вид: тема, акцент, язык (применяются перезапуском окна) ----
