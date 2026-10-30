@@ -1,0 +1,3 @@
+installer/launcher/setup.ps1
+installer/launcher/*.syso
+*.exe
