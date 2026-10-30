@@ -4,7 +4,7 @@
 param([switch]$AutoStart)
 $ErrorActionPreference = 'Stop'
 # ---- версия приложения и где искать обновления ----
-$AppVersion = '1.2.0'
+$AppVersion = '1.2.1'
 $UpdateRepo = 'COFFIOK/zapret-gui'   # GitHub: владелец/репозиторий, в Releases лежит ZapretSetup.exe
 $GuiDir = $PSScriptRoot
 $LogFile = Join-Path $GuiDir 'gui-error.log'
@@ -15,8 +15,19 @@ function Write-Log($msg) {
     try { Add-Content -LiteralPath $LogFile -Value ("[{0}] {1}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $msg) -Encoding UTF8 } catch {}
 }
 
+# ---- одна копия приложения: повторный запуск просто показывает уже открытое окно (например, из трея) ----
+$script:instCreated = $false
+$script:instMutex = New-Object System.Threading.Mutex($true, 'Local\ZapretGUI.Instance', [ref]$script:instCreated)
+$script:showEvent = New-Object System.Threading.EventWaitHandle($false, [System.Threading.EventResetMode]::AutoReset, 'Local\ZapretGUI.Show')
+if (-not $script:instCreated) {
+    # подождём чуть-чуть: вдруг это перезапуск и старое окно как раз закрывается
+    try { $script:instCreated = $script:instMutex.WaitOne(1500) } catch { $script:instCreated = $true }   # прошлая копия закрылась аварийно
+    if (-not $script:instCreated) { [void]$script:showEvent.Set(); exit 0 }
+}
+function Release-Instance { try { if ($script:instCreated) { $script:instMutex.ReleaseMutex(); $script:instCreated = $false } } catch {} }
+
 try {
-Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms
+Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.Drawing
 
 # Имя, значок и команда перезапуска окна на панели задач (вместо «Windows PowerShell»)
 try {
@@ -152,6 +163,16 @@ $TrPairs = @(
     @('Ссылка скопирована — можно отправить её себе на телефон', 'Link copied — you can send it to your phone'),
     @('Работает · Telegram подключён ✓', 'Running · Telegram connected ✓'),
     @('Подключён к Telegram', 'Connected to Telegram'),
+    @('Открыть Zapret', 'Open Zapret'),
+    @('Включить zapret', 'Turn zapret on'),
+    @('Выключить zapret', 'Turn zapret off'),
+    @('Включить Telegram-прокси', 'Turn Telegram proxy on'),
+    @('Выключить Telegram-прокси', 'Turn Telegram proxy off'),
+    @('Выйти из Zapret', 'Quit Zapret'),
+    @('Свернуть в трей', 'Minimize to tray'),
+    @('Zapret работает в трее. Нажми на значок, чтобы открыть, правая кнопка — меню.', 'Zapret is in the tray. Click the icon to open it, right-click for the menu.'),
+    @('Zapret · работает', 'Zapret · running'),
+    @('Zapret · выключен', 'Zapret · off'),
     @('Подобрать за меня', 'Pick for me'),
     @('Быстро проверить все стратегии на моих сайтах и включить лучшую', 'Quickly test all strategies on my sites and turn on the best one'),
     @('Нечего проверять — добавь свои сайты', 'Nothing to test — add your sites'),
@@ -517,6 +538,7 @@ function Invoke-Consolidate {
     } catch {}
     # 5) запустить приложение из нового места, старые папки удалить после закрытия
     $flag = if ($wasOn) { '-AutoStart' } else { '' }
+    Release-Instance
     Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -STA -WindowStyle Hidden -File `"$(Join-Path $target 'app\zapret-gui.ps1')`" $flag" -WindowStyle Hidden
     $cleanup = "timeout /t 3 /nobreak >nul & rmdir /s /q `"$GuiDir`""
     if (Test-Path -LiteralPath $oldMig) { $cleanup += " & rmdir /s /q `"$oldMig`"" }
@@ -983,7 +1005,7 @@ $xamlText = @'
                 <TextBlock.RenderTransform><RotateTransform x:Name="GearRot"/></TextBlock.RenderTransform>
               </TextBlock>
             </Button>
-            <Button x:Name="MinBtn" Style="{StaticResource TitleBtn}"><TextBlock Text="—" FontSize="12"/></Button>
+            <Button x:Name="MinBtn" Style="{StaticResource TitleBtn}" ToolTip="Свернуть в трей"><TextBlock Text="—" FontSize="12"/></Button>
             <Button x:Name="CloseBtn" Style="{StaticResource TitleBtn}" Margin="4,0,0,0"><TextBlock Text="✕" FontSize="13"/></Button>
           </StackPanel>
         </Grid>
@@ -1708,7 +1730,7 @@ function Set-Visual($mode, $detail) {
     if ($script:state -eq $mode -and $mode -ne 'on') { return }
     $prev = $script:state
     $script:state = $mode
-    if ($prev -ne $mode) { $script:visAt = [DateTime]::UtcNow.Ticks; if ($Mon) { $Mon.Wake = $true } }
+    if ($prev -ne $mode) { $script:visAt = [DateTime]::UtcNow.Ticks; if ($Mon) { $Mon.Wake = $true }; if ($script:tray) { try { $script:tray.Text = T $(if ($mode -eq 'on') { 'Zapret · работает' } else { 'Zapret · выключен' }) } catch {} } }
     switch ($mode) {
         'on' {
             $ui.StatusText.Text = T $('Работает')
@@ -2306,7 +2328,7 @@ $script:loading = $false
 
 # ======================= События =======================
 $ui.TitleBar.Add_MouseLeftButtonDown({ try { $win.DragMove() } catch {} })
-$ui.MinBtn.Add_Click({ $win.WindowState = 'Minimized' })
+$ui.MinBtn.Add_Click({ Safe { Hide-ToTray } })
 $ui.CloseBtn.Add_Click({
     Anim-Double $ui.Shell $OP 0 180
     $t = New-Object System.Windows.Threading.DispatcherTimer
@@ -2320,6 +2342,7 @@ $AccentChoices = @('#3DDC97', '#5ED3F3', '#4DA3FF', '#B57BFF', '#FF7AB6', '#FF9A
 function Restart-App {
     Save-Settings
     Show-Toast 'Перезапускаю приложение…'
+    Release-Instance
     if ($HostReady -and (Test-Path -LiteralPath $HostExe)) { Start-Process -FilePath $HostExe }
     else { Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -STA -WindowStyle Hidden -File `"$PSCommandPath`"" -WindowStyle Hidden }
     $script:rsT = New-Object System.Windows.Threading.DispatcherTimer
@@ -4060,25 +4083,109 @@ if (-not $InHome -and $IsAdmin -and -not $Settings.noConsolidate) {
 if ($script:consolidated) { exit 0 }
 if (-not $InOwnHost -and $HostReady -and (Test-Path -LiteralPath $HostExe) -and $InHome) {
     # первый запуск после сборки: сразу открываемся уже как Zapret.exe
+    Release-Instance
     if ($AutoStart) { Start-Process -FilePath $HostExe -ArgumentList '-AutoStart' } else { Start-Process -FilePath $HostExe }
     exit 0
 }
 
+
+# ======================= Трей =======================
+function Pause-Glow {
+    foreach ($g in @($ui.Glow1, $ui.Glow2)) { Stop-Anim $g $OP; $g.Opacity = 0 }
+    foreach ($s in @($ui.Glow1S, $ui.Glow2S)) { Stop-Anim $s $SX; Stop-Anim $s $SY }
+    $script:glowPaused = $true
+}
+function Resume-Glow {
+    if (-not $script:glowPaused) { return }
+    $script:glowPaused = $false
+    if ($script:state -ne 'on') { return }
+    foreach ($g in @(@($ui.Glow1, $ui.Glow1S, 0), @($ui.Glow2, $ui.Glow2S, 1100))) {
+        Anim-Double $g[0] $OP 0 2200 0.7 -Forever -beginMs $g[2] -NoEase -Low
+        Anim-Double $g[1] $SX 1.38 2200 1 -Forever -beginMs $g[2] -Low
+        Anim-Double $g[1] $SY 1.38 2200 1 -Forever -beginMs $g[2] -Low
+    }
+}
+function Show-FromTray {
+    $win.Show()
+    if ($win.WindowState -eq 'Minimized') { $win.WindowState = 'Normal' }
+    [void]$win.Activate(); $win.Topmost = $true; $win.Topmost = $false
+    Resume-Glow
+    $Mon.Wake = $true
+}
+function Hide-ToTray {
+    Pause-Glow
+    $win.Hide()
+    if (-not $Settings.trayHintShown) {
+        $Settings.trayHintShown = $true; Save-Settings
+        try { $script:tray.ShowBalloonTip(4000, 'Zapret', (T 'Zapret работает в трее. Нажми на значок, чтобы открыть, правая кнопка — меню.'), [System.Windows.Forms.ToolTipIcon]::None) } catch {}
+    }
+}
+$script:tray = New-Object System.Windows.Forms.NotifyIcon
+try {
+    $trayMs = New-Object System.IO.MemoryStream (, [IO.File]::ReadAllBytes($IconFile))
+    $script:tray.Icon = New-Object System.Drawing.Icon($trayMs, [System.Windows.Forms.SystemInformation]::SmallIconSize)
+} catch { $script:tray.Icon = [System.Drawing.SystemIcons]::Application }
+$script:tray.Text = 'Zapret'
+$trayMenu = New-Object System.Windows.Forms.ContextMenuStrip
+$trayMenu.Font = New-Object System.Drawing.Font('Segoe UI', 9.5)
+$trayMenu.ShowImageMargin = $false
+$miOpen = New-Object System.Windows.Forms.ToolStripMenuItem (T 'Открыть Zapret')
+$miOpen.Font = New-Object System.Drawing.Font('Segoe UI', 9.5, [System.Drawing.FontStyle]::Bold)
+$miZ = New-Object System.Windows.Forms.ToolStripMenuItem 'zapret'
+$miTg = New-Object System.Windows.Forms.ToolStripMenuItem 'Telegram'
+$miExit = New-Object System.Windows.Forms.ToolStripMenuItem (T 'Выйти из Zapret')
+[void]$trayMenu.Items.Add($miOpen)
+[void]$trayMenu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator))
+[void]$trayMenu.Items.Add($miZ)
+[void]$trayMenu.Items.Add($miTg)
+[void]$trayMenu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator))
+[void]$trayMenu.Items.Add($miExit)
+$trayMenu.Add_Opening({
+    try {
+        $miZ.Text = T $(if ($script:state -eq 'on') { 'Выключить zapret' } else { 'Включить zapret' })
+        $miZ.Enabled = ($script:state -eq 'on' -or $script:state -eq 'off')
+        $miTg.Text = T $(if ($ui.TgToggle.IsChecked) { 'Выключить Telegram-прокси' } else { 'Включить Telegram-прокси' })
+        $miTg.Enabled = [bool]$ui.TgToggle.IsEnabled
+    } catch {}
+})
+$miOpen.Add_Click({ Safe { Show-FromTray } })
+$miZ.Add_Click({ Safe {
+    switch ($script:state) { 'on' { Stop-Zapret; Hide-Apply } 'off' { Start-Zapret } }
+} })
+$miTg.Add_Click({ Safe {
+    $ui.TgToggle.IsChecked = -not [bool]$ui.TgToggle.IsChecked
+    if ($ui.TgToggle.IsChecked) { Start-Tg } else { Stop-Tg }
+} })
+$miExit.Add_Click({ $win.Close() })
+$script:tray.ContextMenuStrip = $trayMenu
+$script:tray.Add_MouseClick({ param($s, $e) if ($e.Button -eq [System.Windows.Forms.MouseButtons]::Left) { Safe { Show-FromTray } } })
+$script:tray.Visible = $true
+# повторный запуск Zapret — показываем это окно (проверка раз в секунду, ничего не стоит)
+$script:showT = New-Object System.Windows.Threading.DispatcherTimer
+$script:showT.Interval = [TimeSpan]::FromSeconds(1)
+$script:showT.Add_Tick({ try { if ($script:showEvent.WaitOne(0)) { Show-FromTray } } catch {} })
+$script:showT.Start()
+
 # окно свёрнуто или в фоне — почти ничего не делаем
 function Set-AppIdle([bool]$idle) {
     $Mon.Idle = $idle
-    if ($win.WindowState -eq 'Minimized') { $timer.Stop(); $script:tgTimer.Stop(); if ($script:trTimer) { $script:trTimer.Stop() } }
+    if ($win.WindowState -eq 'Minimized') { $timer.Stop(); $script:tgTimer.Stop(); if ($script:trTimer) { $script:trTimer.Stop() }; Pause-Glow }
     else {
         if (-not $timer.IsEnabled) { $timer.Start() }
         if (-not $script:tgTimer.IsEnabled) { $script:tgTimer.Start() }
         if ($script:trTimer -and -not $script:trTimer.IsEnabled) { $script:trTimer.Start(); Translate-Tree $win }
-        if (-not $idle) { $Mon.Wake = $true }   # вернулись в окно — сразу свежие данные
+        if (-not $idle) { $Mon.Wake = $true; if ($win.IsVisible) { Resume-Glow } }   # вернулись в окно — сразу свежие данные
     }
 }
 $win.Add_Activated({ try { Set-AppIdle $false } catch {} })
 $win.Add_Deactivated({ try { Set-AppIdle $true } catch {} })
 $win.Add_StateChanged({ try { Set-AppIdle ($win.WindowState -eq 'Minimized' -or -not $win.IsActive) } catch {} })
-[void]$win.ShowDialog()
+$script:mainFrame = New-Object System.Windows.Threading.DispatcherFrame
+$win.Add_Closed({ $script:mainFrame.Continue = $false })
+$win.Show()
+[System.Windows.Threading.Dispatcher]::PushFrame($script:mainFrame)
+try { $script:tray.Visible = $false; $script:tray.Dispose() } catch {}
+Release-Instance
 $Mon.Stop = $true
 $timer.Stop()
 }
