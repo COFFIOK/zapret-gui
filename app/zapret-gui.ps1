@@ -4337,11 +4337,6 @@ $trayXaml = @'
     </MenuItem.Header>
   </MenuItem>
   <Separator/>
-  <MenuItem x:Name="TrOpen">
-    <MenuItem.Header>
-      <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Ico}" Text="&#xE8A7;"/><TextBlock Text="Открыть Zapret" VerticalAlignment="Center"/></StackPanel>
-    </MenuItem.Header>
-  </MenuItem>
   <MenuItem x:Name="TrZ" StaysOpenOnClick="True">
     <MenuItem.Header>
       <DockPanel>
@@ -4378,7 +4373,7 @@ $trayXaml = @'
 '@
 $trayMenu = [Windows.Markup.XamlReader]::Parse((Apply-Theme $trayXaml))
 $tr = @{}
-foreach ($n in 'TrLogo', 'TrDot', 'TrSub', 'TrOpen', 'TrZ', 'TrZTrack', 'TrZKnob', 'TrTg', 'TrTgTrack', 'TrTgKnob', 'TrExit') { $tr[$n] = $trayMenu.FindName($n) }
+foreach ($n in 'TrLogo', 'TrDot', 'TrSub', 'TrZ', 'TrZTrack', 'TrZKnob', 'TrTg', 'TrTgTrack', 'TrTgKnob', 'TrExit') { $tr[$n] = $trayMenu.FindName($n) }
 if ($win.Icon) { $tr.TrLogo.Source = $win.Icon }
 $TX = [System.Windows.Media.TranslateTransform]::XProperty
 function Set-TraySwitch($track, $knob, [bool]$on, $hex, [switch]$Instant) {
@@ -4402,7 +4397,6 @@ $trayMenu.Add_Opened({
         if ($src) { [void][ZapretTray.Native]::SetForegroundWindow($src.Handle) }   # чтобы меню закрывалось по клику мимо
     } catch {}
 })
-$tr.TrOpen.Add_Click({ Safe { Show-FromTray } })
 $tr.TrZ.Add_Click({ Safe {
     switch ($script:state) { 'on' { Stop-Zapret; Hide-Apply } 'off' { Start-Zapret } }
     Update-TrayMenu
@@ -4420,6 +4414,9 @@ $script:trayIcon.Add_MouseUp({ param($s, $e)
             if ($script:Lang -eq 'en') { Translate-Tree $trayMenu }
             $trayMenu.IsOpen = $false; $trayMenu.IsOpen = $true
         }
+    } elseif ($e.Button -eq [System.Windows.Forms.MouseButtons]::Left) {
+        # левая кнопка по значку — открыть окно
+        Safe { $trayMenu.IsOpen = $false; Show-FromTray }
     }
 })
 $script:trayIcon.Visible = $true
