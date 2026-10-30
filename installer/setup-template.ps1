@@ -2,7 +2,7 @@ param([string]$SelfPath, [switch]$Auto)
 # ====== Установщик Zapret GUI ======
 $ErrorActionPreference = 'Stop'
 $AppName = 'Zapret'
-$AppVersion = '1.0.0'
+$AppVersion = '1.1.0'
 
 # --- права администратора (один запрос) ---
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -301,7 +301,7 @@ $DefaultDir = if ($Existing -and (Test-Path -LiteralPath $Existing)) { $Existing
           <DockPanel Grid.Row="2" Margin="0,14,0,0">
             <Button x:Name="MainBtn" DockPanel.Dock="Right" Style="{StaticResource AccentBtn}" Content="Установить" Padding="26,11" MinWidth="150"/>
             <Button x:Name="SecondBtn" DockPanel.Dock="Right" Style="{StaticResource Btn}" Content="Выбрать архив" Margin="0,0,8,0" Visibility="Collapsed"/>
-            <TextBlock x:Name="FootText" Text="v1.0.0 · zapret — Flowseal · bol-van" Foreground="#5A6070" FontSize="11" VerticalAlignment="Center" TextWrapping="Wrap"/>
+            <TextBlock x:Name="FootText" Text="v1.1.0 · zapret, tg-ws-proxy — Flowseal · bol-van" Foreground="#5A6070" FontSize="11" VerticalAlignment="Center" TextWrapping="Wrap"/>
           </DockPanel>
         </Grid>
       </Grid>

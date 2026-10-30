@@ -4,7 +4,7 @@
 param([switch]$AutoStart)
 $ErrorActionPreference = 'Stop'
 # ---- версия приложения и где искать обновления ----
-$AppVersion = '1.0.0'
+$AppVersion = '1.1.0'
 $UpdateRepo = 'COFFIOK/zapret-gui'   # GitHub: владелец/репозиторий, в Releases лежит ZapretSetup.exe
 $GuiDir = $PSScriptRoot
 $LogFile = Join-Path $GuiDir 'gui-error.log'
@@ -518,6 +518,25 @@ function Disable-NoPrompt {
 
               <TextBlock Text="Стратегия" Foreground="{StaticResource Muted}" FontSize="12" Margin="2,26,0,6"/>
               <ComboBox x:Name="StrategyBox"/>
+
+              <!-- Telegram (tg-ws-proxy) -->
+              <Border x:Name="TgCard" Background="#1A1D24" CornerRadius="14" Padding="14,10" Margin="0,14,0,0" BorderBrush="#232731" BorderThickness="1">
+                <Grid>
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                  <Grid Width="30" Height="30" Margin="0,0,12,0" VerticalAlignment="Center">
+                    <Ellipse x:Name="TgDot"/>
+                    <TextBlock x:Name="TgPlane" Text="TG" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </Grid>
+                  <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="Telegram" FontSize="13.5" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="TgStatus" Text="Выключен" Foreground="{StaticResource Muted}" FontSize="11.5" TextTrimming="CharacterEllipsis"/>
+                  </StackPanel>
+                  <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="TgConnect" Style="{StaticResource Btn}" Content="Подключить" Padding="10,5" FontSize="12" Margin="0,0,10,0" Visibility="Collapsed" ToolTip="Настроить прокси в Telegram Desktop"/>
+                    <CheckBox x:Name="TgToggle" Style="{StaticResource Toggle}" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Grid>
+              </Border>
             </StackPanel>
 
             <StackPanel Grid.Row="1">
@@ -691,7 +710,7 @@ function Disable-NoPrompt {
                   <TextBlock x:Name="InfoApp" FontSize="12" Margin="0,2,0,0"/>
                   <Border Height="1" Background="#2A2E38" Margin="0,10,0,10"/>
                   <DockPanel>
-                    <TextBlock DockPanel.Dock="Right" Text="zapret: Flowseal · bol-van" Foreground="#5A6070" FontSize="11" VerticalAlignment="Center"/>
+                    <TextBlock DockPanel.Dock="Right" Text="zapret, tg-ws-proxy: Flowseal · bol-van" Foreground="#5A6070" FontSize="11" VerticalAlignment="Center"/>
                     <TextBlock FontSize="12.5" VerticalAlignment="Center">
                       <Run Text="by " Foreground="#8A90A0"/><Run Text="COFFIOK" Foreground="#3DDC97" FontWeight="Bold"/>
                     </TextBlock>
@@ -2414,6 +2433,130 @@ $ui.MigDemo.Add_Click({ Safe {
 $ui.MigOpenFolder.Add_Click({ Safe { Start-Process explorer.exe -ArgumentList "`"$HomeDir`"" } })
 
 
+
+# ======================= Telegram (tg-ws-proxy от Flowseal) =======================
+$TgDir = Join-Path $(if ($InHome) { $HomeDir } else { $GuiDir }) 'telegram'
+$TgExe = Join-Path $TgDir 'TgWsProxy_windows.exe'
+$TgData = Join-Path $TgDir 'TgWsProxy_data'
+$TgCfg = Join-Path $TgData 'config.json'
+$TgUrl = 'https://github.com/Flowseal/tg-ws-proxy/releases/latest/download/TgWsProxy_windows.exe'
+$script:tgState = 'off'
+$ui.TgDot.Fill = Brush '#2A2E38'; $ui.TgPlane.Foreground = Brush '#8A90A0'
+
+function Get-TgProc { @(Get-Process -Name 'TgWsProxy_windows' -ErrorAction SilentlyContinue) }
+function Get-TgConfig {
+    if (-not (Test-Path -LiteralPath $TgCfg)) { return $null }
+    try { Get-Content -LiteralPath $TgCfg -Raw -Encoding UTF8 | ConvertFrom-Json } catch { $null }
+}
+function Ensure-TgConfig {
+    # портативный режим: настройки лежат рядом с exe; без окна приветствия и своей проверки обновлений
+    New-Item -ItemType Directory -Force -Path $TgData | Out-Null
+    if (-not (Test-Path -LiteralPath $TgCfg)) {
+        $b = New-Object byte[] 16; (New-Object Security.Cryptography.RNGCryptoServiceProvider).GetBytes($b)
+        $secret = -join ($b | ForEach-Object { $_.ToString('x2') })
+        $cfg = [ordered]@{ host = '127.0.0.1'; port = 1443; secret = $secret; check_updates = $false; language = 'ru' }
+        [IO.File]::WriteAllText($TgCfg, ($cfg | ConvertTo-Json), $utf8)
+    }
+    $marker = Join-Path $TgData '.first_run_done_mtproto'
+    if (-not (Test-Path -LiteralPath $marker)) { [IO.File]::WriteAllText($marker, '') }
+}
+function Get-TgLink {
+    $c = Get-TgConfig
+    if (-not $c) { return $null }
+    $h = if ($c.host -and $c.host -ne '0.0.0.0') { $c.host } else { '127.0.0.1' }
+    $port = if ($c.port) { $c.port } else { 1443 }
+    "tg://proxy?server=$h&port=$port&secret=dd$($c.secret)"
+}
+function Set-TgVisual($mode, $text) {
+    $script:tgState = $mode
+    $ui.TgStatus.Text = $text
+    switch ($mode) {
+        'on' {
+            Anim-Color $ui.TgDot.Fill '#5ED3F3'; Anim-Color $ui.TgPlane.Foreground '#0F1115'
+            $ui.TgCard.BorderBrush = Brush '#2B5664'
+            if ($ui.TgConnect.Visibility -ne 'Visible') { $ui.TgConnect.Visibility = 'Visible'; Anim-Double $ui.TgConnect $OP 1 250 0 }
+        }
+        'busy' { Anim-Color $ui.TgDot.Fill '#2B5664'; Anim-Color $ui.TgPlane.Foreground '#CFEFF8' }
+        default {
+            Anim-Color $ui.TgDot.Fill '#2A2E38'; Anim-Color $ui.TgPlane.Foreground '#8A90A0'
+            $ui.TgCard.BorderBrush = Brush '#232731'
+            $ui.TgConnect.Visibility = 'Collapsed'
+        }
+    }
+}
+function Start-Tg {
+    if (-not (Test-Path -LiteralPath $TgExe)) { Start-TgDownload; return }
+    Ensure-TgConfig
+    if (-not (Get-TgProc)) { Start-Process -FilePath $TgExe -WorkingDirectory $TgDir -WindowStyle Hidden | Out-Null }
+    $Settings.tgEnabled = $true; Save-Settings
+    $port = (Get-TgConfig).port; if (-not $port) { $port = 1443 }
+    Set-TgVisual 'on' "Работает · 127.0.0.1:$port"
+    if (-not $Settings.tgConnected) {
+        Show-Toast 'Telegram-прокси запущен. Нажми «Подключить», чтобы настроить Telegram Desktop.'
+        Anim-Double $ui.TgConnect $OP 0.4 500 1 -Forever -AutoReverse
+    }
+}
+function Stop-Tg {
+    Get-TgProc | Stop-Process -Force -ErrorAction SilentlyContinue
+    $Settings.tgEnabled = $false; Save-Settings
+    Set-TgVisual 'off' 'Выключен'
+}
+function Start-TgDownload {
+    Set-TgVisual 'busy' 'Скачиваю tg-ws-proxy…'
+    $ui.TgToggle.IsEnabled = $false
+    New-Item -ItemType Directory -Force -Path $TgDir | Out-Null
+    $script:tgDl = [hashtable]::Synchronized(@{ Done = $false; Got = 0; Total = 0; Error = $null; File = "$TgExe.part" })
+    $rs = [runspacefactory]::CreateRunspace(); $rs.Open()
+    $ps = [powershell]::Create(); $ps.Runspace = $rs
+    [void]$ps.AddScript({
+        param($sync, $url)
+        try {
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+            $req = [Net.HttpWebRequest]::Create($url); $req.UserAgent = 'ZapretGUI'; $req.AllowAutoRedirect = $true
+            $resp = $req.GetResponse(); $sync.Total = $resp.ContentLength
+            $in = $resp.GetResponseStream(); $fs = [IO.File]::Create($sync.File); $buf = New-Object byte[] 65536
+            while (($n = $in.Read($buf, 0, $buf.Length)) -gt 0) { $fs.Write($buf, 0, $n); $sync.Got += $n }
+            $fs.Close(); $in.Close(); $resp.Close()
+        } catch { $sync.Error = $_.Exception.Message } finally { $sync.Done = $true }
+    }).AddArgument($script:tgDl).AddArgument($TgUrl)
+    $script:tgDlPs = $ps; [void]$ps.BeginInvoke()
+}
+$script:tgTimer = New-Object System.Windows.Threading.DispatcherTimer
+$script:tgTimer.Interval = [TimeSpan]::FromMilliseconds(400)
+$script:tgTimer.Add_Tick({
+    try {
+        if ($script:tgDl) {
+            $d = $script:tgDl
+            if ($d.Total -gt 0) { $ui.TgStatus.Text = "Скачиваю tg-ws-proxy · $([int](100 * $d.Got / $d.Total))%" }
+            if ($d.Done) {
+                $script:tgDl = $null; $ui.TgToggle.IsEnabled = $true
+                if ($d.Error -or -not (Test-Path -LiteralPath $d.File) -or (Get-Item -LiteralPath $d.File).Length -lt 100000) {
+                    Remove-Item -LiteralPath $d.File -Force -ErrorAction SilentlyContinue
+                    $ui.TgToggle.IsChecked = $false; Set-TgVisual 'off' 'Не удалось скачать'
+                    Show-Toast "Не удалось скачать tg-ws-proxy с GitHub: $($d.Error)" -Err
+                } else {
+                    Move-Item -LiteralPath $d.File -Destination $TgExe -Force
+                    Start-Tg
+                }
+            }
+            return
+        }
+        # следим, не закрыли ли прокси из трея
+        $running = [bool](Get-TgProc)
+        if ($script:tgState -eq 'on' -and -not $running) { $ui.TgToggle.IsChecked = $false; Set-TgVisual 'off' 'Выключен' }
+        elseif ($script:tgState -eq 'off' -and $running) { $ui.TgToggle.IsChecked = $true; $port = (Get-TgConfig).port; if (-not $port) { $port = 1443 }; Set-TgVisual 'on' "Работает · 127.0.0.1:$port" }
+    } catch { Write-Log ($_ | Out-String) }
+})
+$ui.TgToggle.Add_Click({ Safe { if ($ui.TgToggle.IsChecked) { Start-Tg } else { Stop-Tg } } })
+$ui.TgConnect.Add_Click({ Safe {
+    $link = Get-TgLink
+    if (-not $link) { Show-Toast 'Сначала включи Telegram-прокси' -Err; return }
+    Stop-Anim $ui.TgConnect $OP; $ui.TgConnect.Opacity = 1
+    $Settings.tgConnected = $true; Save-Settings
+    try { Start-Process $link } catch { Set-Clipboard -Value $link; Show-Toast 'Telegram не открылся. Ссылка скопирована — отправь её себе в «Избранное» и нажми.' -Err; return }
+    Show-Toast 'Открываю Telegram — нажми там «Подключить прокси».'
+} })
+
 # ======================= Обновления приложения =======================
 $script:appUpd = $null
 function Start-AppUpdateCheck([switch]$Manual) {
@@ -2561,6 +2704,9 @@ $win.Add_Loaded({
     Refresh-State
     $timer.Start()
     if ($AutoStart -and $script:state -eq 'off') { Start-Zapret }
+    if (Get-TgProc) { $ui.TgToggle.IsChecked = $true; $p_ = (Get-TgConfig).port; if (-not $p_) { $p_ = 1443 }; Set-TgVisual 'on' "Работает · 127.0.0.1:$p_" }
+    elseif ($Settings.tgEnabled -and (Test-Path -LiteralPath $TgExe)) { $ui.TgToggle.IsChecked = $true; Start-Tg }
+    $script:tgTimer.Start()
     if ($Settings.autoStartOnce) { $Settings.autoStartOnce = $false; Save-Settings; if ($script:state -eq 'off') { Start-Zapret } }
     if (Test-Path -LiteralPath $UpdFile) { Start-AppUpdateCheck }
     if (Test-Path -LiteralPath $UpdFile) { Start-UpdateCheck } else { $ui.UpdText.Text = 'Обновления' }
