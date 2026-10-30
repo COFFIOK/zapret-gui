@@ -1828,7 +1828,7 @@ function Set-Visual($mode, $detail) {
     if ($script:state -eq $mode -and $mode -ne 'on') { return }
     $prev = $script:state
     $script:state = $mode
-    if ($prev -ne $mode) { $script:visAt = [DateTime]::UtcNow.Ticks; if ($Mon) { $Mon.Wake = $true }; if ($trayMenu -and $trayMenu.IsOpen) { try { Update-TrayMenu } catch {} }; if ($script:tray) { try { $script:tray.Text = T $(if ($mode -eq 'on') { 'Zapret · работает' } else { 'Zapret · выключен' }) } catch {} } }
+    if ($prev -ne $mode) { $script:visAt = [DateTime]::UtcNow.Ticks; if ($Mon) { $Mon.Wake = $true }; if ($trayMenu -and $trayMenu.IsOpen) { try { Update-TrayMenu } catch {} }; if ($script:trayIcon) { try { $script:trayIcon.Text = T $(if ($mode -eq 'on') { 'Zapret · работает' } else { 'Zapret · выключен' }) } catch {} } }
     switch ($mode) {
         'on' {
             $ui.StatusText.Text = T $('Работает')
@@ -4265,15 +4265,15 @@ function Hide-ToTray {
     $win.Hide()
     if (-not $Settings.trayHintShown) {
         $Settings.trayHintShown = $true; Save-Settings
-        try { $script:tray.ShowBalloonTip(4000, 'Zapret', (T 'Zapret работает в трее. Нажми на значок, чтобы открыть, правая кнопка — меню.'), [System.Windows.Forms.ToolTipIcon]::None) } catch {}
+        try { $script:trayIcon.ShowBalloonTip(4000, 'Zapret', (T 'Zapret работает в трее. Нажми на значок, чтобы открыть, правая кнопка — меню.'), [System.Windows.Forms.ToolTipIcon]::None) } catch {}
     }
 }
-$script:tray = New-Object System.Windows.Forms.NotifyIcon
+$script:trayIcon = New-Object System.Windows.Forms.NotifyIcon
 try {
     $trayMs = New-Object System.IO.MemoryStream (, [IO.File]::ReadAllBytes($IconFile))
-    $script:tray.Icon = New-Object System.Drawing.Icon($trayMs, [System.Windows.Forms.SystemInformation]::SmallIconSize)
-} catch { $script:tray.Icon = [System.Drawing.SystemIcons]::Application }
-$script:tray.Text = 'Zapret'
+    $script:trayIcon.Icon = New-Object System.Drawing.Icon($trayMs, [System.Windows.Forms.SystemInformation]::SmallIconSize)
+} catch { $script:trayIcon.Icon = [System.Drawing.SystemIcons]::Application }
+$script:trayIcon.Text = 'Zapret'
 # меню трея в стиле приложения (WPF), а не стандартное серое меню Windows
 try { Add-Type -Namespace ZapretTray -Name Native -MemberDefinition '[System.Runtime.InteropServices.DllImport("user32.dll")] public static extern bool SetForegroundWindow(System.IntPtr h);' } catch {}
 $trayXaml = @'
@@ -4413,7 +4413,7 @@ $tr.TrTg.Add_Click({ Safe {
     Update-TrayMenu
 } })
 $tr.TrExit.Add_Click({ $trayMenu.IsOpen = $false; $win.Close() })
-$script:tray.Add_MouseUp({ param($s, $e)
+$script:trayIcon.Add_MouseUp({ param($s, $e)
     if ($e.Button -eq [System.Windows.Forms.MouseButtons]::Right) {
         Safe {
             Update-TrayMenu -Instant
@@ -4422,7 +4422,7 @@ $script:tray.Add_MouseUp({ param($s, $e)
         }
     }
 })
-$script:tray.Visible = $true
+$script:trayIcon.Visible = $true
 # повторный запуск Zapret — показываем это окно (проверка раз в секунду, ничего не стоит)
 $script:showT = New-Object System.Windows.Threading.DispatcherTimer
 $script:showT.Interval = [TimeSpan]::FromSeconds(1)
@@ -4460,7 +4460,7 @@ if ($Tray) {
 }
 $win.Show()
 [System.Windows.Threading.Dispatcher]::PushFrame($script:mainFrame)
-try { $script:tray.Visible = $false; $script:tray.Dispose() } catch {}
+try { $script:trayIcon.Visible = $false; $script:trayIcon.Dispose() } catch {}
 Release-Instance
 $Mon.Stop = $true
 $timer.Stop()
