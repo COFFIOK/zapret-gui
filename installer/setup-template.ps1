@@ -508,6 +508,7 @@ Get-Process -Name 'TgWsProxy_windows' | Stop-Process -Force
 Remove-NetFirewallRule -DisplayName 'Zapret Telegram proxy'
 try { Stop-Service zapret -Force; sc.exe delete zapret | Out-Null } catch {}
 Unregister-ScheduledTask -TaskName 'ZapretGUI' -Confirm:$false
+Unregister-ScheduledTask -TaskName 'ZapretGUI Autostart' -Confirm:$false
 foreach ($l in @((Join-Path ([Environment]::GetFolderPath('Desktop')) 'Zapret.lnk'), (Join-Path ([Environment]::GetFolderPath('Programs')) 'Zapret.lnk'))) { Remove-Item -LiteralPath $l -Force }
 Remove-Item -LiteralPath 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\ZapretGUI' -Recurse -Force
 Start-Process cmd.exe -ArgumentList "/c timeout /t 2 /nobreak >nul & rmdir /s /q `"$dir`"" -WindowStyle Hidden
