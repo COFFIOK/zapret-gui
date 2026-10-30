@@ -1,7 +1,7 @@
 ﻿# Zapret GUI - графическая оболочка для zapret-discord-youtube
 # Запуск: Zapret.bat (сам попросит права администратора)
 
-param([switch]$AutoStart)
+param([switch]$AutoStart, [switch]$Tray)
 $ErrorActionPreference = 'Stop'
 # ---- версия приложения и где искать обновления ----
 $AppVersion = '1.2.1'
@@ -164,6 +164,22 @@ $TrPairs = @(
     @('Работает · Telegram подключён ✓', 'Running · Telegram connected ✓'),
     @('Подключён к Telegram', 'Connected to Telegram'),
     @('Открыть Zapret', 'Open Zapret'),
+    @('Свернуть', 'Minimize'),
+    @('Запускать вместе с Windows', 'Start with Windows'),
+    @('Zapret откроется в трее и сам включит zapret', 'Zapret opens in the tray and turns zapret on'),
+    @('Кнопка ✕', 'The ✕ button'),
+    @('что делать при закрытии окна', 'what happens when you close the window'),
+    @('Спрашивать', 'Ask'),
+    @('Сворачивать в трей', 'Minimize to tray'),
+    @('Закрывать полностью', 'Quit completely'),
+    @('Закрыть Zapret?', 'Close Zapret?'),
+    @('Выбор запомнится. Поменять можно в настройках → Запуск.', 'Your choice will be remembered. You can change it in Settings → Startup.'),
+    @('Значок останется рядом с часами, zapret и Telegram продолжат работать', 'The icon stays next to the clock, zapret and Telegram keep working'),
+    @('Закрыть полностью', 'Quit completely'),
+    @('Окно и значок закроются. Включённый zapret продолжит работать', 'The window and icon close. zapret keeps working if it is on'),
+    @('Готово: Zapret будет запускаться вместе с Windows', 'Done: Zapret will start with Windows'),
+    @('Автозапуск выключен', 'Start with Windows is off'),
+    @('Нужны права администратора', 'Administrator rights required'),
     @('Запускаю…', 'Starting…'),
     @('Выключаю…', 'Stopping…'),
     @('Telegram-прокси', 'Telegram proxy'),
@@ -625,11 +641,11 @@ function Enable-NoPrompt {
     if ($HostReady -and (Test-Path -LiteralPath $HostExe)) { $exe = $HostExe; $arg = '' }
     else { $exe = 'powershell.exe'; $arg = "-NoProfile -ExecutionPolicy Bypass -STA -WindowStyle Hidden -File `"$ps1`"" }
     $ex = Get-ElevTask
-    if (-not ($ex -and $ex.Actions[0].Execute -eq $exe -and "$($ex.Actions[0].Arguments)" -eq $arg)) {
+    if (-not ($ex -and $ex.Actions[0].Execute -eq $exe -and "$($ex.Actions[0].Arguments)" -eq $arg -and $ex.Settings.Priority -eq 4)) {
         $act = if ($arg) { New-ScheduledTaskAction -Execute $exe -Argument $arg -WorkingDirectory $GuiDir } else { New-ScheduledTaskAction -Execute $exe -WorkingDirectory $GuiDir }
         $user = [Security.Principal.WindowsIdentity]::GetCurrent().Name
         $pr = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Highest
-        $set = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew
+        $set = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -Priority 4
         Register-ScheduledTask -TaskName $TaskName -Action $act -Principal $pr -Settings $set -Description 'Запуск приложения Zapret без запроса прав администратора' -Force | Out-Null
     }
     if ($InHome) {
@@ -1008,7 +1024,7 @@ $xamlText = @'
                 <TextBlock.RenderTransform><RotateTransform x:Name="GearRot"/></TextBlock.RenderTransform>
               </TextBlock>
             </Button>
-            <Button x:Name="MinBtn" Style="{StaticResource TitleBtn}" ToolTip="Свернуть в трей"><TextBlock Text="—" FontSize="12"/></Button>
+            <Button x:Name="MinBtn" Style="{StaticResource TitleBtn}" ToolTip="Свернуть"><TextBlock Text="—" FontSize="12"/></Button>
             <Button x:Name="CloseBtn" Style="{StaticResource TitleBtn}" Margin="4,0,0,0"><TextBlock Text="✕" FontSize="13"/></Button>
           </StackPanel>
         </Grid>
@@ -1320,6 +1336,30 @@ $xamlText = @'
                         </Grid>
                       </StackPanel>
                     </Border>
+                    <Border Style="{StaticResource SetCard}" Margin="0,10,0,0">
+                      <StackPanel>
+                        <Grid Margin="0,0,0,12">
+                          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                          <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Запускать вместе с Windows" FontSize="13"/>
+                            <TextBlock Text="Zapret откроется в трее и сам включит zapret" Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap"/>
+                          </StackPanel>
+                          <CheckBox x:Name="AutoRunToggle" Grid.Column="1" Style="{StaticResource Toggle}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                        </Grid>
+                        <Grid>
+                          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="170"/></Grid.ColumnDefinitions>
+                          <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Кнопка ✕" FontSize="13"/>
+                            <TextBlock Text="что делать при закрытии окна" Foreground="{StaticResource Muted}" FontSize="11"/>
+                          </StackPanel>
+                          <ComboBox x:Name="CloseBox" Grid.Column="1" VerticalAlignment="Center">
+                            <ComboBoxItem Tag="ask">Спрашивать</ComboBoxItem>
+                            <ComboBoxItem Tag="tray">Сворачивать в трей</ComboBoxItem>
+                            <ComboBoxItem Tag="exit">Закрывать полностью</ComboBoxItem>
+                          </ComboBox>
+                        </Grid>
+                      </StackPanel>
+                    </Border>
                   </StackPanel>
 
                   <!-- 2: Вид -->
@@ -1577,6 +1617,43 @@ $xamlText = @'
         </Grid>
 
         <!-- QR для телефона -->
+        <!-- Что делать по ✕ -->
+        <Grid x:Name="CloseOverlay" Grid.RowSpan="2" Visibility="Collapsed" Panel.ZIndex="50">
+          <Border x:Name="CloseDim" Background="#C0090A0D" CornerRadius="20" Opacity="0"/>
+          <Border x:Name="ClosePanel" Width="420" VerticalAlignment="Center" Background="#171A21" CornerRadius="18" BorderBrush="#2A2E38" BorderThickness="1"
+                  Opacity="0" RenderTransformOrigin="0.5,0.5">
+            <Border.RenderTransform><ScaleTransform x:Name="CloseScale" ScaleX="0.94" ScaleY="0.94"/></Border.RenderTransform>
+            <Border.Effect><DropShadowEffect BlurRadius="30" ShadowDepth="0" Opacity="0.6"/></Border.Effect>
+            <StackPanel Margin="24,18,24,22">
+              <DockPanel Margin="0,0,0,6">
+                <Button x:Name="CloseAskX" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><TextBlock Text="✕" FontSize="13"/></Button>
+                <TextBlock Text="Закрыть Zapret?" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
+              </DockPanel>
+              <TextBlock Text="Выбор запомнится. Поменять можно в настройках → Запуск." Foreground="#8A90A0" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,16"/>
+              <Button x:Name="CloseToTray" Style="{StaticResource Btn}" Padding="14,12" Margin="0,0,0,8">
+                <Grid Width="330">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="36"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                  <TextBlock Text="&#xE921;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="#3DDC97" VerticalAlignment="Center"/>
+                  <StackPanel Grid.Column="1">
+                    <TextBlock Text="Свернуть в трей" FontSize="14" FontWeight="SemiBold"/>
+                    <TextBlock Text="Значок останется рядом с часами, zapret и Telegram продолжат работать" Foreground="#8A90A0" FontSize="11.5" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                  </StackPanel>
+                </Grid>
+              </Button>
+              <Button x:Name="CloseToExit" Style="{StaticResource Btn}" Padding="14,12">
+                <Grid Width="330">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="36"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                  <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="#FF8C99" VerticalAlignment="Center"/>
+                  <StackPanel Grid.Column="1">
+                    <TextBlock Text="Закрыть полностью" FontSize="14" FontWeight="SemiBold"/>
+                    <TextBlock Text="Окно и значок закроются. Включённый zapret продолжит работать" Foreground="#8A90A0" FontSize="11.5" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                  </StackPanel>
+                </Grid>
+              </Button>
+            </StackPanel>
+          </Border>
+        </Grid>
+
         <Grid x:Name="QrOverlay" Grid.RowSpan="2" Visibility="Collapsed">
           <Border x:Name="QrDim" Background="#C0090A0D" CornerRadius="20" Opacity="0"/>
           <Border x:Name="QrPanel" Width="440" VerticalAlignment="Center" Background="#171A21" CornerRadius="18" BorderBrush="#2A2E38" BorderThickness="1"
@@ -2326,18 +2403,76 @@ $ui.UpdToggle.IsChecked = (Test-Path -LiteralPath $UpdFile)
 $ui.WinToggle.IsChecked = [bool]$Settings.showWindow
 if ($IsAdmin -and -not $Settings.noPromptOff) { try { Enable-NoPrompt } catch { Write-Log ($_ | Out-String) } }
 $ui.NoPromptToggle.IsChecked = [bool](Get-ElevTask)
+$ui.AutoRunToggle.IsChecked = [bool](Get-AutoRunTask)
+if ($ui.AutoRunToggle.IsChecked -and $IsAdmin) { try { Enable-AutoRun } catch { Write-Log ($_ | Out-String) } }   # путь мог поменяться
+$script:loadingClose = $true
+$ca = if ($Settings.closeAction) { "$($Settings.closeAction)" } else { 'ask' }
+foreach ($it in $ui.CloseBox.Items) { if ($it.Tag -eq $ca) { $ui.CloseBox.SelectedItem = $it } }
+$script:loadingClose = $false
 Refresh-Sites
 $script:loading = $false
 
 # ======================= События =======================
 $ui.TitleBar.Add_MouseLeftButtonDown({ try { $win.DragMove() } catch {} })
-$ui.MinBtn.Add_Click({ Safe { Hide-ToTray } })
-$ui.CloseBtn.Add_Click({
+$ui.MinBtn.Add_Click({ $win.WindowState = 'Minimized' })
+function Exit-App {
     Anim-Double $ui.Shell $OP 0 180
-    $t = New-Object System.Windows.Threading.DispatcherTimer
-    $t.Interval = [TimeSpan]::FromMilliseconds(190)
-    $t.Add_Tick({ $win.Close() }); $t.Start()
-})
+    $script:exitT = New-Object System.Windows.Threading.DispatcherTimer
+    $script:exitT.Interval = [TimeSpan]::FromMilliseconds(190)
+    $script:exitT.Add_Tick({ $script:exitT.Stop(); $win.Close() }); $script:exitT.Start()
+}
+function Open-CloseAsk {
+    $ui.CloseOverlay.Visibility = 'Visible'
+    Anim-Double $ui.CloseDim $OP 1 220 0; Anim-Double $ui.ClosePanel $OP 1 250 0
+    Anim-Double $ui.CloseScale $SX 1 380 0.94 -Easing (Back-Ease); Anim-Double $ui.CloseScale $SY 1 380 0.94 -Easing (Back-Ease)
+}
+function Close-CloseAsk {
+    Anim-Double $ui.CloseDim $OP 0 180; Anim-Double $ui.ClosePanel $OP 0 180
+    $script:closeAskT = New-Object System.Windows.Threading.DispatcherTimer
+    $script:closeAskT.Interval = [TimeSpan]::FromMilliseconds(190)
+    $script:closeAskT.Add_Tick({ $script:closeAskT.Stop(); $ui.CloseOverlay.Visibility = 'Collapsed' })
+    $script:closeAskT.Start()
+}
+function Set-CloseAction([string]$a) {
+    $Settings.closeAction = $a; Save-Settings
+    $script:loadingClose = $true
+    foreach ($it in $ui.CloseBox.Items) { if ($it.Tag -eq $a) { $ui.CloseBox.SelectedItem = $it } }
+    $script:loadingClose = $false
+}
+$ui.CloseBtn.Add_Click({ Safe {
+    switch ("$($Settings.closeAction)") {
+        'tray' { Hide-ToTray }
+        'exit' { Exit-App }
+        default { Open-CloseAsk }
+    }
+} })
+$ui.CloseAskX.Add_Click({ Close-CloseAsk })
+$ui.CloseDim.Add_MouseLeftButtonUp({ Close-CloseAsk })
+$ui.CloseToTray.Add_Click({ Safe {
+    Set-CloseAction 'tray'
+    $ui.CloseOverlay.Visibility = 'Collapsed'; $ui.CloseDim.Opacity = 0; $ui.ClosePanel.Opacity = 0
+    Hide-ToTray
+} })
+$ui.CloseToExit.Add_Click({ Safe { Set-CloseAction 'exit'; Exit-App } })
+
+# ---- автозапуск вместе с Windows (по умолчанию выключен) ----
+$AutoRunTask = 'ZapretGUI Autostart'
+function Get-AutoRunTask { try { Get-ScheduledTask -TaskName $AutoRunTask -ErrorAction Stop } catch { $null } }
+function Enable-AutoRun {
+    $ps1 = Join-Path $GuiDir 'zapret-gui.ps1'
+    if ($HostReady -and (Test-Path -LiteralPath $HostExe)) { $exe = $HostExe; $arg = '-AutoStart -Tray' }
+    else { $exe = 'powershell.exe'; $arg = "-NoProfile -ExecutionPolicy Bypass -STA -WindowStyle Hidden -File `"$ps1`" -AutoStart -Tray" }
+    $ex = Get-AutoRunTask
+    if ($ex -and $ex.Actions[0].Execute -eq $exe -and "$($ex.Actions[0].Arguments)" -eq $arg) { return }
+    $act = New-ScheduledTaskAction -Execute $exe -Argument $arg -WorkingDirectory $GuiDir
+    $user = [Security.Principal.WindowsIdentity]::GetCurrent().Name
+    $trg = New-ScheduledTaskTrigger -AtLogOn -User $user
+    $trg.Delay = 'PT5S'
+    $pr = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Highest
+    $set = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -Priority 4
+    Register-ScheduledTask -TaskName $AutoRunTask -Action $act -Trigger $trg -Principal $pr -Settings $set -Description 'Запуск Zapret вместе с Windows' -Force | Out-Null
+}
+function Disable-AutoRun { if (Get-AutoRunTask) { Unregister-ScheduledTask -TaskName $AutoRunTask -Confirm:$false } }
 
 
 # ---- Внешний вид: тема, акцент, язык (применяются перезапуском окна) ----
@@ -2467,6 +2602,15 @@ $ui.IpsetBox.Add_SelectionChanged({ Safe {
 $ui.UpdToggle.Add_Click({ Safe {
     if ($ui.UpdToggle.IsChecked) { [IO.File]::WriteAllText($UpdFile, "ENABLED `r`n", [Text.Encoding]::ASCII) }
     elseif (Test-Path -LiteralPath $UpdFile) { Remove-Item -LiteralPath $UpdFile -Force }
+} })
+$ui.AutoRunToggle.Add_Click({ Safe {
+    if (-not $IsAdmin) { $ui.AutoRunToggle.IsChecked = -not $ui.AutoRunToggle.IsChecked; Show-Toast 'Нужны права администратора' -Err; return }
+    if ($ui.AutoRunToggle.IsChecked) { Enable-AutoRun; Show-Toast 'Готово: Zapret будет запускаться вместе с Windows' }
+    else { Disable-AutoRun; Show-Toast 'Автозапуск выключен' }
+} })
+$ui.CloseBox.Add_SelectionChanged({ Safe {
+    if ($script:loadingClose -or -not $ui.CloseBox.SelectedItem) { return }
+    $Settings.closeAction = "$($ui.CloseBox.SelectedItem.Tag)"; Save-Settings
 } })
 $ui.NoPromptToggle.Add_Click({ Safe {
     if ($ui.NoPromptToggle.IsChecked) { $Settings.noPromptOff = $false; Enable-NoPrompt; Show-Toast 'Готово: Zapret будет открываться без запроса прав' }
@@ -4087,7 +4231,8 @@ if ($script:consolidated) { exit 0 }
 if (-not $InOwnHost -and $HostReady -and (Test-Path -LiteralPath $HostExe) -and $InHome) {
     # первый запуск после сборки: сразу открываемся уже как Zapret.exe
     Release-Instance
-    if ($AutoStart) { Start-Process -FilePath $HostExe -ArgumentList '-AutoStart' } else { Start-Process -FilePath $HostExe }
+    $hArgs = @(); if ($AutoStart) { $hArgs += '-AutoStart' }; if ($Tray) { $hArgs += '-Tray' }
+    if ($hArgs.Count) { Start-Process -FilePath $HostExe -ArgumentList $hArgs } else { Start-Process -FilePath $HostExe }
     exit 0
 }
 
@@ -4300,6 +4445,19 @@ $win.Add_Deactivated({ try { Set-AppIdle $true } catch {} })
 $win.Add_StateChanged({ try { Set-AppIdle ($win.WindowState -eq 'Minimized' -or -not $win.IsActive) } catch {} })
 $script:mainFrame = New-Object System.Windows.Threading.DispatcherFrame
 $win.Add_Closed({ $script:mainFrame.Continue = $false })
+if ($Tray) {
+    # автозапуск: окно не показываем, только значок в трее
+    $win.ShowInTaskbar = $false; $win.WindowState = 'Minimized'
+    $win.Add_Loaded({
+        $script:trayStartT = New-Object System.Windows.Threading.DispatcherTimer
+        $script:trayStartT.Interval = [TimeSpan]::FromMilliseconds(300)
+        $script:trayStartT.Add_Tick({
+            $script:trayStartT.Stop()
+            try { Pause-Glow; $win.Hide(); $win.ShowInTaskbar = $true; $win.WindowState = 'Normal' } catch { Write-Log ($_ | Out-String) }
+        })
+        $script:trayStartT.Start()
+    })
+}
 $win.Show()
 [System.Windows.Threading.Dispatcher]::PushFrame($script:mainFrame)
 try { $script:tray.Visible = $false; $script:tray.Dispose() } catch {}
