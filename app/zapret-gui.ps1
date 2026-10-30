@@ -1193,7 +1193,7 @@ function Write-UserList([string[]]$domains) {
 function Find-GroupFor($groups, [string]$dom) {
     $base = Get-BaseDomain $dom
     foreach ($k in $groups.Keys) { foreach ($d in $groups[$k]) { if ((Get-BaseDomain $d) -eq $base) { return $k } } }
-    # Похожие домены одного сервиса (klei.com / kleientertainment.com) - в одну группу
+    # Похожие домены одного сервиса (например, example.com / exampleapp.com) - в одну группу
     $lbl = $base.Split('.')[0]
     foreach ($k in $groups.Keys) {
         foreach ($d in $groups[$k]) {
