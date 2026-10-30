@@ -164,6 +164,9 @@ $TrPairs = @(
     @('Работает · Telegram подключён ✓', 'Running · Telegram connected ✓'),
     @('Подключён к Telegram', 'Connected to Telegram'),
     @('Открыть Zapret', 'Open Zapret'),
+    @('Запускаю…', 'Starting…'),
+    @('Выключаю…', 'Stopping…'),
+    @('Telegram-прокси', 'Telegram proxy'),
     @('Включить zapret', 'Turn zapret on'),
     @('Выключить zapret', 'Turn zapret off'),
     @('Включить Telegram-прокси', 'Turn Telegram proxy on'),
@@ -1730,7 +1733,7 @@ function Set-Visual($mode, $detail) {
     if ($script:state -eq $mode -and $mode -ne 'on') { return }
     $prev = $script:state
     $script:state = $mode
-    if ($prev -ne $mode) { $script:visAt = [DateTime]::UtcNow.Ticks; if ($Mon) { $Mon.Wake = $true }; if ($script:tray) { try { $script:tray.Text = T $(if ($mode -eq 'on') { 'Zapret · работает' } else { 'Zapret · выключен' }) } catch {} } }
+    if ($prev -ne $mode) { $script:visAt = [DateTime]::UtcNow.Ticks; if ($Mon) { $Mon.Wake = $true }; if ($trayMenu -and $trayMenu.IsOpen) { try { Update-TrayMenu } catch {} }; if ($script:tray) { try { $script:tray.Text = T $(if ($mode -eq 'on') { 'Zapret · работает' } else { 'Zapret · выключен' }) } catch {} } }
     switch ($mode) {
         'on' {
             $ui.StatusText.Text = T $('Работает')
@@ -4126,39 +4129,154 @@ try {
     $script:tray.Icon = New-Object System.Drawing.Icon($trayMs, [System.Windows.Forms.SystemInformation]::SmallIconSize)
 } catch { $script:tray.Icon = [System.Drawing.SystemIcons]::Application }
 $script:tray.Text = 'Zapret'
-$trayMenu = New-Object System.Windows.Forms.ContextMenuStrip
-$trayMenu.Font = New-Object System.Drawing.Font('Segoe UI', 9.5)
-$trayMenu.ShowImageMargin = $false
-$miOpen = New-Object System.Windows.Forms.ToolStripMenuItem (T 'Открыть Zapret')
-$miOpen.Font = New-Object System.Drawing.Font('Segoe UI', 9.5, [System.Drawing.FontStyle]::Bold)
-$miZ = New-Object System.Windows.Forms.ToolStripMenuItem 'zapret'
-$miTg = New-Object System.Windows.Forms.ToolStripMenuItem 'Telegram'
-$miExit = New-Object System.Windows.Forms.ToolStripMenuItem (T 'Выйти из Zapret')
-[void]$trayMenu.Items.Add($miOpen)
-[void]$trayMenu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator))
-[void]$trayMenu.Items.Add($miZ)
-[void]$trayMenu.Items.Add($miTg)
-[void]$trayMenu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator))
-[void]$trayMenu.Items.Add($miExit)
-$trayMenu.Add_Opening({
+# меню трея в стиле приложения (WPF), а не стандартное серое меню Windows
+try { Add-Type -Namespace ZapretTray -Name Native -MemberDefinition '[System.Runtime.InteropServices.DllImport("user32.dll")] public static extern bool SetForegroundWindow(System.IntPtr h);' } catch {}
+$trayXaml = @'
+<ContextMenu xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Placement="MousePoint" HasDropShadow="False" FontFamily="Segoe UI" FontSize="13" Foreground="#E6E8EE"
+    UseLayoutRounding="True" SnapsToDevicePixels="True" TextOptions.TextFormattingMode="Display">
+  <ContextMenu.Resources>
+    <Style TargetType="MenuItem">
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="MenuItem">
+            <Border x:Name="Bd" Background="Transparent" CornerRadius="9" Padding="10,8" Margin="6,1">
+              <ContentPresenter ContentSource="Header" RecognizesAccessKey="False"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Bd" Property="Background" Value="#22262F"/></Trigger>
+              <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style TargetType="Separator">
+      <Setter Property="Template">
+        <Setter.Value><ControlTemplate TargetType="Separator"><Border Height="1" Background="#232731" Margin="14,5"/></ControlTemplate></Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="Ico" TargetType="TextBlock">
+      <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="Width" Value="28"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="Foreground" Value="#8A90A0"/>
+    </Style>
+  </ContextMenu.Resources>
+  <ContextMenu.Template>
+    <ControlTemplate TargetType="ContextMenu">
+      <Border Margin="12" Background="#1A1D24" CornerRadius="14" BorderBrush="#2A2E38" BorderThickness="1" Padding="0,6" MinWidth="260">
+        <Border.Effect><DropShadowEffect BlurRadius="20" ShadowDepth="2" Opacity="0.45" Color="#000000"/></Border.Effect>
+        <ItemsPresenter/>
+      </Border>
+    </ControlTemplate>
+  </ContextMenu.Template>
+
+  <MenuItem x:Name="TrHead" IsHitTestVisible="False" Focusable="False">
+    <MenuItem.Header>
+      <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+        <Grid Width="34" Height="34" Margin="0,0,12,0">
+          <Rectangle RadiusX="10" RadiusY="10" Fill="#22262F"/>
+          <Image x:Name="TrLogo" Width="22" Height="22" RenderOptions.BitmapScalingMode="HighQuality"/>
+        </Grid>
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock Text="Zapret" FontSize="14" FontWeight="SemiBold"/>
+          <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+            <Ellipse x:Name="TrDot" Width="6" Height="6" Margin="0,1,6,0" VerticalAlignment="Center" Fill="#8A90A0"/>
+            <TextBlock x:Name="TrSub" FontSize="11.5" Foreground="#8A90A0"/>
+          </StackPanel>
+        </StackPanel>
+      </StackPanel>
+    </MenuItem.Header>
+  </MenuItem>
+  <Separator/>
+  <MenuItem x:Name="TrOpen">
+    <MenuItem.Header>
+      <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Ico}" Text="&#xE8A7;"/><TextBlock Text="Открыть Zapret" VerticalAlignment="Center"/></StackPanel>
+    </MenuItem.Header>
+  </MenuItem>
+  <MenuItem x:Name="TrZ" StaysOpenOnClick="True">
+    <MenuItem.Header>
+      <DockPanel>
+        <Border x:Name="TrZTrack" DockPanel.Dock="Right" Width="34" Height="18" CornerRadius="9" Background="#2E3340" Margin="18,0,0,0" VerticalAlignment="Center">
+          <Ellipse Width="12" Height="12" Fill="#FFFFFF" HorizontalAlignment="Left" Margin="3,0,0,0">
+            <Ellipse.RenderTransform><TranslateTransform x:Name="TrZKnob"/></Ellipse.RenderTransform>
+          </Ellipse>
+        </Border>
+        <TextBlock Style="{StaticResource Ico}" Text="&#xE7E8;"/>
+        <TextBlock Text="zapret" VerticalAlignment="Center"/>
+      </DockPanel>
+    </MenuItem.Header>
+  </MenuItem>
+  <MenuItem x:Name="TrTg" StaysOpenOnClick="True">
+    <MenuItem.Header>
+      <DockPanel>
+        <Border x:Name="TrTgTrack" DockPanel.Dock="Right" Width="34" Height="18" CornerRadius="9" Background="#2E3340" Margin="18,0,0,0" VerticalAlignment="Center">
+          <Ellipse Width="12" Height="12" Fill="#FFFFFF" HorizontalAlignment="Left" Margin="3,0,0,0">
+            <Ellipse.RenderTransform><TranslateTransform x:Name="TrTgKnob"/></Ellipse.RenderTransform>
+          </Ellipse>
+        </Border>
+        <TextBlock Style="{StaticResource Ico}" Text="&#xE724;"/>
+        <TextBlock Text="Telegram-прокси" VerticalAlignment="Center"/>
+      </DockPanel>
+    </MenuItem.Header>
+  </MenuItem>
+  <Separator/>
+  <MenuItem x:Name="TrExit">
+    <MenuItem.Header>
+      <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Ico}" Text="&#xE711;" Foreground="#FF8C99"/><TextBlock Text="Выйти из Zapret" Foreground="#FF8C99" VerticalAlignment="Center"/></StackPanel>
+    </MenuItem.Header>
+  </MenuItem>
+</ContextMenu>
+'@
+$trayMenu = [Windows.Markup.XamlReader]::Parse((Apply-Theme $trayXaml))
+$tr = @{}
+foreach ($n in 'TrLogo', 'TrDot', 'TrSub', 'TrOpen', 'TrZ', 'TrZTrack', 'TrZKnob', 'TrTg', 'TrTgTrack', 'TrTgKnob', 'TrExit') { $tr[$n] = $trayMenu.FindName($n) }
+if ($win.Icon) { $tr.TrLogo.Source = $win.Icon }
+$TX = [System.Windows.Media.TranslateTransform]::XProperty
+function Set-TraySwitch($track, $knob, [bool]$on, $hex, [switch]$Instant) {
+    $ms = if ($Instant) { 1 } else { 180 }
+    if (-not ($track.Background -is [System.Windows.Media.SolidColorBrush]) -or $track.Background.IsFrozen) { $track.Background = New-Object System.Windows.Media.SolidColorBrush ((Color-Of '#2E3340')) }
+    Anim-Color $track.Background $(if ($on) { $hex } else { '#2E3340' }) $ms
+    Anim-Double $knob $TX $(if ($on) { 16 } else { 0 }) $ms
+}
+function Update-TrayMenu([switch]$Instant) {
+    $zOn = ($script:state -eq 'on' -or $script:state -eq 'starting')
+    $tr.TrSub.Text = T $(switch ($script:state) { 'on' { 'Работает' } 'starting' { 'Запускаю…' } 'stopping' { 'Выключаю…' } default { 'Выключен' } })
+    $tr.TrDot.Fill = Brush $(if ($script:state -eq 'on') { '#3DDC97' } else { '#8A90A0' })
+    $tr.TrZ.IsEnabled = ($script:state -eq 'on' -or $script:state -eq 'off')
+    $tr.TrTg.IsEnabled = [bool]$ui.TgToggle.IsEnabled
+    Set-TraySwitch $tr.TrZTrack $tr.TrZKnob $zOn '#3DDC97' -Instant:$Instant
+    Set-TraySwitch $tr.TrTgTrack $tr.TrTgKnob ([bool]$ui.TgToggle.IsChecked) '#5ED3F3' -Instant:$Instant
+}
+$trayMenu.Add_Opened({
     try {
-        $miZ.Text = T $(if ($script:state -eq 'on') { 'Выключить zapret' } else { 'Включить zapret' })
-        $miZ.Enabled = ($script:state -eq 'on' -or $script:state -eq 'off')
-        $miTg.Text = T $(if ($ui.TgToggle.IsChecked) { 'Выключить Telegram-прокси' } else { 'Включить Telegram-прокси' })
-        $miTg.Enabled = [bool]$ui.TgToggle.IsEnabled
+        $src = [System.Windows.PresentationSource]::FromVisual($trayMenu)
+        if ($src) { [void][ZapretTray.Native]::SetForegroundWindow($src.Handle) }   # чтобы меню закрывалось по клику мимо
     } catch {}
 })
-$miOpen.Add_Click({ Safe { Show-FromTray } })
-$miZ.Add_Click({ Safe {
+$tr.TrOpen.Add_Click({ Safe { Show-FromTray } })
+$tr.TrZ.Add_Click({ Safe {
     switch ($script:state) { 'on' { Stop-Zapret; Hide-Apply } 'off' { Start-Zapret } }
+    Update-TrayMenu
 } })
-$miTg.Add_Click({ Safe {
+$tr.TrTg.Add_Click({ Safe {
     $ui.TgToggle.IsChecked = -not [bool]$ui.TgToggle.IsChecked
     if ($ui.TgToggle.IsChecked) { Start-Tg } else { Stop-Tg }
+    Update-TrayMenu
 } })
-$miExit.Add_Click({ $win.Close() })
-$script:tray.ContextMenuStrip = $trayMenu
-$script:tray.Add_MouseClick({ param($s, $e) if ($e.Button -eq [System.Windows.Forms.MouseButtons]::Left) { Safe { Show-FromTray } } })
+$tr.TrExit.Add_Click({ $trayMenu.IsOpen = $false; $win.Close() })
+$script:tray.Add_MouseUp({ param($s, $e)
+    if ($e.Button -eq [System.Windows.Forms.MouseButtons]::Right) {
+        Safe {
+            Update-TrayMenu -Instant
+            if ($script:Lang -eq 'en') { Translate-Tree $trayMenu }
+            $trayMenu.IsOpen = $false; $trayMenu.IsOpen = $true
+        }
+    }
+})
 $script:tray.Visible = $true
 # повторный запуск Zapret — показываем это окно (проверка раз в секунду, ничего не стоит)
 $script:showT = New-Object System.Windows.Threading.DispatcherTimer
