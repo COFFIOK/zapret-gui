@@ -2,7 +2,7 @@ param([string]$SelfPath, [switch]$Auto)
 # ====== Установщик Zapret GUI ======
 $ErrorActionPreference = 'Stop'
 $AppName = 'Zapret'
-$AppVersion = '1.1.0'
+$AppVersion = '1.2.0'
 
 # --- права администратора (один запрос) ---
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -485,7 +485,7 @@ function Install-App {
     if (-not $same) {
         for ($k = 0; $k -lt 5; $k++) { try { Copy-Item -LiteralPath $IconTmp -Destination $icoDst -Force -ErrorAction Stop; break } catch { Start-Sleep -Milliseconds 400 } }
     }
-    $launcher = "@echo off`r`nschtasks /run /tn `"ZapretGUI`" >nul 2>&1 && exit /b`r`npowershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command `"Start-Process powershell -Verb RunAs -WindowStyle Hidden -ArgumentList '-NoProfile -ExecutionPolicy Bypass -STA -WindowStyle Hidden -File \`"%~dp0app\zapret-gui.ps1\`"'`"`r`n"
+    $launcher = "@echo off`r`nschtasks /run /tn `"ZapretGUI`" >nul 2>&1 && exit /b`r`nif exist `"%~dp0app\Zapret.exe`" ( start `"`" `"%~dp0app\Zapret.exe`" & exit /b )`r`npowershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command `"Start-Process powershell -Verb RunAs -WindowStyle Hidden -ArgumentList '-NoProfile -ExecutionPolicy Bypass -STA -WindowStyle Hidden -File \`"%~dp0app\zapret-gui.ps1\`"'`"`r`n"
     [IO.File]::WriteAllText((Join-Path $script:dest 'Zapret.bat'), $launcher, [Text.Encoding]::ASCII)
     # настройка «без запроса прав» для приложения
     $sf = Join-Path $app 'gui-settings.json'
@@ -503,6 +503,9 @@ Add-Type -AssemblyName PresentationFramework
 $r = [System.Windows.MessageBox]::Show("Удалить Zapret?`n`nБудет удалена папка $dir вместе с zapret и твоими списками сайтов.", 'Удаление Zapret', 'YesNo', 'Question')
 if ($r -ne 'Yes') { exit }
 Get-Process -Name winws | Stop-Process -Force
+Get-Process -Name 'Zapret' | Where-Object { $_.Path -like "$dir\*" } | Stop-Process -Force
+Get-Process -Name 'TgWsProxy_windows' | Stop-Process -Force
+Remove-NetFirewallRule -DisplayName 'Zapret Telegram proxy'
 try { Stop-Service zapret -Force; sc.exe delete zapret | Out-Null } catch {}
 Unregister-ScheduledTask -TaskName 'ZapretGUI' -Confirm:$false
 foreach ($l in @((Join-Path ([Environment]::GetFolderPath('Desktop')) 'Zapret.lnk'), (Join-Path ([Environment]::GetFolderPath('Programs')) 'Zapret.lnk'))) { Remove-Item -LiteralPath $l -Force }
@@ -678,6 +681,8 @@ function Begin-Install {
         Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction Stop |
             Where-Object { $_.CommandLine -like '*zapret-gui.ps1*' -and $_.ProcessId -ne $PID } |
             ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+        # с версии 1.2 приложение работает как Zapret.exe
+        Get-Process -Name 'Zapret' -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne $PID -and $_.Path -like '*\app\Zapret.exe' } | Stop-Process -Force -ErrorAction SilentlyContinue
         Start-Sleep -Milliseconds 600
     } catch {}
     Get-Process -Name winws -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
