@@ -82,6 +82,7 @@ namespace ZapretCS
             Step("test", WireTest);
             Step("migrate", WireMigrate);
             Step("updates", WireUpdates);
+            Step("uninstall", WireUninstall);
             Step("tray", BuildTray);
             Step("translate", () => Translate.Init(this));
             // безопасность: права на папку Zapret и уборка старых временных файлов — в фоне, один раз при запуске
