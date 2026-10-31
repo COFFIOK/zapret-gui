@@ -222,7 +222,7 @@ namespace ZapretCS
                 "<Task version=\"1.2\" xmlns=\"http://schemas.microsoft.com/windows/2004/02/mit/task\">" +
                 "<RegistrationInfo><Description>" + SecurityElement.Escape(description) + "</Description></RegistrationInfo>" + trigger +
                 "<Principals><Principal id=\"Author\"><UserId>" + SecurityElement.Escape(user) + "</UserId><LogonType>InteractiveToken</LogonType><RunLevel>HighestAvailable</RunLevel></Principal></Principals>" +
-                "<Settings><MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy><DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries><StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>" +
+                "<Settings><MultipleInstancesPolicy>" + (args.Length == 0 ? "Parallel" : "IgnoreNew") + "</MultipleInstancesPolicy><DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries><StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>" +
                 "<ExecutionTimeLimit>PT0S</ExecutionTimeLimit><Priority>4</Priority></Settings>" +
                 "<Actions Context=\"Author\"><Exec><Command>" + SecurityElement.Escape(exe) + "</Command>" + (args.Length > 0 ? "<Arguments>" + SecurityElement.Escape(args) + "</Arguments>" : "") +
                 "<WorkingDirectory>" + SecurityElement.Escape(System.IO.Path.GetDirectoryName(exe)) + "</WorkingDirectory></Exec></Actions></Task>";

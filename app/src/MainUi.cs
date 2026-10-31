@@ -20,7 +20,7 @@ namespace ZapretCS
     partial class MainUi
     {
         public static MainUi Current;
-        public const string AppVersion = "2.0.1";
+        public const string AppVersion = "2.0.2";
 
         public readonly string GuiDir, HomeDir;
         public readonly bool InHome;
@@ -90,9 +90,9 @@ namespace ZapretCS
 
             timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1000) };
             timer.Tick += (s, e) => { try { RefreshState(); } catch (Exception ex) { Log.Write("refresh: " + ex); } };
-            showTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-            showTimer.Tick += (s, e) => { try { if (Program.ShowEvent.WaitOne(0)) ShowFromTray(); } catch { } };
-            showTimer.Start();
+            // повторный запуск (ярлык, меню «Пуск») — сразу показываем это окно
+            System.Threading.ThreadPool.RegisterWaitForSingleObject(Program.ShowEvent,
+                (st, to) => Win.Dispatcher.BeginInvoke(new Action(() => Safe(ShowFromTray))), null, -1, false);
 
             Win.Loaded += (s, e) =>
             {

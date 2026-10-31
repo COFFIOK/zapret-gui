@@ -2,7 +2,7 @@ param([string]$SelfPath, [switch]$Auto)
 # ====== Установщик Zapret GUI ======
 $ErrorActionPreference = 'Stop'
 $AppName = 'Zapret'
-$AppVersion = '2.0.1'
+$AppVersion = '2.0.2'
 
 # --- права администратора (один запрос) ---
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -627,7 +627,7 @@ function Register-NoPrompt {
     $app = Join-Path $script:dest 'app'
     $act = New-ScheduledTaskAction -Execute (Join-Path $app 'Zapret.exe') -WorkingDirectory $app
     $pr = New-ScheduledTaskPrincipal -UserId ([Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Highest
-    $set = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -Priority 4
+    $set = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances Parallel -Priority 4
     Register-ScheduledTask -TaskName 'ZapretGUI' -Action $act -Principal $pr -Settings $set -Description 'Запуск приложения Zapret без запроса прав администратора' -Force | Out-Null
 }
 

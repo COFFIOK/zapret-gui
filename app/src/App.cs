@@ -13,6 +13,7 @@ namespace ZapretCS
         public static Mutex InstMutex;
         public static EventWaitHandle ShowEvent;
         public static bool Tray, AutoStart;
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool AllowSetForegroundWindow(int pid);
 
         [STAThread]
         static int Main(string[] args)
@@ -30,7 +31,12 @@ namespace ZapretCS
             if (!created)
             {
                 try { created = InstMutex.WaitOne(1500); } catch (AbandonedMutexException) { created = true; }
-                if (!created) { ShowEvent.Set(); return 0; }
+                if (!created)
+                {
+                    // разрешаем уже открытому окну выйти на передний план (иначе Windows только мигнёт значком)
+                    try { AllowSetForegroundWindow(-1); } catch { }
+                    ShowEvent.Set(); return 0;
+                }
             }
 
             AppDomain.CurrentDomain.UnhandledException += (s, e) => Log.Write("crash: " + e.ExceptionObject);

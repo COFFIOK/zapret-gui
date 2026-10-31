@@ -133,9 +133,12 @@ namespace ZapretCS
 
         public void ShowFromTray()
         {
+            Win.ShowInTaskbar = true;
             Win.Show();
             if (Win.WindowState == WindowState.Minimized) Win.WindowState = WindowState.Normal;
             Win.Activate(); Win.Topmost = true; Win.Topmost = false;
+            try { SetForegroundWindow(new System.Windows.Interop.WindowInteropHelper(Win).Handle); } catch { }
+            Win.Focus();
             ResumeGlow();
             Mon.Wake();
         }
