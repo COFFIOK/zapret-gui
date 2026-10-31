@@ -2,7 +2,7 @@ param([string]$SelfPath, [switch]$Auto)
 # ====== Установщик Zapret GUI ======
 $ErrorActionPreference = 'Stop'
 $AppName = 'Zapret'
-$AppVersion = '1.2.1'
+$AppVersion = '1.2.2'
 
 # --- права администратора (один запрос) ---
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -735,4 +735,42 @@ $win.Add_Loaded({
     Anim $ui.LogoScale $SX 1 650 0.6 -Easing (BackOut); Anim $ui.LogoScale $SY 1 650 0.6 -Easing (BackOut)
 })
 $win.Add_Closed({ try { Remove-Item -LiteralPath $TempDir -Recurse -Force -ErrorAction SilentlyContinue } catch {} })
+# ---- тихое обновление из приложения: без окна установщика ----
+# Приложение само показывает анимацию обновления, здесь только меняем файлы и запускаем его снова.
+if ($Auto -and $Existing -and (Test-Path -LiteralPath (Join-Path $Existing 'app'))) {
+    try {
+        $script:dest = $Existing
+        $script:wasRunning = $false
+        $hasTask = $false; try { $hasTask = [bool](Get-ScheduledTask -TaskName 'ZapretGUI' -ErrorAction Stop) } catch {}
+        $ui.OptNoPrompt.IsChecked = $hasTask
+        $ui.OptDesktop.IsChecked = Test-Path -LiteralPath (Join-Path ([Environment]::GetFolderPath('Desktop')) 'Zapret.lnk')
+        # ждём, пока приложение закроется само (оно закрывается с анимацией), потом подстраховка
+        for ($k = 0; $k -lt 30; $k++) {
+            $alive = @(Get-Process -Name 'Zapret' -ErrorAction SilentlyContinue | Where-Object { $_.Path -like '*\app\Zapret.exe' })
+            if (-not $alive.Count) { break }
+            Start-Sleep -Milliseconds 200
+        }
+        Get-Process -Name 'Zapret' -ErrorAction SilentlyContinue | Where-Object { $_.Path -like '*\app\Zapret.exe' } | Stop-Process -Force -ErrorAction SilentlyContinue
+        try {
+            Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction Stop |
+                Where-Object { $_.CommandLine -like '*zapret-gui.ps1*' -and $_.ProcessId -ne $PID } |
+                ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+        } catch {}
+        Start-Sleep -Milliseconds 300
+        Install-App
+        New-Shortcut (Join-Path ([Environment]::GetFolderPath('Programs')) 'Zapret.lnk')
+        if ($ui.OptDesktop.IsChecked) { New-Shortcut (Join-Path ([Environment]::GetFolderPath('Desktop')) 'Zapret.lnk') }
+        # отметка для приложения: показать «Обновлено»
+        [IO.File]::WriteAllText((Join-Path $Existing 'app\updated.flag'), $AppVersion, (New-Object System.Text.UTF8Encoding($false)))
+        $exe = Join-Path $Existing 'app\Zapret.exe'
+        if ($hasTask) { Start-Process schtasks.exe -ArgumentList '/run /tn "ZapretGUI"' -WindowStyle Hidden }
+        elseif (Test-Path -LiteralPath $exe) { Start-Process -FilePath $exe }
+        else { Start-Process powershell -WindowStyle Hidden -ArgumentList "-NoProfile -ExecutionPolicy Bypass -STA -WindowStyle Hidden -File `"$(Join-Path $Existing 'app\zapret-gui.ps1')`"" }
+        try { Remove-Item -LiteralPath $TempDir -Recurse -Force -ErrorAction SilentlyContinue } catch {}
+        exit 0
+    } catch {
+        try { Add-Content -LiteralPath (Join-Path $Existing 'app\gui-error.log') -Value ("[{0}] silent update: {1}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), ($_ | Out-String)) -Encoding UTF8 } catch {}
+        # не вышло тихо — показываем обычный установщик
+    }
+}
 [void]$win.ShowDialog()

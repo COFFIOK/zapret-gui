@@ -4,7 +4,7 @@
 param([switch]$AutoStart, [switch]$Tray)
 $ErrorActionPreference = 'Stop'
 # ---- версия приложения и где искать обновления ----
-$AppVersion = '1.2.1'
+$AppVersion = '1.2.2'
 $UpdateRepo = 'COFFIOK/zapret-gui'   # GitHub: владелец/репозиторий, в Releases лежит ZapretSetup.exe
 $GuiDir = $PSScriptRoot
 $LogFile = Join-Path $GuiDir 'gui-error.log'
@@ -164,6 +164,9 @@ $TrPairs = @(
     @('Работает · Telegram подключён ✓', 'Running · Telegram connected ✓'),
     @('Подключён к Telegram', 'Connected to Telegram'),
     @('Открыть Zapret', 'Open Zapret'),
+    @('Скачиваю обновление…', 'Downloading the update…'),
+    @('Устанавливаю… Zapret откроется снова через пару секунд', 'Installing… Zapret will reopen in a couple of seconds'),
+    @('Все сайты и настройки на месте', 'All your sites and settings are kept'),
     @('Свернуть', 'Minimize'),
     @('Запускать вместе с Windows', 'Start with Windows'),
     @('Zapret откроется в трее и сам включит zapret', 'Zapret opens in the tray and turns zapret on'),
@@ -381,6 +384,9 @@ foreach ($pp in $TrPairs) { $TrExact[$pp[0]] = $pp[1] }
 
 function Plural-En([int]$n) { if ($n -eq 1) { "$n site" } else { "$n sites" } }
 $TrRx = @(
+    @('^Обновление до (.+)$', 'Updating to $1'),
+    @('^Zapret обновлён до (.+)$', 'Zapret updated to $1'),
+    @('^(\d+)% · ([\d.,\s]+) из ([\d.,\s]+) МБ$', '$1% · $2 of $3 MB'),
     @('^Подобрал лучшую стратегию: (.+) — включаю$', 'Best strategy found: $1 — turning it on'),
     @('^Выбрано: (\d+) сайт(а|ов)? из (\d+)$', { param($m) "Selected: $(Plural-En ([int]$m[1])) of $($m[3])" }),
     @('^Скопировано: (\d+) сайт(а|ов)?\. Вставь в сообщение другу \(Ctrl\+V\)$', { param($m) "Copied: $(Plural-En ([int]$m[1])). Paste it into a message (Ctrl+V)" }),
@@ -1635,6 +1641,45 @@ $xamlText = @'
         </Grid>
 
         <!-- QR для телефона -->
+        <!-- Обновление приложения -->
+        <Grid x:Name="AuOverlay" Grid.RowSpan="2" Visibility="Collapsed" Panel.ZIndex="60">
+          <Border x:Name="AuDim" Background="#C0090A0D" CornerRadius="20" Opacity="0"/>
+          <Border x:Name="AuPanel" Width="380" VerticalAlignment="Center" Background="#171A21" CornerRadius="20" BorderBrush="#2A2E38" BorderThickness="1"
+                  Opacity="0" RenderTransformOrigin="0.5,0.5">
+            <Border.RenderTransform><ScaleTransform x:Name="AuScale" ScaleX="0.94" ScaleY="0.94"/></Border.RenderTransform>
+            <Border.Effect><DropShadowEffect BlurRadius="30" ShadowDepth="0" Opacity="0.6"/></Border.Effect>
+            <StackPanel Margin="28,30,28,26">
+              <Grid Width="96" Height="96" HorizontalAlignment="Center">
+                <Ellipse x:Name="AuRing" Stroke="#22262F" StrokeThickness="4"/>
+                <Ellipse x:Name="AuArc" Stroke="#3DDC97" StrokeThickness="4" StrokeDashArray="16 56" StrokeDashCap="Round" RenderTransformOrigin="0.5,0.5">
+                  <Ellipse.RenderTransform><RotateTransform x:Name="AuArcRot"/></Ellipse.RenderTransform>
+                </Ellipse>
+                <Image x:Name="AuLogo" Width="46" Height="46" RenderOptions.BitmapScalingMode="HighQuality" RenderTransformOrigin="0.5,0.5">
+                  <Image.RenderTransform><ScaleTransform x:Name="AuLogoS"/></Image.RenderTransform>
+                </Image>
+                <Grid x:Name="AuOk" Opacity="0" RenderTransformOrigin="0.5,0.5">
+                  <Grid.RenderTransform><ScaleTransform x:Name="AuOkS" ScaleX="0.4" ScaleY="0.4"/></Grid.RenderTransform>
+                  <Ellipse Fill="#3DDC97"/>
+                  <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="40" Foreground="#0F1115" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Grid>
+                <Ellipse x:Name="AuBurst" Stroke="#3DDC97" StrokeThickness="3" Opacity="0" RenderTransformOrigin="0.5,0.5">
+                  <Ellipse.RenderTransform><ScaleTransform x:Name="AuBurstS"/></Ellipse.RenderTransform>
+                </Ellipse>
+              </Grid>
+              <TextBlock x:Name="AuTitle" FontSize="19" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,18,0,4"/>
+              <TextBlock x:Name="AuSub" Foreground="#8A90A0" FontSize="12.5" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
+              <StackPanel x:Name="AuProgress">
+                <Border Height="6" CornerRadius="3" Background="#22262F" Margin="0,18,0,0" ClipToBounds="True">
+                  <Border CornerRadius="3" Background="#3DDC97" RenderTransformOrigin="0,0.5">
+                    <Border.RenderTransform><ScaleTransform x:Name="AuFillS" ScaleX="0"/></Border.RenderTransform>
+                  </Border>
+                </Border>
+                <TextBlock x:Name="AuPct" FontSize="11.5" Foreground="#8A90A0" HorizontalAlignment="Center" Margin="0,8,0,0"/>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+        </Grid>
+
         <!-- Что делать по ✕ -->
         <Grid x:Name="CloseOverlay" Grid.RowSpan="2" Visibility="Collapsed" Panel.ZIndex="50">
           <Border x:Name="CloseDim" Background="#C0090A0D" CornerRadius="20" Opacity="0"/>
@@ -4066,11 +4111,63 @@ function Hide-AppUpdate {
     $script:appHideT.Add_Tick({ $script:appHideT.Stop(); $ui.AppUpdBar.Visibility = 'Collapsed' })
     $script:appHideT.Start()
 }
+function Open-AuOverlay([switch]$Done) {
+    if ($win.Icon) { $ui.AuLogo.Source = $win.Icon }
+    $ui.AuOverlay.Visibility = 'Visible'
+    Anim-Double $ui.AuDim $OP 1 220 0; Anim-Double $ui.AuPanel $OP 1 260 0
+    Anim-Double $ui.AuScale $SX 1 420 0.92 -Easing (Back-Ease); Anim-Double $ui.AuScale $SY 1 420 0.92 -Easing (Back-Ease)
+    if ($Done) {
+        $ui.AuProgress.Visibility = 'Collapsed'; $ui.AuArc.Opacity = 0; $ui.AuLogo.Opacity = 0
+        # галочка «выпрыгивает» и от неё расходится кольцо
+        Anim-Double $ui.AuOk $OP 1 200 0 -beginMs 250
+        Anim-Double $ui.AuOkS $SX 1 520 0.4 -beginMs 250 -Easing (Back-Ease); Anim-Double $ui.AuOkS $SY 1 520 0.4 -beginMs 250 -Easing (Back-Ease)
+        Anim-Double $ui.AuBurst $OP 0 900 0.9 -beginMs 450
+        Anim-Double $ui.AuBurstS $SX 1.7 900 1 -beginMs 450; Anim-Double $ui.AuBurstS $SY 1.7 900 1 -beginMs 450
+    } else {
+        $ui.AuProgress.Visibility = 'Visible'; $ui.AuFillS.ScaleX = 0
+        $ui.AuArc.Opacity = 1; $ui.AuLogo.Opacity = 1; $ui.AuOk.Opacity = 0
+        Anim-Double $ui.AuArcRot ([System.Windows.Media.RotateTransform]::AngleProperty) 360 1100 0 -Forever -NoEase
+        Anim-Double $ui.AuLogoS $SX 0.92 900 1 -Forever -AutoReverse -Low; Anim-Double $ui.AuLogoS $SY 0.92 900 1 -Forever -AutoReverse -Low
+    }
+}
+function Close-AuOverlay {
+    Anim-Double $ui.AuDim $OP 0 200; Anim-Double $ui.AuPanel $OP 0 200
+    $script:updOvT = New-Object System.Windows.Threading.DispatcherTimer
+    $script:updOvT.Interval = [TimeSpan]::FromMilliseconds(210)
+    $script:updOvT.Add_Tick({
+        $script:updOvT.Stop(); $ui.AuOverlay.Visibility = 'Collapsed'
+        Stop-Anim $ui.AuArcRot ([System.Windows.Media.RotateTransform]::AngleProperty)
+        Stop-Anim $ui.AuLogoS $SX; Stop-Anim $ui.AuLogoS $SY
+    })
+    $script:updOvT.Start()
+}
+$ui.AuDim.Add_MouseLeftButtonUp({ if ($script:updDoneShown) { Close-AuOverlay } })
+# после тихого обновления установщик оставляет отметку — показываем «Обновлено»
+$UpdFlag = Join-Path $GuiDir 'updated.flag'
+$script:updDoneShown = $false
+function Show-UpdatedIfNeeded {
+    if (-not (Test-Path -LiteralPath $UpdFlag)) { return }
+    $v = ''; try { $v = ([IO.File]::ReadAllText($UpdFlag)).Trim() } catch {}
+    Remove-Item -LiteralPath $UpdFlag -Force -ErrorAction SilentlyContinue
+    if (-not $v) { $v = $AppVersion }
+    $script:updDoneShown = $true
+    $ui.AuTitle.Text = T $("Zapret обновлён до v$v")
+    $ui.AuSub.Text = T $('Все сайты и настройки на месте')
+    Open-AuOverlay -Done
+    $script:updDoneT = New-Object System.Windows.Threading.DispatcherTimer
+    $script:updDoneT.Interval = [TimeSpan]::FromMilliseconds(2800)
+    $script:updDoneT.Add_Tick({ $script:updDoneT.Stop(); if ($ui.AuOverlay.Visibility -eq 'Visible') { Close-AuOverlay } })
+    $script:updDoneT.Start()
+}
 function Start-AppDownload {
     if (-not $script:appUpd -or -not $script:appUpd.Url) { return }
     $script:appTimer.Start()
-    $ui.AppUpdBtn.IsEnabled = $false; $ui.AppUpdBtn.Content = T $('Скачиваю…')
-    $ui.AppUpdTrack.Visibility = 'Visible'; $ui.AppUpdFillS.ScaleX = 0
+    $ui.AppUpdBtn.IsEnabled = $false
+    Hide-AppUpdate
+    Open-AuOverlay
+    $ui.AuTitle.Text = T $("Обновление до $($script:appUpd.Tag)")
+    $ui.AuSub.Text = T $('Скачиваю обновление…')
+    $ui.AuPct.Text = ''
     $script:appDl = [hashtable]::Synchronized(@{ Done = $false; Got = 0; Total = 0; Error = $null; File = (Join-Path $env:TEMP "ZapretSetup-$($script:appUpd.Tag).exe") })
     $rs = [runspacefactory]::CreateRunspace(); $rs.Open()
     $ps = [powershell]::Create(); $ps.Runspace = $rs
@@ -4101,16 +4198,33 @@ $script:appTimer.Add_Tick({
         }
         if ($script:appDl) {
             $d = $script:appDl
-            if ($d.Total -gt 0) { Anim-Double $ui.AppUpdFillS $SX ([Math]::Min(1, $d.Got / $d.Total)) 250; $ui.AppUpdBtn.Content = T $("$([int](100 * $d.Got / $d.Total))%") }
+            if ($d.Total -gt 0) {
+                $f = [Math]::Min(1, $d.Got / $d.Total)
+                Anim-Double $ui.AuFillS $SX ($f * 0.9) 380
+                $ui.AuPct.Text = T $(('{0}% · {1:N1} из {2:N1} МБ' -f [int](100 * $f), ($d.Got / 1MB), ($d.Total / 1MB)))
+            }
             if ($d.Done) {
                 $script:appDl = $null
-                if ($d.Error) { Show-Toast "Не удалось скачать обновление: $($d.Error)" -Err; $ui.AppUpdBtn.Content = T $('Повторить'); $ui.AppUpdBtn.IsEnabled = $true }
-                else {
-                    $ui.AppUpdBtn.Content = T $('Устанавливаю…')
+                if ($d.Error) {
+                    Close-AuOverlay
+                    Show-Toast "Не удалось скачать обновление: $($d.Error)" -Err
+                    Show-AppUpdate $script:appUpd.Tag $script:appUpd.Url; $ui.AppUpdBtn.Content = T $('Повторить')
+                } else {
+                    $ui.AuSub.Text = T $('Устанавливаю… Zapret откроется снова через пару секунд')
+                    $ui.AuPct.Text = ''
+                    Anim-Double $ui.AuFillS $SX 1 900
+                    # установщик работает тихо, без своего окна
                     Start-Process -FilePath $d.File -ArgumentList '-Auto'
                     $script:appCloseT = New-Object System.Windows.Threading.DispatcherTimer
-                    $script:appCloseT.Interval = [TimeSpan]::FromMilliseconds(800)
-                    $script:appCloseT.Add_Tick({ $script:appCloseT.Stop(); $win.Close() })
+                    $script:appCloseT.Interval = [TimeSpan]::FromMilliseconds(1300)
+                    $script:appCloseT.Add_Tick({
+                        $script:appCloseT.Stop()
+                        Anim-Double $ui.Shell $OP 0 260
+                        $script:appCloseT2 = New-Object System.Windows.Threading.DispatcherTimer
+                        $script:appCloseT2.Interval = [TimeSpan]::FromMilliseconds(280)
+                        $script:appCloseT2.Add_Tick({ $script:appCloseT2.Stop(); $win.Close() })
+                        $script:appCloseT2.Start()
+                    })
                     $script:appCloseT.Start()
                 }
             }
@@ -4195,6 +4309,12 @@ $win.Add_Loaded({
     }
     Anim-Double $ui.Shell $OP 1 380 0
     Anim-Double $ui.ShellShift ([System.Windows.Media.TranslateTransform]::YProperty) 0 450 18
+    if (-not $Tray) {
+        $script:updShowT = New-Object System.Windows.Threading.DispatcherTimer
+        $script:updShowT.Interval = [TimeSpan]::FromMilliseconds(450)
+        $script:updShowT.Add_Tick({ $script:updShowT.Stop(); try { Show-UpdatedIfNeeded } catch { Write-Log ($_ | Out-String) } })
+        $script:updShowT.Start()
+    }
     # первый замер — сразу, дальше всё делает фоновый монитор
     try {
         $Mon.Svc = Get-ServiceState
