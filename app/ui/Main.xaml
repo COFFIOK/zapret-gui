@@ -462,6 +462,7 @@
                         <ScaleTransform x:Name="ZScale" ScaleX="0.3" ScaleY="0.3"/>
                         <ScaleTransform x:Name="ZFlip"/>
                         <RotateTransform x:Name="ZTilt"/>
+                        <TranslateTransform x:Name="ZMove"/>
                       </TransformGroup>
                     </Grid.RenderTransform>
                     <Viewbox>
@@ -799,6 +800,16 @@
                         <TextBlock Text="Акцентный цвет" FontSize="13" Margin="0,2,0,8"/>
                         <WrapPanel x:Name="AccentPanel" Margin="-4,0,0,0"/>
                       </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource SetCard}" Margin="0,10,0,0">
+                      <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+                          <TextBlock FontSize="13"><Run Text="&#xEC0A;" FontFamily="Segoe MDL2 Assets" Foreground="#3DDC97"/><Run Text="  Режим экономии"/></TextBlock>
+                          <TextBlock Text="без анимаций и эффектов — меньше нагрузка на компьютер и батарею ноутбука. Всё работает как обычно" Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                        </StackPanel>
+                        <CheckBox x:Name="EcoToggle" Grid.Column="1" Style="{StaticResource Toggle}" VerticalAlignment="Center"/>
+                      </Grid>
                     </Border>
                   </StackPanel>
 

@@ -43,6 +43,7 @@ namespace ZapretCS
             HomeDir = InHome ? System.IO.Path.GetDirectoryName(GuiDir) : System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Zapret");
             S = new Settings(System.IO.Path.Combine(GuiDir, "gui-settings.json"));
             Theme.Init(S.Str("theme", "dark"), S.Str("accent", "#3DDC97"));
+            Anim.Eco = S.Bool("eco");
         }
 
         // ---- доступ к элементам разметки по имени ----
@@ -353,11 +354,11 @@ namespace ZapretCS
                     if (prev != "on")
                     {
                         SetZColor("#0F1115");
-                        ShowZ(false);
                         Anim.Color(powerFill, "#3DDC97");
                         Anim.Color((Brush)Win.FindName("IconBrush"), "#0F1115"); Anim.Color((Brush)Win.FindName("IconBrush2"), "#0F1115");
                         E<Shape>("TitleDot").Fill = (Brush)Win.FindResource("Accent");
                         Anim.D(A("PowerShadow"), DropShadowEffect.BlurRadiusProperty, 40, 500);
+                        ShowZ(false);   // после свечения: некоторые анимации включения сами управляют свечением
                         Anim.Stop(A("Spinner"), Anim.OP); El("Spinner").Opacity = 0;
                         glowPaused = true; ResumeGlow();
                     }

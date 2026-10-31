@@ -3,6 +3,7 @@ using System;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 
 namespace ZapretCS
@@ -17,6 +18,7 @@ namespace ZapretCS
 
         void StartZShine()
         {
+            if (Anim.Eco) return;
             // блик пробегает по букве раз в несколько секунд
             var k = new DoubleAnimationUsingKeyFrames { Duration = new Duration(TimeSpan.FromMilliseconds(6500)), RepeatBehavior = RepeatBehavior.Forever };
             Timeline.SetDesiredFrameRate(k, 40);
@@ -53,18 +55,91 @@ namespace ZapretCS
                 Anim.Stop(draw, Anim.OP); draw.Opacity = 1;
                 Anim.D(draw, off, -ZLen, 1000, 0, forever: true, noEase: true);
             }
-            else
+            else PlayOn();
+        }
+
+        // ---- случайная анимация включения ----
+        static readonly Random zRnd = new Random();
+        int lastFx = -1;
+        static readonly string[] FxNames = { "draw", "flip", "drop", "twist", "glitch", "shock", "jelly" };
+
+        // ключевые кадры: пары (мс, значение)
+        void KF(string name, DependencyProperty p, int begin, params double[] tv)
+        {
+            var t = A(name); if (t == null) return;
+            if (Anim.Eco) { t.BeginAnimation(p, null); ((DependencyObject)t).SetValue(p, tv[tv.Length - 1]); return; }
+            var a = new DoubleAnimationUsingKeyFrames();
+            if (begin > 0) a.BeginTime = TimeSpan.FromMilliseconds(begin);
+            for (int i = 0; i + 1 < tv.Length; i += 2)
+                a.KeyFrames.Add(new EasingDoubleKeyFrame(tv[i + 1], KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(tv[i])), new CubicEase { EasingMode = EasingMode.EaseOut }));
+            t.BeginAnimation(p, a);
+        }
+
+        void PlayOn()
+        {
+            var draw = E<Shape>("ZDraw");
+            var off = Shape.StrokeDashOffsetProperty;
+            Anim.Stop(draw, off);
+            foreach (var n in new[] { "ZFlip" }) { Anim.Stop(A(n), Anim.SX); Anim.Stop(A(n), Anim.SY); }
+            Anim.Stop(A("ZMove"), Anim.TX); Anim.Stop(A("ZMove"), Anim.TY); Anim.Stop(A("ZTilt"), Anim.Ang);
+            int fx;
+            do fx = zRnd.Next(FxNames.Length); while (fx == lastFx && FxNames.Length > 1);
+            lastFx = fx;
+            if (Anim.Eco) fx = 0;
+            switch (FxNames[fx])
             {
-                // включился: контур «дорисовывается», буква заливается и подпрыгивает, пробегает блик
-                SetZDash(ZLen, ZLen);
-                Anim.Stop(draw, Anim.OP); draw.Opacity = 1;
-                Anim.D(draw, off, 0, 480, ZLen);
-                Anim.D(A("ZFill"), Anim.OP, 1, 260, null, begin: 380);
-                Anim.D(draw, Anim.OP, 0, 300, null, begin: 620);
-                Anim.D(A("ZScale"), Anim.SX, 1, 520, 1.16, begin: 380, ease: Anim.Back());
-                Anim.D(A("ZScale"), Anim.SY, 1, 520, 1.16, begin: 380, ease: Anim.Back());
-                StartZShine();
+                case "flip":    // буква делает оборот вокруг своей оси
+                    Anim.D(A("ZFill"), Anim.OP, 1, 200);
+                    Anim.D(draw, Anim.OP, 0, 150);
+                    KF("ZFlip", Anim.SX, 0, 0, 1, 160, 0, 320, -1, 480, 0, 640, 1);
+                    KF("ZScale", Anim.SX, 0, 0, 1, 320, 1.18, 760, 1); KF("ZScale", Anim.SY, 0, 0, 1, 320, 1.18, 760, 1);
+                    break;
+                case "drop":    // падает сверху и пружинит
+                    Anim.D(A("ZFill"), Anim.OP, 1, 160);
+                    Anim.D(draw, Anim.OP, 0, 150);
+                    Anim.D(A("ZScale"), Anim.SX, 1, 200); Anim.D(A("ZScale"), Anim.SY, 1, 200);
+                    Anim.D(A("ZMove"), Anim.TY, 0, 420, -70, ease: new QuadraticEase { EasingMode = EasingMode.EaseIn });
+                    KF("ZFlip", Anim.SX, 420, 0, 1, 90, 1.25, 230, 0.92, 380, 1);
+                    KF("ZFlip", Anim.SY, 420, 0, 1, 90, 0.75, 230, 1.08, 380, 1);
+                    break;
+                case "twist":   // влетает из глубины с закруткой
+                    Anim.D(A("ZFill"), Anim.OP, 1, 250);
+                    Anim.D(draw, Anim.OP, 0, 150);
+                    Anim.D(A("ZScale"), Anim.SX, 1, 620, 2.3, ease: Anim.Back()); Anim.D(A("ZScale"), Anim.SY, 1, 620, 2.3, ease: Anim.Back());
+                    Anim.D(A("ZTilt"), Anim.Ang, 0, 700, -220, ease: new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.4 });
+                    Anim.D(A("ZWrap"), Anim.OP, 1, 300, 0);
+                    break;
+                case "glitch":  // цифровой сбой: дёргается и мерцает, потом собирается
+                    KF("ZFill", Anim.OP, 0, 0, 0.2, 60, 1, 110, 0.35, 170, 1, 230, 0.55, 320, 1);
+                    KF("ZMove", Anim.TX, 0, 0, -7, 60, 6, 120, -4, 180, 5, 240, -2, 320, 0);
+                    KF("ZFlip", Anim.SX, 0, 0, 1.15, 120, 0.9, 240, 1.05, 320, 1);
+                    Anim.D(draw, Anim.OP, 0, 120);
+                    Anim.D(A("ZScale"), Anim.SX, 1, 300); Anim.D(A("ZScale"), Anim.SY, 1, 300);
+                    break;
+                case "shock":   // вспышка: буква выстреливает, кнопку озаряет свет
+                    Anim.D(A("ZFill"), Anim.OP, 1, 120);
+                    Anim.D(draw, Anim.OP, 0, 120);
+                    KF("ZScale", Anim.SX, 0, 0, 0.2, 230, 1.32, 520, 1); KF("ZScale", Anim.SY, 0, 0, 0.2, 230, 1.32, 520, 1);
+                    KF("PowerShadow", DropShadowEffect.BlurRadiusProperty, 0, 0, 10, 180, 95, 900, 40);
+                    break;
+                case "jelly":   // желе: покачивается, как мармелад
+                    Anim.D(A("ZFill"), Anim.OP, 1, 200);
+                    Anim.D(draw, Anim.OP, 0, 150);
+                    Anim.D(A("ZScale"), Anim.SX, 1, 200); Anim.D(A("ZScale"), Anim.SY, 1, 200);
+                    KF("ZFlip", Anim.SX, 0, 0, 1, 120, 1.28, 260, 0.78, 400, 1.14, 540, 0.94, 700, 1);
+                    KF("ZFlip", Anim.SY, 0, 0, 1, 120, 0.76, 260, 1.24, 400, 0.88, 540, 1.05, 700, 1);
+                    break;
+                default:        // контур «дорисовывается», буква заливается и подпрыгивает
+                    SetZDash(ZLen, ZLen);
+                    Anim.Stop(draw, Anim.OP); draw.Opacity = 1;
+                    Anim.D(draw, off, 0, 480, ZLen);
+                    Anim.D(A("ZFill"), Anim.OP, 1, 260, null, begin: 380);
+                    Anim.D(draw, Anim.OP, 0, 300, null, begin: 620);
+                    Anim.D(A("ZScale"), Anim.SX, 1, 520, 1.16, begin: 380, ease: Anim.Back());
+                    Anim.D(A("ZScale"), Anim.SY, 1, 520, 1.16, begin: 380, ease: Anim.Back());
+                    break;
             }
+            StartZShine();
         }
 
         void HideZ()

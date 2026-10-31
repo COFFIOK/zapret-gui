@@ -290,7 +290,7 @@ namespace ZapretCS
             if (editable && name == lastMovedGroup)
             {
                 var fb = new SolidColorBrush(Theme.C("#2D5A47")); head.Background = fb;
-                fb.BeginAnimation(SolidColorBrush.ColorProperty, new System.Windows.Media.Animation.ColorAnimation { To = Theme.C("#20232B"), BeginTime = TimeSpan.FromMilliseconds(250), Duration = new Duration(TimeSpan.FromMilliseconds(900)), EasingFunction = Anim.Ease() });
+                if (Anim.Eco) fb.Color = Theme.C("#20232B"); else fb.BeginAnimation(SolidColorBrush.ColorProperty, new System.Windows.Media.Animation.ColorAnimation { To = Theme.C("#20232B"), BeginTime = TimeSpan.FromMilliseconds(250), Duration = new Duration(TimeSpan.FromMilliseconds(900)), EasingFunction = Anim.Ease() });
             }
             head.MouseEnter += (s, e) => Anim.Color(head.Background, "#2A2E38", 160);
             head.MouseLeave += (s, e) => Anim.Color(head.Background, "#20232B", 220);
@@ -545,7 +545,7 @@ namespace ZapretCS
             var b = new SolidColorBrush(Theme.C("#2D5A47"));
             cell.Background = b;
             var a = new System.Windows.Media.Animation.ColorAnimation { To = Colors.Transparent, BeginTime = TimeSpan.FromMilliseconds(250), Duration = new Duration(TimeSpan.FromMilliseconds(900)), EasingFunction = Anim.Ease() };
-            b.BeginAnimation(SolidColorBrush.ColorProperty, a);
+            if (Anim.Eco) b.Color = Colors.Transparent; else b.BeginAnimation(SolidColorBrush.ColorProperty, a);
         }
 
         void AddSite(string raw, string group)

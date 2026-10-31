@@ -156,10 +156,20 @@ namespace ZapretCS
         public static IEasingFunction Back() { return new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.5 }; }
         public static IEasingFunction Sine() { return new SineEase { EasingMode = EasingMode.EaseInOut }; }
 
+        // режим экономии: без анимаций — сразу конечное состояние, бесконечные анимации не запускаются
+        public static bool Eco;
+
         public static void D(IAnimatable t, DependencyProperty p, double to, int ms = 250, double? from = null,
             bool forever = false, int begin = 0, bool noEase = false, bool autoReverse = false, IEasingFunction ease = null, bool low = false)
         {
             if (t == null) return;
+            if (Eco)
+            {
+                t.BeginAnimation(p, null);
+                var dobj = t as DependencyObject;
+                if (!forever && dobj != null && !(dobj is Freezable && ((Freezable)dobj).IsFrozen)) dobj.SetValue(p, to);
+                return;
+            }
             var a = new DoubleAnimation { To = to, Duration = new Duration(TimeSpan.FromMilliseconds(ms)) };
             if (from.HasValue) a.From = from.Value;
             if (begin != 0) a.BeginTime = TimeSpan.FromMilliseconds(begin);
@@ -173,6 +183,7 @@ namespace ZapretCS
         {
             var b = brush as SolidColorBrush;
             if (b == null || b.IsFrozen) return;
+            if (Eco) { b.BeginAnimation(SolidColorBrush.ColorProperty, null); b.Color = Theme.C(hex); return; }
             var a = new ColorAnimation { To = Theme.C(hex), Duration = new Duration(TimeSpan.FromMilliseconds(ms)), EasingFunction = Ease() };
             b.BeginAnimation(SolidColorBrush.ColorProperty, a);
         }

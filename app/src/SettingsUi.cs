@@ -10,6 +10,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Markup;
 using System.Windows.Media;
+using System.Windows.Shapes;
 
 namespace ZapretCS
 {
@@ -73,6 +74,31 @@ namespace ZapretCS
             {
                 if (E<CheckBox>("UpdToggle").IsChecked == true) File.WriteAllText(UpdFile, "ENABLED \r\n", Encoding.ASCII);
                 else if (File.Exists(UpdFile)) File.Delete(UpdFile);
+            });
+            // режим экономии: без анимаций и эффектов, применяется сразу
+            var eco = E<CheckBox>("EcoToggle");
+            eco.IsChecked = Anim.Eco;
+            eco.Click += (s, e) => Safe(() =>
+            {
+                bool v = eco.IsChecked == true;
+                S.Set("eco", v); S.Save();
+                Anim.Eco = v;
+                PauseGlow();
+                if (v)
+                {
+                    // останавливаем всё, что крутится и мигает
+                    Anim.Stop(A("SpinRot"), Anim.Ang);
+                    Anim.Stop(E<Shape>("ZDraw"), Shape.StrokeDashOffsetProperty);
+                    foreach (var n in new[] { "TgPlaneT" }) { Anim.Stop(A(n), Anim.TX); Anim.Stop(A(n), Anim.TY); }
+                    Anim.Stop(Btn("TgConnect"), Anim.OP);
+                    Toast("Режим экономии включён — анимации выключены");
+                }
+                else
+                {
+                    if (State == "on") ResumeGlow();
+                    else if (State == "starting" || State == "stopping") Anim.D(A("SpinRot"), Anim.Ang, 360, 900, 0, forever: true, noEase: true);
+                    Toast("Режим экономии выключен");
+                }
             });
             E<CheckBox>("WinToggle").Click += (s, e) => Safe(() => { S.Set("showWindow", E<CheckBox>("WinToggle").IsChecked == true); S.Save(); MarkChanged(); });
             E<CheckBox>("AutoRunToggle").Click += (s, e) => Safe(() =>
