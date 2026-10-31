@@ -1187,10 +1187,17 @@ $xamlText = @'
                           <Ellipse.RenderTransform><ScaleTransform x:Name="TgGlowS"/></Ellipse.RenderTransform>
                         </Ellipse>
                         <Ellipse x:Name="TgDot" Margin="3" Stroke="#2E3340" StrokeThickness="1"/>
+                        <TextBlock x:Name="TgPlane" Visibility="Collapsed"/>
                         <Grid ClipToBounds="True" Margin="3">
-                          <TextBlock x:Name="TgPlane" Text="&#xE724;" FontFamily="Segoe MDL2 Assets" FontSize="21" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="-3,2,0,0">
-                            <TextBlock.RenderTransform><TranslateTransform x:Name="TgPlaneT"/></TextBlock.RenderTransform>
-                          </TextBlock>
+                          <!-- самолётик в стиле буквы Z: такие же жирные прямые грани -->
+                          <Viewbox Width="28" Height="28" Margin="-2,2,0,0">
+                            <Viewbox.RenderTransform><TranslateTransform x:Name="TgPlaneT"/></Viewbox.RenderTransform>
+                            <Canvas Width="80" Height="80">
+                              <Path x:Name="TgPlaneFill" Data="M 66,14 L 12,37 L 30,45 L 37,64 L 45,50 L 60,58 Z" StrokeLineJoin="Round" StrokeThickness="2"/>
+                              <Path x:Name="TgPlaneFold" Data="M 66,14 L 31,45 L 34,54" StrokeThickness="3.5" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                              <Path x:Name="TgPlaneDraw" Data="M 66,14 L 12,37 L 30,45 L 37,64 L 45,50 L 60,58 Z" StrokeLineJoin="Round" StrokeThickness="3" StrokeDashCap="Round" Opacity="0"/>
+                            </Canvas>
+                          </Viewbox>
                         </Grid>
                       </Grid>
                     </Button>
@@ -3754,38 +3761,47 @@ function Get-TgLink {
 # ---- анимации самолётика Telegram ----
 $TYP = [System.Windows.Media.TranslateTransform]::YProperty
 $script:tgTint = if ($script:Theme -eq 'light') { Mix '#5ED3F3' '#FFFFFF' 0.10 } else { Mix '#5ED3F3' '#1A1D24' 0.09 }
+$TgLen = 58.7   # длина контура самолётика в толщинах линии
+function TgPlane-Bind {
+    # самолётик берёт цвета у тех же кистей, что и раньше значок
+    $ui.TgPlaneFill.Fill = $ui.TgPlane.Foreground; $ui.TgPlaneFill.Stroke = $ui.TgPlane.Foreground
+    $ui.TgPlaneDraw.Stroke = $ui.TgPlane.Foreground
+    $ui.TgPlaneFold.Stroke = $ui.TgDot.Fill
+}
 function TgPlane-Stop {
     foreach ($p in @($TXP, $TYP)) { $ui.TgPlaneT.BeginAnimation($p, $null) }
     $ui.TgPlaneT.X = 0; $ui.TgPlaneT.Y = 0
     Stop-Anim $ui.TgGlow $OP; $ui.TgGlow.Opacity = 0; Stop-Anim $ui.TgGlowS $SX; Stop-Anim $ui.TgGlowS $SY
-}
-function TgPlane-Float {
-    # самолётик спокойно «парит», вокруг кнопки расходится мягкое кольцо
-    Anim-Double $ui.TgPlaneT $TYP -2 1400 1.5 -Forever -AutoReverse -Easing (Sine-Ease) -Low
-    Anim-Double $ui.TgGlow $OP 0 2400 0.6 -Forever -NoEase -Low
-    Anim-Double $ui.TgGlowS $SX 1.3 2400 1 -Forever -Low; Anim-Double $ui.TgGlowS $SY 1.3 2400 1 -Forever -Low
+    Stop-Anim $ui.TgPlaneDraw $OP; $ui.TgPlaneDraw.Opacity = 0
+    Stop-Anim $ui.TgPlaneFill $OP; $ui.TgPlaneFill.Opacity = 1
 }
 function TgPlane-Takeoff {
-    # улетает вправо-вверх и прилетает обратно слева-снизу
+    # один раз: улетает вправо-вверх, возвращается слева-снизу и «дорисовывается» как буква Z
     TgPlane-Stop
-    Anim-Double $ui.TgPlaneT $TXP 34 260 0; Anim-Double $ui.TgPlaneT $TYP -34 260 0
+    Anim-Double $ui.TgPlaneT $TXP 34 240 0; Anim-Double $ui.TgPlaneT $TYP -34 240 0
     $script:tgFlyT = New-Object System.Windows.Threading.DispatcherTimer
-    $script:tgFlyT.Interval = [TimeSpan]::FromMilliseconds(270)
+    $script:tgFlyT.Interval = [TimeSpan]::FromMilliseconds(250)
     $script:tgFlyT.Add_Tick({
         $script:tgFlyT.Stop()
+        $ui.TgPlaneFill.Opacity = 0
+        $ui.TgPlaneDraw.StrokeDashArray = New-Object System.Windows.Media.DoubleCollection (, [double[]]@($TgLen, $TgLen))
+        $ui.TgPlaneDraw.Opacity = 1
         Anim-Double $ui.TgPlaneT $TXP 0 520 -34 -Easing (Back-Ease); Anim-Double $ui.TgPlaneT $TYP 0 520 34 -Easing (Back-Ease)
-        $script:tgFlyT2 = New-Object System.Windows.Threading.DispatcherTimer
-        $script:tgFlyT2.Interval = [TimeSpan]::FromMilliseconds(540)
-        $script:tgFlyT2.Add_Tick({ $script:tgFlyT2.Stop(); if ($script:tgState -eq 'on') { TgPlane-Float } })
-        $script:tgFlyT2.Start()
+        Anim-Double $ui.TgPlaneDraw $DashOffP 0 480 $TgLen -beginMs 120
+        Anim-Double $ui.TgPlaneFill $OP 1 260 0 -beginMs 480
+        Anim-Double $ui.TgPlaneDraw $OP 0 280 -beginMs 700
+        # одно мягкое кольцо вокруг кнопки
+        Anim-Double $ui.TgGlow $OP 0 900 0.7 -beginMs 450 -NoEase
+        Anim-Double $ui.TgGlowS $SX 1.35 900 1 -beginMs 450; Anim-Double $ui.TgGlowS $SY 1.35 900 1 -beginMs 450
     })
     $script:tgFlyT.Start()
 }
 function TgPlane-Busy {
-    # пока скачивается — самолётик летает по кругу через кнопку
+    # только пока скачивается прокси — самолётик пролетает через кнопку
     TgPlane-Stop
     Anim-Double $ui.TgPlaneT $TXP 34 900 -34 -Forever -NoEase; Anim-Double $ui.TgPlaneT $TYP -34 900 34 -Forever -NoEase
 }
+TgPlane-Bind
 function Set-TgVisual($mode, $text) {
     $script:tgVisMode = $script:tgState
     $script:tgState = $mode
