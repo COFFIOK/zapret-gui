@@ -164,6 +164,10 @@ $TrPairs = @(
     @('Работает · Telegram подключён ✓', 'Running · Telegram connected ✓'),
     @('Подключён к Telegram', 'Connected to Telegram'),
     @('Открыть Zapret', 'Open Zapret'),
+    @('Подключить на ПК', 'Connect on PC'),
+    @('На телефоне', 'On phone'),
+    @('Включить или выключить Telegram-прокси', 'Turn the Telegram proxy on or off'),
+    @('Выключен · нажми на самолётик', 'Off · click the plane'),
     @('Что нового', "What's new"),
     @('Отлично', 'Great'),
     @('Обновление прямо в приложении — без окна установщика', 'Updates right inside the app — no installer window'),
@@ -1170,29 +1174,46 @@ $xamlText = @'
               <TextBlock Text="Стратегия" Foreground="{StaticResource Muted}" FontSize="12" Margin="2,26,0,6"/>
               <ComboBox x:Name="StrategyBox"/>
 
-              <!-- Telegram (tg-ws-proxy) -->
-              <Border x:Name="TgCard" Background="#1A1D24" CornerRadius="14" Padding="12,0,12,0" Height="60" Margin="0,14,0,0" BorderBrush="#232731" BorderThickness="1" SnapsToDevicePixels="True" UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
-                <Grid VerticalAlignment="Center">
-                  <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                  <Grid Width="36" Height="36" Margin="0,0,12,0" VerticalAlignment="Center">
-                    <Rectangle x:Name="TgDot" RadiusX="10" RadiusY="10"/>
-                    <TextBlock x:Name="TgPlane" Text="&#xE724;" FontFamily="Segoe MDL2 Assets" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="-2,1,0,0"/>
-                  </Grid>
-                  <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <TextBlock Text="Telegram" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,2"/>
-                    <StackPanel Orientation="Horizontal">
-                      <Ellipse x:Name="TgLed" Width="6" Height="6" Margin="0,1,6,0" VerticalAlignment="Center" Fill="#8A90A0"/>
-                      <TextBlock x:Name="TgStatus" Text="Выключен" Foreground="{StaticResource Muted}" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                    </StackPanel>
-                  </StackPanel>
-                  <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button x:Name="TgPhone" Style="{StaticResource Btn}" Width="32" Height="32" Padding="0" Margin="0,0,6,0" Visibility="Collapsed" ToolTip="Подключить Telegram на телефоне по QR-коду">
-                      <TextBlock Text="&#xE8EA;" FontFamily="Segoe MDL2 Assets" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              <!-- Telegram (tg-ws-proxy): второй модуль Zapret, со своей кнопкой включения -->
+              <Border x:Name="TgCard" Background="#1A1D24" CornerRadius="18" Padding="14,12" Margin="0,16,0,0" BorderBrush="#232731" BorderThickness="1" SnapsToDevicePixels="True" UseLayoutRounding="True">
+                <StackPanel>
+                  <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Button x:Name="TgPower" Width="56" Height="56" Cursor="Hand" Focusable="False" Margin="0,0,14,0" ToolTip="Включить или выключить Telegram-прокси">
+                      <Button.Template><ControlTemplate TargetType="Button"><ContentPresenter/></ControlTemplate></Button.Template>
+                      <Grid Width="56" Height="56" RenderTransformOrigin="0.5,0.5">
+                        <Grid.RenderTransform><ScaleTransform x:Name="TgPowerS"/></Grid.RenderTransform>
+                        <Ellipse x:Name="TgGlow" Stroke="#5ED3F3" StrokeThickness="2" Opacity="0" RenderTransformOrigin="0.5,0.5">
+                          <Ellipse.RenderTransform><ScaleTransform x:Name="TgGlowS"/></Ellipse.RenderTransform>
+                        </Ellipse>
+                        <Ellipse x:Name="TgDot" Margin="3" Stroke="#2E3340" StrokeThickness="1"/>
+                        <Grid ClipToBounds="True" Margin="3">
+                          <TextBlock x:Name="TgPlane" Text="&#xE724;" FontFamily="Segoe MDL2 Assets" FontSize="21" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="-3,2,0,0">
+                            <TextBlock.RenderTransform><TranslateTransform x:Name="TgPlaneT"/></TextBlock.RenderTransform>
+                          </TextBlock>
+                        </Grid>
+                      </Grid>
                     </Button>
-                    <Button x:Name="TgConnect" Style="{StaticResource Btn}" Content="Подключить" Height="32" Padding="12,0" FontSize="12" Margin="0,0,6,0" Visibility="Collapsed" ToolTip="Настроить прокси в Telegram Desktop"/>
-                    <CheckBox x:Name="TgToggle" Style="{StaticResource Toggle}" Margin="4,0,0,0" VerticalAlignment="Center"/>
-                  </StackPanel>
-                </Grid>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                      <DockPanel>
+                        <CheckBox x:Name="TgToggle" DockPanel.Dock="Right" Visibility="Collapsed"/>
+                        <TextBlock Text="Telegram" FontSize="17" FontWeight="SemiBold"/>
+                      </DockPanel>
+                      <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                        <Ellipse x:Name="TgLed" Width="7" Height="7" Margin="0,1,7,0" VerticalAlignment="Center" Fill="#8A90A0"/>
+                        <TextBlock x:Name="TgStatus" Text="Выключен · нажми на самолётик" Foreground="{StaticResource Muted}" FontSize="12.5" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                      </StackPanel>
+                    </StackPanel>
+                  </Grid>
+                  <UniformGrid x:Name="TgActions" Rows="1" Margin="0,12,0,0" Visibility="Collapsed">
+                    <Button x:Name="TgConnect" Style="{StaticResource Btn}" Height="34" Padding="10,0" FontSize="12" Margin="0,0,3,0" Visibility="Collapsed" ToolTip="Настроить прокси в Telegram Desktop">
+                      <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE7F8;" FontFamily="Segoe MDL2 Assets" FontSize="13" Margin="0,1,7,0"/><TextBlock Text="Подключить на ПК"/></StackPanel>
+                    </Button>
+                    <Button x:Name="TgPhone" Style="{StaticResource Btn}" Height="34" Padding="10,0" FontSize="12" Margin="3,0,0,0" Visibility="Collapsed" ToolTip="Подключить Telegram на телефоне по QR-коду">
+                      <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE8EA;" FontFamily="Segoe MDL2 Assets" FontSize="13" Margin="0,1,7,0"/><TextBlock Text="На телефоне"/></StackPanel>
+                    </Button>
+                  </UniformGrid>
+                </StackPanel>
               </Border>
             </StackPanel>
 
@@ -3704,6 +3725,7 @@ $TgCfg = Join-Path $TgData 'config.json'
 $TgUrl = 'https://github.com/Flowseal/tg-ws-proxy/releases/latest/download/TgWsProxy_windows.exe'
 $script:tgState = 'off'
 $ui.TgDot.Fill = Brush '#2A2E38'; $ui.TgPlane.Foreground = Brush '#8A90A0'; $ui.TgLed.Fill = Brush '#8A90A0'
+$ui.TgCard.Background = Brush '#1A1D24'; $ui.TgCard.BorderBrush = Brush '#232731'
 
 function Get-TgProc { @(Get-Process -Name 'TgWsProxy_windows' -ErrorAction SilentlyContinue) }
 function Get-TgConfig {
@@ -3729,23 +3751,62 @@ function Get-TgLink {
     $port = if ($c.port) { $c.port } else { 1443 }
     "tg://proxy?server=$h&port=$port&secret=dd$($c.secret)"
 }
+# ---- анимации самолётика Telegram ----
+$TYP = [System.Windows.Media.TranslateTransform]::YProperty
+$script:tgTint = if ($script:Theme -eq 'light') { Mix '#5ED3F3' '#FFFFFF' 0.10 } else { Mix '#5ED3F3' '#1A1D24' 0.09 }
+function TgPlane-Stop {
+    foreach ($p in @($TXP, $TYP)) { $ui.TgPlaneT.BeginAnimation($p, $null) }
+    $ui.TgPlaneT.X = 0; $ui.TgPlaneT.Y = 0
+    Stop-Anim $ui.TgGlow $OP; $ui.TgGlow.Opacity = 0; Stop-Anim $ui.TgGlowS $SX; Stop-Anim $ui.TgGlowS $SY
+}
+function TgPlane-Float {
+    # самолётик спокойно «парит», вокруг кнопки расходится мягкое кольцо
+    Anim-Double $ui.TgPlaneT $TYP -2 1400 1.5 -Forever -AutoReverse -Easing (Sine-Ease) -Low
+    Anim-Double $ui.TgGlow $OP 0 2400 0.6 -Forever -NoEase -Low
+    Anim-Double $ui.TgGlowS $SX 1.3 2400 1 -Forever -Low; Anim-Double $ui.TgGlowS $SY 1.3 2400 1 -Forever -Low
+}
+function TgPlane-Takeoff {
+    # улетает вправо-вверх и прилетает обратно слева-снизу
+    TgPlane-Stop
+    Anim-Double $ui.TgPlaneT $TXP 34 260 0; Anim-Double $ui.TgPlaneT $TYP -34 260 0
+    $script:tgFlyT = New-Object System.Windows.Threading.DispatcherTimer
+    $script:tgFlyT.Interval = [TimeSpan]::FromMilliseconds(270)
+    $script:tgFlyT.Add_Tick({
+        $script:tgFlyT.Stop()
+        Anim-Double $ui.TgPlaneT $TXP 0 520 -34 -Easing (Back-Ease); Anim-Double $ui.TgPlaneT $TYP 0 520 34 -Easing (Back-Ease)
+        $script:tgFlyT2 = New-Object System.Windows.Threading.DispatcherTimer
+        $script:tgFlyT2.Interval = [TimeSpan]::FromMilliseconds(540)
+        $script:tgFlyT2.Add_Tick({ $script:tgFlyT2.Stop(); if ($script:tgState -eq 'on') { TgPlane-Float } })
+        $script:tgFlyT2.Start()
+    })
+    $script:tgFlyT.Start()
+}
+function TgPlane-Busy {
+    # пока скачивается — самолётик летает по кругу через кнопку
+    TgPlane-Stop
+    Anim-Double $ui.TgPlaneT $TXP 34 900 -34 -Forever -NoEase; Anim-Double $ui.TgPlaneT $TYP -34 900 34 -Forever -NoEase
+}
 function Set-TgVisual($mode, $text) {
+    $script:tgVisMode = $script:tgState
     $script:tgState = $mode
     $ui.TgStatus.Text = T $($text)
     switch ($mode) {
         'on' {
             $script:tgVisAt = [DateTime]::UtcNow.Ticks; $Mon.Wake = $true
             Anim-Color $ui.TgDot.Fill '#5ED3F3'; Anim-Color $ui.TgPlane.Foreground '#0F1115'; Anim-Color $ui.TgLed.Fill '#5ED3F3'
-            $ui.TgCard.BorderBrush = Brush '#2B5664'
+            Anim-Color $ui.TgCard.BorderBrush '#2B5664'; Anim-Color $ui.TgCard.Background $script:tgTint
+            if ($script:tgVisMode -ne 'on') { TgPlane-Takeoff }
+            $ui.TgActions.Visibility = 'Visible'
             if ($ui.TgConnect.Visibility -ne 'Visible') { $ui.TgConnect.Visibility = 'Visible'; Anim-Double $ui.TgConnect $OP 1 250 0 }
             if ($ui.TgPhone.Visibility -ne 'Visible') { $ui.TgPhone.Visibility = 'Visible'; Anim-Double $ui.TgPhone $OP 1 250 0 }
         }
-        'busy' { $script:tgVisAt = [DateTime]::UtcNow.Ticks; $Mon.Wake = $true; Anim-Color $ui.TgDot.Fill '#2B5664'; Anim-Color $ui.TgPlane.Foreground '#CFEFF8'; Anim-Color $ui.TgLed.Fill '#5ED3F3' }
+        'busy' { $script:tgVisAt = [DateTime]::UtcNow.Ticks; $Mon.Wake = $true; Anim-Color $ui.TgDot.Fill '#2B5664'; Anim-Color $ui.TgPlane.Foreground '#CFEFF8'; Anim-Color $ui.TgLed.Fill '#5ED3F3'; TgPlane-Busy }
         default {
             $script:tgVisAt = [DateTime]::UtcNow.Ticks; $Mon.Wake = $true; $script:tgIsConnected = $false
             Anim-Color $ui.TgDot.Fill '#2A2E38'; Anim-Color $ui.TgPlane.Foreground '#8A90A0'; Anim-Color $ui.TgLed.Fill '#8A90A0'
-            $ui.TgCard.BorderBrush = Brush '#232731'
-            $ui.TgConnect.Visibility = 'Collapsed'; $ui.TgPhone.Visibility = 'Collapsed'
+            Anim-Color $ui.TgCard.BorderBrush '#232731'; Anim-Color $ui.TgCard.Background '#1A1D24'
+            TgPlane-Stop
+            $ui.TgConnect.Visibility = 'Collapsed'; $ui.TgPhone.Visibility = 'Collapsed'; $ui.TgActions.Visibility = 'Collapsed'
         }
     }
 }
@@ -3765,7 +3826,7 @@ function Stop-Tg {
     $script:qrReady = $false
     Get-TgProc | Stop-Process -Force -ErrorAction SilentlyContinue
     $Settings.tgEnabled = $false; Save-Settings
-    Set-TgVisual 'off' 'Выключен'
+    Set-TgVisual 'off' 'Выключен · нажми на самолётик'
 }
 function Start-TgDownload {
     Set-TgVisual 'busy' 'Скачиваю tg-ws-proxy…'
@@ -3858,7 +3919,7 @@ $script:tgTimer.Add_Tick({
         Update-TgConnected
         # следим, не закрыли ли прокси из трея
         $running = [bool]$Mon.Tg
-        if ($script:tgState -eq 'on' -and -not $running) { $ui.TgToggle.IsChecked = $false; Set-TgVisual 'off' 'Выключен' }
+        if ($script:tgState -eq 'on' -and -not $running) { $ui.TgToggle.IsChecked = $false; Set-TgVisual 'off' 'Выключен · нажми на самолётик' }
         elseif ($script:tgState -eq 'off' -and $running) { $ui.TgToggle.IsChecked = $true; $port = (Get-TgConfig).port; if (-not $port) { $port = 1443 }; Set-TgVisual 'on' "Работает · 127.0.0.1:$port" }
     } catch { Write-Log ($_ | Out-String) }
 })
@@ -4142,6 +4203,15 @@ function Update-TgConnected {
 }
 
 $ui.TgToggle.Add_Click({ Safe { if ($ui.TgToggle.IsChecked) { Start-Tg } else { Stop-Tg } } })
+$ui.TgPower.Add_Click({ Safe {
+    if (-not $ui.TgToggle.IsEnabled) { return }
+    $ui.TgToggle.IsChecked = -not [bool]$ui.TgToggle.IsChecked
+    if ($ui.TgToggle.IsChecked) { Start-Tg } else { Stop-Tg }
+} })
+$ui.TgPower.Add_MouseEnter({ Anim-Double $ui.TgPowerS $SX 1.07 200; Anim-Double $ui.TgPowerS $SY 1.07 200 })
+$ui.TgPower.Add_MouseLeave({ Anim-Double $ui.TgPowerS $SX 1 200; Anim-Double $ui.TgPowerS $SY 1 200 })
+$ui.TgPower.Add_PreviewMouseLeftButtonDown({ Anim-Double $ui.TgPowerS $SX 0.92 90; Anim-Double $ui.TgPowerS $SY 0.92 90 })
+$ui.TgPower.Add_PreviewMouseLeftButtonUp({ Anim-Double $ui.TgPowerS $SX 1.07 160; Anim-Double $ui.TgPowerS $SY 1.07 160 })
 $ui.TgConnect.Add_Click({ Safe {
     $link = Get-TgLink
     if (-not $link) { Show-Toast 'Сначала включи Telegram-прокси' -Err; return }
