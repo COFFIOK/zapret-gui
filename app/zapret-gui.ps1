@@ -164,6 +164,11 @@ $TrPairs = @(
     @('Работает · Telegram подключён ✓', 'Running · Telegram connected ✓'),
     @('Подключён к Telegram', 'Connected to Telegram'),
     @('Открыть Zapret', 'Open Zapret'),
+    @('Что проверять', 'What to check'),
+    @('Стратегии', 'Strategies'),
+    @('Снять все', 'Clear all'),
+    @('Выбрать все', 'Select all'),
+    @('сейчас', 'current'),
     @('Подключить на ПК', 'Connect on PC'),
     @('На телефоне', 'On phone'),
     @('Включить или выключить Telegram-прокси', 'Turn the Telegram proxy on or off'),
@@ -866,6 +871,37 @@ $xamlText = @'
       </Setter>
     </Style>
 
+    <Style x:Key="PickRow" TargetType="ToggleButton">
+      <Setter Property="Foreground" Value="#9AA3B5"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ToggleButton">
+            <Border x:Name="Bd" Background="#00000000" CornerRadius="10" Padding="10,8" Margin="0,0,0,3">
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <Border x:Name="Box" Width="18" Height="18" CornerRadius="5" BorderBrush="#3A3F4D" BorderThickness="1.5" Background="#00000000" Margin="0,0,12,0" VerticalAlignment="Center">
+                  <TextBlock x:Name="Tick" Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="11" Foreground="#0F1115" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0"/>
+                </Border>
+                <ContentPresenter Grid.Column="1" VerticalAlignment="Center"/>
+              </Grid>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#22262F"/></Trigger>
+              <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="Box" Property="Background" Value="#3DDC97"/>
+                <Setter TargetName="Box" Property="BorderBrush" Value="#3DDC97"/>
+                <Setter TargetName="Tick" Property="Opacity" Value="1"/>
+                <Setter Property="Foreground" Value="#E6E8EE"/>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
     <Style x:Key="Chip" TargetType="ToggleButton">
       <Setter Property="Foreground" Value="#9AA3B5"/>
       <Setter Property="FontSize" Value="12.5"/>
@@ -1552,14 +1588,41 @@ $xamlText = @'
                 </StackPanel>
               </DockPanel>
 
-              <StackPanel x:Name="TestSetup" Grid.Row="1">
-                <TextBlock Text="ЧТО ПРОВЕРЯТЬ" FontSize="11" FontWeight="SemiBold" Foreground="#5A6070" Margin="2,0,0,8"/>
-                <WrapPanel x:Name="GroupChips" Margin="0,0,0,10"/>
-                <TextBlock Text="КАКИЕ СТРАТЕГИИ" FontSize="11" FontWeight="SemiBold" Foreground="#5A6070" Margin="2,0,0,8"/>
-                <ScrollViewer MaxHeight="170" VerticalScrollBarVisibility="Auto">
-                  <WrapPanel x:Name="StratChips"/>
-                </ScrollViewer>
-              </StackPanel>
+              <Grid x:Name="TestSetup" Grid.Row="1">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <!-- что проверять -->
+                <Border Background="#1E2129" CornerRadius="16" BorderBrush="#262A33" BorderThickness="1" Padding="8,12,8,8">
+                  <DockPanel>
+                    <DockPanel DockPanel.Dock="Top" Margin="10,0,4,10">
+                      <Button x:Name="GroupAll" DockPanel.Dock="Right" Style="{StaticResource Btn}" Padding="10,3" FontSize="11.5" Content="Снять все"/>
+                      <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="&#xE774;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="#3DDC97" Margin="0,1,8,0"/>
+                        <TextBlock Text="Что проверять" FontSize="14" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="GroupCount" Foreground="#8A90A0" FontSize="12" Margin="8,1,0,0" VerticalAlignment="Center"/>
+                      </StackPanel>
+                    </DockPanel>
+                    <ScrollViewer Height="232" VerticalScrollBarVisibility="Auto">
+                      <StackPanel x:Name="GroupChips" Margin="0,0,4,0"/>
+                    </ScrollViewer>
+                  </DockPanel>
+                </Border>
+                <!-- какие стратегии -->
+                <Border Grid.Column="2" Background="#1E2129" CornerRadius="16" BorderBrush="#262A33" BorderThickness="1" Padding="8,12,8,8">
+                  <DockPanel>
+                    <DockPanel DockPanel.Dock="Top" Margin="10,0,4,10">
+                      <Button x:Name="StratAll" DockPanel.Dock="Right" Style="{StaticResource Btn}" Padding="10,3" FontSize="11.5" Content="Снять все"/>
+                      <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="&#xE9D5;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="#3DDC97" Margin="0,1,8,0"/>
+                        <TextBlock Text="Стратегии" FontSize="14" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="StratCount" Foreground="#8A90A0" FontSize="12" Margin="8,1,0,0" VerticalAlignment="Center"/>
+                      </StackPanel>
+                    </DockPanel>
+                    <ScrollViewer Height="232" VerticalScrollBarVisibility="Auto">
+                      <StackPanel x:Name="StratChips" Margin="0,0,4,0"/>
+                    </ScrollViewer>
+                  </DockPanel>
+                </Border>
+              </Grid>
 
               <Grid Grid.Row="2" Margin="0,14,0,12">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -2931,35 +2994,61 @@ function New-Chip([string]$text, $tag, [bool]$checked, $color = $null) {
 }
 function Short-Name([string]$n) { if ($n -match '^general\s*\((.+)\)$') { return $matches[1] } return $n }
 
+function New-PickRow([string]$text, $tag, [bool]$checked, $color = $null, [string]$right = '', [string]$badge = '') {
+    $c = New-Object System.Windows.Controls.Primitives.ToggleButton
+    $c.Style = $win.FindResource('PickRow')
+    $c.Tag = $tag; $c.IsChecked = $checked
+    $dp = New-Object System.Windows.Controls.DockPanel; $dp.LastChildFill = $true
+    if ($right) {
+        $r = New-Object System.Windows.Controls.TextBlock; $r.Text = T $right; $r.FontSize = 12; $r.Foreground = Brush '#5A6070'; $r.VerticalAlignment = 'Center'; $r.Margin = '8,0,2,0'
+        [System.Windows.Controls.DockPanel]::SetDock($r, 'Right'); [void]$dp.Children.Add($r)
+    }
+    if ($badge) {
+        $bb = New-Object System.Windows.Controls.Border; $bb.CornerRadius = 7; $bb.Padding = '7,1'; $bb.Margin = '8,0,0,0'; $bb.Background = Brush '#1B3329'; $bb.VerticalAlignment = 'Center'
+        $bt = New-Object System.Windows.Controls.TextBlock; $bt.Text = T $badge; $bt.FontSize = 10.5; $bt.Foreground = Brush '#7FE8B8'; $bb.Child = $bt
+        [System.Windows.Controls.DockPanel]::SetDock($bb, 'Right'); [void]$dp.Children.Add($bb)
+    }
+    if ($color) {
+        $d = New-Object System.Windows.Shapes.Ellipse; $d.Width = 8; $d.Height = 8; $d.Fill = Brush $color; $d.Margin = '0,0,9,0'; $d.VerticalAlignment = 'Center'
+        [void]$dp.Children.Add($d)
+    }
+    $tb = New-Object System.Windows.Controls.TextBlock; $tb.Text = T $($text); $tb.VerticalAlignment = 'Center'; $tb.TextTrimming = 'CharacterEllipsis'
+    [void]$dp.Children.Add($tb)
+    $c.Content = $dp
+    $c.Add_Click({ Update-TestHint })
+    return $c
+}
 function Fill-TestSetup {
     $ui.GroupChips.Children.Clear(); $ui.StratChips.Children.Clear()
     $tg = Get-TestTargets
     $groups = @(); foreach ($t in $tg) { if ($groups -notcontains $t.Group) { $groups += $t.Group } }
-    $all = New-Chip 'Все' '*' $true
-    $all.Add_Click({ $v = $this.IsChecked; foreach ($ch in $ui.GroupChips.Children) { $ch.IsChecked = $v } ; Update-TestHint })
-    [void]$ui.GroupChips.Children.Add($all)
     foreach ($g in $groups) {
         $cnt = @($tg | Where-Object { $_.Group -eq $g }).Count
-        $c = New-Chip "$g · $cnt" $g $true (Get-GroupColor $g $false)
-        $c.Add_Click({ Sync-AllChip $ui.GroupChips; Update-TestHint })
-        [void]$ui.GroupChips.Children.Add($c)
+        [void]$ui.GroupChips.Children.Add((New-PickRow $g $g $true (Get-GroupColor $g $false) "$cnt"))
     }
-    $all2 = New-Chip 'Все' '*' $true
-    $all2.Add_Click({ $v = $this.IsChecked; foreach ($ch in $ui.StratChips.Children) { $ch.IsChecked = $v }; Update-TestHint })
-    [void]$ui.StratChips.Children.Add($all2)
+    $cur = if ($ui.StrategyBox.SelectedItem) { $ui.StrategyBox.SelectedItem.Tag } else { $null }
     foreach ($it in $ui.StrategyBox.Items) {
-        $c = New-Chip (Short-Name $it.Content) $it.Tag $true
-        $c.Add_Click({ Sync-AllChip $ui.StratChips; Update-TestHint })
-        [void]$ui.StratChips.Children.Add($c)
+        [void]$ui.StratChips.Children.Add((New-PickRow (Short-Name $it.Content) $it.Tag $true $null '' $(if ($it.Tag -eq $cur) { 'сейчас' } else { '' })))
     }
     Update-TestHint
 }
-function Sync-AllChip($panel) {
-    $rest = @($panel.Children | Select-Object -Skip 1)
-    $panel.Children[0].IsChecked = (@($rest | Where-Object { -not $_.IsChecked }).Count -eq 0)
+function Toggle-AllRows($panel) {
+    $v = (@($panel.Children | Where-Object { -not $_.IsChecked }).Count -gt 0)
+    foreach ($ch in $panel.Children) { $ch.IsChecked = $v }
+    Update-TestHint
 }
-function Get-Picked($panel) { @($panel.Children | Select-Object -Skip 1 | Where-Object { $_.IsChecked } | ForEach-Object { $_.Tag }) }
+$ui.GroupAll.Add_Click({ Toggle-AllRows $ui.GroupChips })
+$ui.StratAll.Add_Click({ Toggle-AllRows $ui.StratChips })
+function Get-Picked($panel) { @($panel.Children | Where-Object { $_.IsChecked } | ForEach-Object { $_.Tag }) }
+function Update-PickHeads {
+    foreach ($pair in @(@($ui.GroupChips, $ui.GroupCount, $ui.GroupAll), @($ui.StratChips, $ui.StratCount, $ui.StratAll))) {
+        $all = $pair[0].Children.Count; $on = @($pair[0].Children | Where-Object { $_.IsChecked }).Count
+        $pair[1].Text = "$on / $all"
+        $pair[2].Content = T $(if ($on -lt $all) { 'Выбрать все' } else { 'Снять все' })
+    }
+}
 function Update-TestHint {
+    Update-PickHeads
     $g = Get-Picked $ui.GroupChips; $s = Get-Picked $ui.StratChips
     $tg = @(Get-TestTargets | Where-Object { $g -contains $_.Group })
     $sec = [int]($s.Count * (5 + [Math]::Ceiling($tg.Count / 30.0)) + 3)
