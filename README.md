@@ -52,9 +52,6 @@
 
 > Windows Defender иногда ругается на `winws.exe` и драйвер WinDivert — это особенность самого zapret.
 
-## Сборка из исходников
-
-Приложение — C# (WPF, .NET Framework 4.x), собирается компилятором, который уже есть в Windows:
 
 ```
 app\build.cmd          ->  app\out\Zapret.exe
