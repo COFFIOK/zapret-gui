@@ -103,9 +103,48 @@ namespace ZapretCS
         // папка Zapret: менять файлы могут только администраторы и система, остальным — только чтение.
         // Иначе любая программа без прав могла бы подменить Zapret.exe или winws.exe,
         // которые потом запускаются с правами администратора.
-        static void Icacls(string args)
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Pack = 1)]
+        struct TP { public int Count; public long Luid; public int Attr; }
+        [System.Runtime.InteropServices.DllImport("advapi32.dll", SetLastError = true)] static extern bool OpenProcessToken(IntPtr h, int acc, out IntPtr tok);
+        [System.Runtime.InteropServices.DllImport("advapi32.dll", SetLastError = true, CharSet = System.Runtime.InteropServices.CharSet.Unicode)] static extern bool LookupPrivilegeValue(string s, string n, out long luid);
+        [System.Runtime.InteropServices.DllImport("advapi32.dll", SetLastError = true)] static extern bool AdjustTokenPrivileges(IntPtr tok, bool dis, ref TP n, int len, IntPtr p, IntPtr r);
+        static void EnablePrivilege(string name)
         {
-            using (var p = Process.Start(new ProcessStartInfo("icacls.exe", args) { CreateNoWindow = true, UseShellExecute = false })) p.WaitForExit(60000);
+            IntPtr t; if (!OpenProcessToken(Process.GetCurrentProcess().Handle, 0x28, out t)) return;
+            var tp = new TP { Count = 1, Attr = 2 };
+            if (LookupPrivilegeValue(null, name, out tp.Luid)) AdjustTokenPrivileges(t, false, ref tp, 0, IntPtr.Zero, IntPtr.Zero);
+        }
+
+        // сама папка: администраторы и система — полный доступ, пользователи — чтение;
+        // у всего внутри владелец — администраторы, своих прав нет, только наследование от папки
+        static void Repair(string dir)
+        {
+            foreach (var p in new[] { "SeTakeOwnershipPrivilege", "SeRestorePrivilege", "SeBackupPrivilege" }) EnablePrivilege(p);
+            const InheritanceFlags inh = InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit;
+            var own = new DirectorySecurity(); own.SetOwner(Admins); Directory.SetAccessControl(dir, own);
+            var root = new DirectorySecurity();
+            root.SetAccessRuleProtection(true, false);
+            root.AddAccessRule(new FileSystemAccessRule(Admins, FileSystemRights.FullControl, inh, PropagationFlags.None, AccessControlType.Allow));
+            root.AddAccessRule(new FileSystemAccessRule(System_, FileSystemRights.FullControl, inh, PropagationFlags.None, AccessControlType.Allow));
+            root.AddAccessRule(new FileSystemAccessRule(Users, FileSystemRights.ReadAndExecute, inh, PropagationFlags.None, AccessControlType.Allow));
+            Directory.SetAccessControl(dir, root);
+            foreach (var path in Directory.EnumerateFileSystemEntries(dir, "*", SearchOption.AllDirectories))
+            {
+                try
+                {
+                    if (Directory.Exists(path))
+                    {
+                        var o = new DirectorySecurity(); o.SetOwner(Admins); Directory.SetAccessControl(path, o);
+                        var d = new DirectorySecurity(); d.SetAccessRuleProtection(false, false); Directory.SetAccessControl(path, d);
+                    }
+                    else
+                    {
+                        var o = new FileSecurity(); o.SetOwner(Admins); File.SetAccessControl(path, o);
+                        var d = new FileSecurity(); d.SetAccessRuleProtection(false, false); File.SetAccessControl(path, d);
+                    }
+                }
+                catch (Exception ex) { Log.Write("security: " + path + ": " + ex.Message); }
+            }
         }
         public static void HardenFolder(string dir)
         {
@@ -129,10 +168,7 @@ namespace ZapretCS
                         try { if (File.GetAccessControl(f).GetAccessRules(true, true, typeof(SecurityIdentifier)).Count == 0) weak = true; } catch { weak = true; }
                 if (!weak) return;
                 Log.Write("security: права на " + dir + " исправлены");
-                // сама папка: администраторы и система — полный доступ, пользователи — чтение; всё внутри наследует
-                Icacls("\"" + dir + "\" /setowner *S-1-5-32-544 /T /C /Q");
-                Icacls("\"" + dir + "\" /inheritance:r /grant:r *S-1-5-32-544:(OI)(CI)F *S-1-5-18:(OI)(CI)F *S-1-5-32-545:(OI)(CI)RX /C /Q");
-                Icacls("\"" + System.IO.Path.Combine(dir, "*") + "\" /reset /T /C /Q");
+                Repair(dir);
             }
             catch (Exception ex) { Log.Write("security harden: " + ex.Message); }
         }

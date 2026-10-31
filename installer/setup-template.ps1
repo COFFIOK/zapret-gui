@@ -509,15 +509,57 @@ function Remove-OldVersion([string]$app) {
         }
     } catch {}
 }
-# права на папку: сама папка — администраторы и система (полный доступ), пользователи — чтение;
-# всё внутри наследует эти права. Заодно чинит файлы с испорченными правами (версия 2.0.1 до исправления).
+# права на папку: сама папка — администраторы и система (полный доступ), пользователи — только чтение;
+# всё внутри наследует эти права. Заодно чинит файлы с испорченными правами (ранняя сборка 2.0.1).
+Add-Type -TypeDefinition @"
+using System; using System.Runtime.InteropServices;
+public static class ZPriv {
+    [StructLayout(LayoutKind.Sequential, Pack = 1)] struct TP { public int Count; public long Luid; public int Attr; }
+    [DllImport("advapi32.dll", SetLastError = true)] static extern bool OpenProcessToken(IntPtr h, int acc, out IntPtr tok);
+    [DllImport("advapi32.dll", SetLastError = true)] static extern bool LookupPrivilegeValue(string s, string n, out long luid);
+    [DllImport("advapi32.dll", SetLastError = true)] static extern bool AdjustTokenPrivileges(IntPtr tok, bool dis, ref TP n, int len, IntPtr p, IntPtr r);
+    [DllImport("kernel32.dll")] static extern IntPtr GetCurrentProcess();
+    public static bool Enable(string name) {
+        IntPtr t; if (!OpenProcessToken(GetCurrentProcess(), 0x28, out t)) return false;
+        TP tp = new TP(); tp.Count = 1; tp.Attr = 2;
+        if (!LookupPrivilegeValue(null, name, out tp.Luid)) return false;
+        return AdjustTokenPrivileges(t, false, ref tp, 0, IntPtr.Zero, IntPtr.Zero);
+    }
+}
+"@ -ErrorAction SilentlyContinue
 function Set-SafeAcl([string]$dir) {
     if (-not $dir -or -not (Test-Path -LiteralPath $dir)) { return }
+    $log = New-Object System.Collections.Generic.List[string]
     try {
-        & icacls.exe "$dir" /setowner '*S-1-5-32-544' /T /C /Q 2>&1 | Out-Null
-        & icacls.exe "$dir" /inheritance:r /grant:r '*S-1-5-32-544:(OI)(CI)F' '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-545:(OI)(CI)RX' /C /Q 2>&1 | Out-Null
-        & icacls.exe "$(Join-Path $dir '*')" /reset /T /C /Q 2>&1 | Out-Null
-    } catch {}
+        foreach ($p in 'SeTakeOwnershipPrivilege', 'SeRestorePrivilege', 'SeBackupPrivilege') { [void][ZPriv]::Enable($p) }
+        $admins = New-Object Security.Principal.SecurityIdentifier 'S-1-5-32-544'
+        $system = New-Object Security.Principal.SecurityIdentifier 'S-1-5-18'
+        $users  = New-Object Security.Principal.SecurityIdentifier 'S-1-5-32-545'
+        $inh = [Security.AccessControl.InheritanceFlags]'ContainerInherit, ObjectInherit'
+        $none = [Security.AccessControl.PropagationFlags]::None
+        # 1) сама папка
+        $o = New-Object Security.AccessControl.DirectorySecurity; $o.SetOwner($admins)
+        [IO.Directory]::SetAccessControl($dir, $o)
+        $root = New-Object Security.AccessControl.DirectorySecurity
+        $root.SetAccessRuleProtection($true, $false)
+        $root.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule($admins, 'FullControl', $inh, $none, 'Allow')))
+        $root.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule($system, 'FullControl', $inh, $none, 'Allow')))
+        $root.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule($users, 'ReadAndExecute', $inh, $none, 'Allow')))
+        [IO.Directory]::SetAccessControl($dir, $root)
+        # 2) всё внутри: владелец — администраторы, свои права убираем, остаётся наследование от папки
+        foreach ($it in (Get-ChildItem -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue)) {
+            try {
+                $isDir = $it.PSIsContainer
+                $s = if ($isDir) { New-Object Security.AccessControl.DirectorySecurity } else { New-Object Security.AccessControl.FileSecurity }
+                $s.SetOwner($admins)
+                if ($isDir) { [IO.Directory]::SetAccessControl($it.FullName, $s) } else { [IO.File]::SetAccessControl($it.FullName, $s) }
+                $d = if ($isDir) { New-Object Security.AccessControl.DirectorySecurity } else { New-Object Security.AccessControl.FileSecurity }
+                $d.SetAccessRuleProtection($false, $false)
+                if ($isDir) { [IO.Directory]::SetAccessControl($it.FullName, $d) } else { [IO.File]::SetAccessControl($it.FullName, $d) }
+            } catch { $log.Add("$($it.FullName): $($_.Exception.Message)") }
+        }
+    } catch { $log.Add("root: $($_.Exception.Message)") }
+    if ($log.Count) { try { [IO.File]::WriteAllLines((Join-Path $dir 'setup-acl.log'), $log) } catch {} }
 }
 function Install-App {
     $app = Join-Path $script:dest 'app'
