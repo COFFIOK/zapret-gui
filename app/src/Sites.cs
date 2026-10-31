@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
@@ -277,6 +278,11 @@ namespace ZapretCS
                     dots.Background = Brushes.Transparent; dt.Foreground = Theme.B("#8A90A0"); head.BorderBrush = Brushes.Transparent;
                 }
             });
+            if (editable && name == lastMovedGroup)
+            {
+                var fb = new SolidColorBrush(Theme.C("#2D5A47")); head.Background = fb;
+                fb.BeginAnimation(SolidColorBrush.ColorProperty, new System.Windows.Media.Animation.ColorAnimation { To = Theme.C("#20232B"), BeginTime = TimeSpan.FromMilliseconds(250), Duration = new Duration(TimeSpan.FromMilliseconds(900)), EasingFunction = Anim.Ease() });
+            }
             head.MouseEnter += (s, e) => Anim.Color(head.Background, "#2A2E38", 160);
             head.MouseLeave += (s, e) => Anim.Color(head.Background, "#20232B", 220);
 
@@ -287,8 +293,10 @@ namespace ZapretCS
                 Anim.D(wrap, Anim.OP, 1, 320, 0, begin: index * 40);
                 Anim.D(tt, Anim.TY, 0, 380, 12, begin: index * 40);
             }
-            if (editable) MakeGroupDropTarget(head, name, key, color);
-            wrap.Children.Add(head); wrap.Children.Add(body);
+            var topLine = new Border { Height = 3, CornerRadius = new CornerRadius(2), Margin = new Thickness(6, 0, 6, 2), Background = Brushes.Transparent };
+            var botLine = new Border { Height = 3, CornerRadius = new CornerRadius(2), Margin = new Thickness(6, 2, 6, 0), Background = Brushes.Transparent };
+            if (editable) MakeGroupDropTarget(head, body, topLine, botLine, name, key, color);
+            wrap.Children.Add(topLine); wrap.Children.Add(head); wrap.Children.Add(body); wrap.Children.Add(botLine);
             return wrap;
         }
 
@@ -322,8 +330,7 @@ namespace ZapretCS
                 if (Math.Abs(p.X - dragStart.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(p.Y - dragStart.Y) < SystemParameters.MinimumVerticalDragDistance) return;
                 dragArmed = false;
                 cell.Opacity = 0.35;
-                try { DragDrop.DoDragDrop(cell, new DataObject(DragFmt, grp + "\n" + dom), DragDropEffects.Move); }
-                catch (Exception ex) { Log.Write("drag: " + ex.Message); }
+                DoDrag(cell, new DataObject(DragFmt, grp + "\n" + dom));
                 cell.Opacity = 1;
             };
 
@@ -350,15 +357,34 @@ namespace ZapretCS
             });
         }
 
-        void MakeGroupDropTarget(Border head, string grp, string key, string color)
+        const string GroupFmt = "ZapretGroup";
+
+        void MakeGroupDropTarget(Border head, FrameworkElement body, Border topLine, Border botLine, string grp, string key, string color)
         {
+            // сама группа перетаскивается за заголовок — так меняется порядок групп
+            Point start = new Point(); bool armed = false;
+            head.PreviewMouseLeftButtonDown += (s, e) => { start = e.GetPosition(Win); armed = true; };
+            head.PreviewMouseLeftButtonUp += (s, e) => armed = false;
+            head.MouseMove += (s, e) =>
+            {
+                if (!armed || e.LeftButton != MouseButtonState.Pressed) return;
+                var p = e.GetPosition(Win);
+                if (Math.Abs(p.X - start.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(p.Y - start.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+                armed = false;
+                var wrap = head.Parent as UIElement;
+                if (wrap != null) wrap.Opacity = 0.35;
+                DoDrag(head, new DataObject(GroupFmt, grp));
+                if (wrap != null) wrap.Opacity = 1;
+            };
+
             head.AllowDrop = true;
             System.Windows.Threading.DispatcherTimer openTimer = null;
+            Action clearLines = () => { topLine.Background = Brushes.Transparent; botLine.Background = Brushes.Transparent; };
             head.DragEnter += (s, e) =>
             {
                 if (!e.Data.GetDataPresent(DragFmt)) return;
                 head.BorderBrush = Theme.B(color); Anim.Color(head.Background, "#2A2E38", 120);
-                // подержал над закрытой группой — она раскрывается, чтобы бросить в нужное место
+                // подержал сайт над закрытой группой — она раскрывается, чтобы бросить в нужное место
                 bool o; expanded.TryGetValue(key, out o);
                 if (!o)
                 {
@@ -366,20 +392,31 @@ namespace ZapretCS
                     openTimer.Tick += (s2, e2) =>
                     {
                         openTimer.Stop();
-                        var wrap = head.Parent as StackPanel;
-                        if (wrap == null || wrap.Children.Count < 2) return;
                         expanded[key] = true;
-                        var body = (FrameworkElement)wrap.Children[1];
                         body.Visibility = Visibility.Visible;
                         Anim.D((TranslateTransform)body.RenderTransform, Anim.TY, 0, 220, -6);
                     };
                     openTimer.Start();
                 }
             };
-            head.DragOver += (s, e) => { e.Handled = true; e.Effects = e.Data.GetDataPresent(DragFmt) ? DragDropEffects.Move : DragDropEffects.None; };
+            head.DragOver += (s, e) =>
+            {
+                e.Handled = true;
+                if (e.Data.GetDataPresent(GroupFmt))
+                {
+                    if ((string)e.Data.GetData(GroupFmt) == grp) { e.Effects = DragDropEffects.None; clearLines(); return; }
+                    e.Effects = DragDropEffects.Move;
+                    bool below = e.GetPosition(head).Y > head.ActualHeight / 2;
+                    topLine.Background = below ? Brushes.Transparent : Theme.B(Theme.Accent);
+                    botLine.Background = below ? Theme.B(Theme.Accent) : Brushes.Transparent;
+                    return;
+                }
+                e.Effects = e.Data.GetDataPresent(DragFmt) ? DragDropEffects.Move : DragDropEffects.None;
+            };
             Action reset = () =>
             {
                 if (openTimer != null) openTimer.Stop();
+                clearLines();
                 bool o; expanded.TryGetValue(key, out o);
                 head.BorderBrush = o ? Theme.B(color) : Brushes.Transparent;
                 Anim.Color(head.Background, "#20232B", 200);
@@ -387,11 +424,93 @@ namespace ZapretCS
             head.DragLeave += (s, e) => reset();
             head.Drop += (s, e) => Safe(() =>
             {
-                e.Handled = true; reset();
+                e.Handled = true;
+                bool below = e.GetPosition(head).Y > head.ActualHeight / 2;
+                reset();
+                if (e.Data.GetDataPresent(GroupFmt)) { MoveGroup((string)e.Data.GetData(GroupFmt), grp, below); return; }
                 if (!e.Data.GetDataPresent(DragFmt)) return;
                 var parts = ((string)e.Data.GetData(DragFmt)).Split('\n');
                 MoveSite(parts[0], parts[1], grp, null, true);
             });
+        }
+
+        void MoveGroup(string src, string near, bool below)
+        {
+            if (src == near) return;
+            var g = ReadUserGroups();
+            if (!g.Has(src) || !g.Has(near)) { RefreshSites(); return; }
+            g.Keys.Remove(src);
+            int i = g.Keys.IndexOf(near);
+            g.Keys.Insert(below ? i + 1 : i, src);
+            WriteUserGroups(g);
+            lastMovedGroup = src;
+            RefreshSites();
+            lastMovedGroup = null;
+        }
+        string lastMovedGroup;
+
+        // ---- перетаскивание с прокруткой: колесо мыши и автопрокрутка у краёв списка ----
+        [StructLayout(LayoutKind.Sequential)] struct MSLL { public int x, y; public uint mouseData, flags, time; public IntPtr extra; }
+        [StructLayout(LayoutKind.Sequential)] struct PT { public int x, y; }
+        delegate IntPtr LLProc(int code, IntPtr wParam, IntPtr lParam);
+        [DllImport("user32.dll", SetLastError = true)] static extern IntPtr SetWindowsHookEx(int id, LLProc fn, IntPtr mod, uint thread);
+        [DllImport("user32.dll")] static extern bool UnhookWindowsHookEx(IntPtr h);
+        [DllImport("user32.dll")] static extern IntPtr CallNextHookEx(IntPtr h, int code, IntPtr w, IntPtr l);
+        [DllImport("user32.dll")] static extern bool GetCursorPos(out PT p);
+        [DllImport("kernel32.dll")] static extern IntPtr GetModuleHandle(string name);
+        LLProc hookProc;
+        ScrollViewer dragScroll;
+
+        ScrollViewer SitesScroll()
+        {
+            DependencyObject d = E<Panel>("SitesPanel");
+            while (d != null && !(d is ScrollViewer)) d = VisualTreeHelper.GetParent(d);
+            return d as ScrollViewer;
+        }
+
+        void DoDrag(DependencyObject src, DataObject data)
+        {
+            dragScroll = SitesScroll();
+            IntPtr hook = IntPtr.Zero;
+            var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(30) };
+            try
+            {
+                // во время перетаскивания Windows не отдаёт окну колесо мыши — ловим его сами
+                hookProc = (code, w, l) =>
+                {
+                    if (code >= 0 && (int)w == 0x020A && dragScroll != null)
+                    {
+                        var m = (MSLL)Marshal.PtrToStructure(l, typeof(MSLL));
+                        int delta = (short)((m.mouseData >> 16) & 0xFFFF);
+                        dragScroll.ScrollToVerticalOffset(dragScroll.VerticalOffset - delta * 0.8);
+                        return (IntPtr)1;
+                    }
+                    return CallNextHookEx(IntPtr.Zero, code, w, l);
+                };
+                hook = SetWindowsHookEx(14, hookProc, GetModuleHandle(null), 0);
+                // у верхнего и нижнего края список прокручивается сам
+                timer.Tick += (s, e) =>
+                {
+                    if (dragScroll == null) return;
+                    PT pt; if (!GetCursorPos(out pt)) return;
+                    Point p;
+                    try { p = dragScroll.PointFromScreen(new Point(pt.x, pt.y)); } catch { return; }
+                    if (p.X < 0 || p.X > dragScroll.ActualWidth) return;
+                    double edge = 42, h = dragScroll.ActualHeight, v = 0;
+                    if (p.Y < edge && p.Y > -30) v = -(edge - p.Y) * 0.45;
+                    else if (p.Y > h - edge && p.Y < h + 30) v = (p.Y - (h - edge)) * 0.45;
+                    if (v != 0) dragScroll.ScrollToVerticalOffset(dragScroll.VerticalOffset + v);
+                };
+                timer.Start();
+                DragDrop.DoDragDrop(src, data, DragDropEffects.Move);
+            }
+            catch (Exception ex) { Log.Write("drag: " + ex.Message); }
+            finally
+            {
+                timer.Stop();
+                if (hook != IntPtr.Zero) UnhookWindowsHookEx(hook);
+                dragScroll = null;
+            }
         }
 
         // переместить сайт: в группу dstGrp рядом с сайтом near (выше/ниже) или в конец группы
