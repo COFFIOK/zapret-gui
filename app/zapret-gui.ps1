@@ -873,17 +873,17 @@ $xamlText = @'
 
     <Style x:Key="PickRow" TargetType="ToggleButton">
       <Setter Property="Foreground" Value="#9AA3B5"/>
-      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="FontSize" Value="12.5"/>
       <Setter Property="Cursor" Value="Hand"/>
       <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="ToggleButton">
-            <Border x:Name="Bd" Background="#00000000" CornerRadius="10" Padding="10,8" Margin="0,0,0,3">
+            <Border x:Name="Bd" Background="#1E2129" BorderBrush="#262A33" BorderThickness="1" CornerRadius="9" Padding="9,6" Margin="0,0,6,6">
               <Grid>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                <Border x:Name="Box" Width="18" Height="18" CornerRadius="5" BorderBrush="#3A3F4D" BorderThickness="1.5" Background="#00000000" Margin="0,0,12,0" VerticalAlignment="Center">
-                  <TextBlock x:Name="Tick" Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="11" Foreground="#0F1115" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0"/>
+                <Border x:Name="Box" Width="16" Height="16" CornerRadius="4" BorderBrush="#3A3F4D" BorderThickness="1.5" Background="#00000000" Margin="0,0,9,0" VerticalAlignment="Center">
+                  <TextBlock x:Name="Tick" Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="10" Foreground="#0F1115" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0"/>
                 </Border>
                 <ContentPresenter Grid.Column="1" VerticalAlignment="Center"/>
               </Grid>
@@ -891,6 +891,7 @@ $xamlText = @'
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#22262F"/></Trigger>
               <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="Bd" Property="BorderBrush" Value="#2D5A47"/>
                 <Setter TargetName="Box" Property="Background" Value="#3DDC97"/>
                 <Setter TargetName="Box" Property="BorderBrush" Value="#3DDC97"/>
                 <Setter TargetName="Tick" Property="Opacity" Value="1"/>
@@ -1588,41 +1589,27 @@ $xamlText = @'
                 </StackPanel>
               </DockPanel>
 
-              <Grid x:Name="TestSetup" Grid.Row="1">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                <!-- что проверять -->
-                <Border Background="#1E2129" CornerRadius="16" BorderBrush="#262A33" BorderThickness="1" Padding="8,12,8,8">
-                  <DockPanel>
-                    <DockPanel DockPanel.Dock="Top" Margin="10,0,4,10">
-                      <Button x:Name="GroupAll" DockPanel.Dock="Right" Style="{StaticResource Btn}" Padding="10,3" FontSize="11.5" Content="Снять все"/>
-                      <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="&#xE774;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="#3DDC97" Margin="0,1,8,0"/>
-                        <TextBlock Text="Что проверять" FontSize="14" FontWeight="SemiBold"/>
-                        <TextBlock x:Name="GroupCount" Foreground="#8A90A0" FontSize="12" Margin="8,1,0,0" VerticalAlignment="Center"/>
-                      </StackPanel>
-                    </DockPanel>
-                    <ScrollViewer Height="232" VerticalScrollBarVisibility="Auto">
-                      <StackPanel x:Name="GroupChips" Margin="0,0,4,0"/>
-                    </ScrollViewer>
-                  </DockPanel>
-                </Border>
-                <!-- какие стратегии -->
-                <Border Grid.Column="2" Background="#1E2129" CornerRadius="16" BorderBrush="#262A33" BorderThickness="1" Padding="8,12,8,8">
-                  <DockPanel>
-                    <DockPanel DockPanel.Dock="Top" Margin="10,0,4,10">
-                      <Button x:Name="StratAll" DockPanel.Dock="Right" Style="{StaticResource Btn}" Padding="10,3" FontSize="11.5" Content="Снять все"/>
-                      <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="&#xE9D5;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="#3DDC97" Margin="0,1,8,0"/>
-                        <TextBlock Text="Стратегии" FontSize="14" FontWeight="SemiBold"/>
-                        <TextBlock x:Name="StratCount" Foreground="#8A90A0" FontSize="12" Margin="8,1,0,0" VerticalAlignment="Center"/>
-                      </StackPanel>
-                    </DockPanel>
-                    <ScrollViewer Height="232" VerticalScrollBarVisibility="Auto">
-                      <StackPanel x:Name="StratChips" Margin="0,0,4,0"/>
-                    </ScrollViewer>
-                  </DockPanel>
-                </Border>
-              </Grid>
+              <!-- всё видно сразу: компактная сетка без прокрутки -->
+              <StackPanel x:Name="TestSetup" Grid.Row="1">
+                <DockPanel Margin="2,0,0,6">
+                  <Button x:Name="GroupAll" DockPanel.Dock="Right" Style="{StaticResource Btn}" Padding="10,2" FontSize="11.5" Content="Снять все"/>
+                  <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="ЧТО ПРОВЕРЯТЬ" FontSize="11" FontWeight="SemiBold" Foreground="#8A90A0"/>
+                    <TextBlock x:Name="GroupCount" Foreground="#5A6070" FontSize="11" Margin="8,0,0,0"/>
+                  </StackPanel>
+                </DockPanel>
+                <WrapPanel x:Name="GroupChips" ItemWidth="195" Margin="0,0,0,12"/>
+                <DockPanel Margin="2,0,0,6">
+                  <Button x:Name="StratAll" DockPanel.Dock="Right" Style="{StaticResource Btn}" Padding="10,2" FontSize="11.5" Content="Снять все"/>
+                  <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="СТРАТЕГИИ" FontSize="11" FontWeight="SemiBold" Foreground="#8A90A0"/>
+                    <TextBlock x:Name="StratCount" Foreground="#5A6070" FontSize="11" Margin="8,0,0,0"/>
+                  </StackPanel>
+                </DockPanel>
+                <ScrollViewer MaxHeight="290" VerticalScrollBarVisibility="Auto">
+                  <WrapPanel x:Name="StratChips" ItemWidth="195"/>
+                </ScrollViewer>
+              </StackPanel>
 
               <Grid Grid.Row="2" Margin="0,14,0,12">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
