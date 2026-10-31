@@ -164,6 +164,18 @@ $TrPairs = @(
     @('Работает · Telegram подключён ✓', 'Running · Telegram connected ✓'),
     @('Подключён к Telegram', 'Connected to Telegram'),
     @('Открыть Zapret', 'Open Zapret'),
+    @('Что нового', "What's new"),
+    @('Отлично', 'Great'),
+    @('Обновление прямо в приложении — без окна установщика', 'Updates right inside the app — no installer window'),
+    @('Обновление zapret в один клик, настройки переезжают сами', 'One-click zapret update, your settings move over automatically'),
+    @('Цветной значок в трее: зелёный — работает, серый — выключен', 'Colored tray icon: green — running, grey — off'),
+    @('«Что нового» после обновления', '"What''s new" after an update'),
+    @('Твои сайты и настройки перенесены', 'Your sites and settings were moved over'),
+    @('Скачиваю zapret…', 'Downloading zapret…'),
+    @('Распаковываю…', 'Unpacking…'),
+    @('Переношу твои сайты и настройки…', 'Moving your sites and settings…'),
+    @('Перезапускаю на новой версии…', 'Restarting on the new version…'),
+    @('zapret установлен как служба Windows. Удали службу через service.bat, потом обнови здесь.', 'zapret is installed as a Windows service. Remove the service via service.bat, then update here.'),
     @('Скачиваю обновление…', 'Downloading the update…'),
     @('Устанавливаю… Zapret откроется снова через пару секунд', 'Installing… Zapret will reopen in a couple of seconds'),
     @('Все сайты и настройки на месте', 'All your sites and settings are kept'),
@@ -385,6 +397,11 @@ foreach ($pp in $TrPairs) { $TrExact[$pp[0]] = $pp[1] }
 function Plural-En([int]$n) { if ($n -eq 1) { "$n site" } else { "$n sites" } }
 $TrRx = @(
     @('^Обновление до (.+)$', 'Updating to $1'),
+    @('^Обновление zapret до (.+)$', 'Updating zapret to $1'),
+    @('^zapret обновлён до (.+)$', 'zapret updated to $1'),
+    @('^Обновить до (.+)$', 'Update to $1'),
+    @('^Вышла новая версия zapret: (.+)\. Нажми «Обновить до .+» — всё сделается само\.$', 'New zapret version: $1. Click "Update to $1" and it will do everything itself.'),
+    @('^Не удалось обновить zapret: (.+)$', 'Could not update zapret: $1'),
     @('^Zapret обновлён до (.+)$', 'Zapret updated to $1'),
     @('^(\d+)% · ([\d.,\s]+) из ([\d.,\s]+) МБ$', '$1% · $2 of $3 MB'),
     @('^Подобрал лучшую стратегию: (.+) — включаю$', 'Best strategy found: $1 — turning it on'),
@@ -1676,6 +1693,13 @@ $xamlText = @'
                 </Border>
                 <TextBlock x:Name="AuPct" FontSize="11.5" Foreground="#8A90A0" HorizontalAlignment="Center" Margin="0,8,0,0"/>
               </StackPanel>
+              <Border x:Name="AuNews" Visibility="Collapsed" Background="#1E2129" CornerRadius="12" Padding="14,12" Margin="0,16,0,0" BorderBrush="#262A33" BorderThickness="1">
+                <StackPanel x:Name="AuNewsList"/>
+              </Border>
+              <StackPanel x:Name="AuBtns" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,18,0,0" Visibility="Collapsed">
+                <Button x:Name="AuNewsBtn" Style="{StaticResource Btn}" Content="Что нового" Margin="0,0,8,0" Padding="16,8"/>
+                <Button x:Name="AuOkBtn" Style="{StaticResource AccentBtn}" Content="Отлично" Padding="20,8"/>
+              </StackPanel>
             </StackPanel>
           </Border>
         </Grid>
@@ -1873,7 +1897,7 @@ function Set-Visual($mode, $detail) {
     if ($script:state -eq $mode -and $mode -ne 'on') { return }
     $prev = $script:state
     $script:state = $mode
-    if ($prev -ne $mode) { $script:visAt = [DateTime]::UtcNow.Ticks; if ($Mon) { $Mon.Wake = $true }; if ($trayMenu -and $trayMenu.IsOpen) { try { Update-TrayMenu } catch {} }; if ($script:trayIcon) { try { $script:trayIcon.Text = T $(if ($mode -eq 'on') { 'Zapret · работает' } else { 'Zapret · выключен' }) } catch {} } }
+    if ($prev -ne $mode) { $script:visAt = [DateTime]::UtcNow.Ticks; if ($Mon) { $Mon.Wake = $true }; if ($trayMenu -and $trayMenu.IsOpen) { try { Update-TrayMenu } catch {} }; if (Get-Command Update-TrayIcon -ErrorAction SilentlyContinue) { Update-TrayIcon } }
     switch ($mode) {
         'on' {
             $ui.StatusText.Text = T $('Работает')
@@ -4125,6 +4149,7 @@ function Open-AuOverlay([switch]$Done) {
         Anim-Double $ui.AuBurstS $SX 1.7 900 1 -beginMs 450; Anim-Double $ui.AuBurstS $SY 1.7 900 1 -beginMs 450
     } else {
         $ui.AuProgress.Visibility = 'Visible'; $ui.AuFillS.ScaleX = 0
+        $ui.AuBtns.Visibility = 'Collapsed'; $ui.AuNews.Visibility = 'Collapsed'; $script:updDoneShown = $false
         $ui.AuArc.Opacity = 1; $ui.AuLogo.Opacity = 1; $ui.AuOk.Opacity = 0
         Anim-Double $ui.AuArcRot ([System.Windows.Media.RotateTransform]::AngleProperty) 360 1100 0 -Forever -NoEase
         Anim-Double $ui.AuLogoS $SX 0.92 900 1 -Forever -AutoReverse -Low; Anim-Double $ui.AuLogoS $SY 0.92 900 1 -Forever -AutoReverse -Low
@@ -4145,20 +4170,51 @@ $ui.AuDim.Add_MouseLeftButtonUp({ if ($script:updDoneShown) { Close-AuOverlay } 
 # после тихого обновления установщик оставляет отметку — показываем «Обновлено»
 $UpdFlag = Join-Path $GuiDir 'updated.flag'
 $script:updDoneShown = $false
+# что нового в этой версии приложения (показывается после обновления)
+$WhatsNew = @(
+    'Обновление прямо в приложении — без окна установщика',
+    'Обновление zapret в один клик, настройки переезжают сами',
+    'Цветной значок в трее: зелёный — работает, серый — выключен',
+    '«Что нового» после обновления'
+)
+function Fill-WhatsNew([string[]]$items) {
+    $ui.AuNewsList.Children.Clear()
+    foreach ($s in $items) {
+        $row = New-Object System.Windows.Controls.DockPanel; $row.Margin = '0,3,0,3'
+        $dot = New-Object System.Windows.Shapes.Ellipse; $dot.Width = 6; $dot.Height = 6; $dot.Fill = Brush '#3DDC97'; $dot.Margin = '0,6,10,0'; $dot.VerticalAlignment = 'Top'
+        $tb = New-Object System.Windows.Controls.TextBlock; $tb.Text = T $s; $tb.FontSize = 12.5; $tb.TextWrapping = 'Wrap'; $tb.Foreground = Brush '#E6E8EE'
+        [void]$row.Children.Add($dot); [void]$row.Children.Add($tb)
+        [void]$ui.AuNewsList.Children.Add($row)
+    }
+}
 function Show-UpdatedIfNeeded {
     if (-not (Test-Path -LiteralPath $UpdFlag)) { return }
     $v = ''; try { $v = ([IO.File]::ReadAllText($UpdFlag)).Trim() } catch {}
     Remove-Item -LiteralPath $UpdFlag -Force -ErrorAction SilentlyContinue
+    $isZapret = $v -like 'zapret:*'
+    $v = $v -replace '^zapret:', ''
     if (-not $v) { $v = $AppVersion }
     $script:updDoneShown = $true
-    $ui.AuTitle.Text = T $("Zapret обновлён до v$v")
-    $ui.AuSub.Text = T $('Все сайты и настройки на месте')
-    Open-AuOverlay -Done
-    $script:updDoneT = New-Object System.Windows.Threading.DispatcherTimer
-    $script:updDoneT.Interval = [TimeSpan]::FromMilliseconds(2800)
-    $script:updDoneT.Add_Tick({ $script:updDoneT.Stop(); if ($ui.AuOverlay.Visibility -eq 'Visible') { Close-AuOverlay } })
-    $script:updDoneT.Start()
+    if ($isZapret) {
+        $ui.AuTitle.Text = T $("zapret обновлён до v$v")
+        $ui.AuSub.Text = T $('Твои сайты и настройки перенесены')
+        $ui.AuNewsBtn.Visibility = 'Collapsed'
+    } else {
+        $ui.AuTitle.Text = T $("Zapret обновлён до v$v")
+        $ui.AuSub.Text = T $('Все сайты и настройки на месте')
+        $ui.AuNewsBtn.Visibility = 'Visible'
+        Fill-WhatsNew $WhatsNew
+    }
+    $ui.AuNews.Visibility = 'Collapsed'
+    $ui.AuBtns.Visibility = 'Visible'
+    Open-UpdOverlay -Done
 }
+$ui.AuOkBtn.Add_Click({ Close-UpdOverlay })
+$ui.AuNewsBtn.Add_Click({ Safe {
+    $ui.AuNewsBtn.Visibility = 'Collapsed'
+    $ui.AuNews.Visibility = 'Visible'; $ui.AuNews.Opacity = 0
+    Anim-Double $ui.AuNews $OP 1 300 0
+} })
 function Start-AppDownload {
     if (-not $script:appUpd -or -not $script:appUpd.Url) { return }
     $script:appTimer.Start()
@@ -4240,10 +4296,113 @@ $ui.AppCheckBtn.Add_Click({ Safe { Close-Settings; Show-Toast 'Проверяю 
 # ======================= Обновления =======================
 $script:latest = $null
 $ui.UpdateBtn.Add_Click({ Safe {
-    if ($script:latest -and $script:latest -ne $LocalVersion) {
-        Start-Process 'https://github.com/Flowseal/zapret-discord-youtube/releases/latest'
-    } else { Start-UpdateCheck }
+    if ($script:latest -and $script:latest -ne $LocalVersion) { Start-ZapretUpdate $script:latest }
+    else { Start-UpdateCheck }
 } })
+# ---- обновление самого zapret в один клик ----
+function Start-ZapretUpdate([string]$tag) {
+    if (-not $IsAdmin) { Show-Toast 'Нужны права администратора' -Err; return }
+    if (Get-ServiceState) { Show-Toast 'zapret установлен как служба Windows. Удали службу через service.bat, потом обнови здесь.' -Err; return }
+    if ($script:zuJob) { return }
+    $script:zuWasOn = ($script:state -eq 'on')
+    Open-UpdOverlay
+    $ui.AuTitle.Text = T $("Обновление zapret до $tag")
+    $ui.AuSub.Text = T $('Скачиваю zapret…')
+    $ui.AuPct.Text = ''
+    $parent = Split-Path -Parent $Root
+    $script:zuJob = [hashtable]::Synchronized(@{ Done = $false; Error = $null; Got = 0L; Total = 0L; Phase = 'dl'; Tag = $tag; NewPath = $null })
+    $rs = [runspacefactory]::CreateRunspace(); $rs.Open()
+    $ps = [powershell]::Create(); $ps.Runspace = $rs
+    [void]$ps.AddScript({
+        param($sync, $parent)
+        try {
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+            $tag = $sync.Tag
+            # точный тег — по переадресации страницы последнего релиза
+            try {
+                $r0 = [Net.HttpWebRequest]::Create('https://github.com/Flowseal/zapret-discord-youtube/releases/latest')
+                $r0.UserAgent = 'ZapretGUI'; $r0.AllowAutoRedirect = $false
+                $resp0 = $r0.GetResponse(); $loc = $resp0.Headers['Location']; $resp0.Close()
+                if ($loc -match '/tag/([^/?#]+)') { $tag = $matches[1]; $sync.Tag = $tag }
+            } catch {}
+            $zip = Join-Path $env:TEMP "zapret-$tag.zip"
+            $urls = @("https://github.com/Flowseal/zapret-discord-youtube/releases/download/$tag/zapret-discord-youtube-$tag.zip")
+            $ok = $false; $lastErr = $null
+            foreach ($url in $urls) {
+                try {
+                    $req = [Net.HttpWebRequest]::Create($url); $req.UserAgent = 'ZapretGUI'; $req.AllowAutoRedirect = $true
+                    $resp = $req.GetResponse(); $sync.Total = $resp.ContentLength
+                    $in = $resp.GetResponseStream(); $fs = [IO.File]::Create($zip); $buf = New-Object byte[] 65536
+                    while (($n = $in.Read($buf, 0, $buf.Length)) -gt 0) { $fs.Write($buf, 0, $n); $sync.Got += $n }
+                    $fs.Close(); $in.Close(); $resp.Close(); $ok = $true; break
+                } catch { $lastErr = $_.Exception.Message }
+            }
+            if (-not $ok) {
+                # запасной путь: список файлов релиза через API GitHub
+                $wc = New-Object Net.WebClient; $wc.Headers.Add('User-Agent', 'ZapretGUI')
+                $json = $wc.DownloadString('https://api.github.com/repos/Flowseal/zapret-discord-youtube/releases/latest') | ConvertFrom-Json
+                $asset = $json.assets | Where-Object { $_.name -like '*.zip' } | Select-Object -First 1
+                if (-not $asset) { throw "не нашёл архив zapret ($lastErr)" }
+                $sync.Tag = $json.tag_name; $sync.Total = [long]$asset.size; $sync.Got = 0
+                $req = [Net.HttpWebRequest]::Create($asset.browser_download_url); $req.UserAgent = 'ZapretGUI'
+                $resp = $req.GetResponse(); $in = $resp.GetResponseStream(); $fs = [IO.File]::Create($zip); $buf = New-Object byte[] 65536
+                while (($n = $in.Read($buf, 0, $buf.Length)) -gt 0) { $fs.Write($buf, 0, $n); $sync.Got += $n }
+                $fs.Close(); $in.Close(); $resp.Close()
+            }
+            $sync.Phase = 'unzip'
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            $ex = Join-Path $env:TEMP ('zapret-unz-' + [guid]::NewGuid().ToString('N'))
+            [IO.Compression.ZipFile]::ExtractToDirectory($zip, $ex)
+            $top = @(Get-ChildItem -LiteralPath $ex -Directory)
+            $src = if ($top.Count -eq 1 -and -not (Test-Path -LiteralPath (Join-Path $ex 'bin\winws.exe'))) { $top[0].FullName } else { $ex }
+            if (-not (Test-Path -LiteralPath (Join-Path $src 'bin\winws.exe'))) { throw 'в архиве нет zapret (bin\winws.exe)' }
+            $name = "zapret-discord-youtube-$($sync.Tag)"
+            $dst = Join-Path $parent $name
+            if (Test-Path -LiteralPath $dst) { $dst = Join-Path $parent ($name + '-' + (Get-Date -Format 'HHmmss')) }
+            Move-Item -LiteralPath $src -Destination $dst
+            Remove-Item -LiteralPath $ex, $zip -Recurse -Force -ErrorAction SilentlyContinue
+            $sync.NewPath = $dst
+        } catch { $sync.Error = $_.Exception.Message } finally { $sync.Done = $true }
+    }).AddArgument($script:zuJob).AddArgument($parent)
+    $script:zuPs = $ps; [void]$ps.BeginInvoke()
+    $script:zuTimer.Start()
+}
+$script:zuTimer = New-Object System.Windows.Threading.DispatcherTimer
+$script:zuTimer.Interval = [TimeSpan]::FromMilliseconds(400)
+$script:zuTimer.Add_Tick({
+    $j = $script:zuJob
+    if (-not $j) { $script:zuTimer.Stop(); return }
+    try {
+        if ($j.Phase -eq 'dl' -and $j.Total -gt 0) {
+            $f = [Math]::Min(1, $j.Got / $j.Total)
+            Anim-Double $ui.AuFillS $SX ($f * 0.7) 380
+            $ui.AuPct.Text = T $(('{0}% · {1:N1} из {2:N1} МБ' -f [int](100 * $f), ($j.Got / 1MB), ($j.Total / 1MB)))
+        } elseif ($j.Phase -eq 'unzip' -and -not $j.Done) {
+            $ui.AuSub.Text = T $('Распаковываю…'); $ui.AuPct.Text = ''; Anim-Double $ui.AuFillS $SX 0.8 400
+        }
+        if (-not $j.Done) { return }
+        $script:zuTimer.Stop(); $script:zuJob = $null
+        try { $script:zuPs.Dispose() } catch {}
+        if ($j.Error) { Close-UpdOverlay; Show-Toast "Не удалось обновить zapret: $($j.Error)" -Err; return }
+        # перенос сайтов и настроек в новую версию (быстро, прямо здесь)
+        $ui.AuSub.Text = T $('Переношу твои сайты и настройки…'); Anim-Double $ui.AuFillS $SX 0.92 400
+        $script:migDemo = $false; $script:migFrom = $Root; $script:migTo = $j.NewPath
+        for ($i = 0; $i -lt $MigSteps.Count; $i++) { try { [void](Run-MigStep $i) } catch { Write-Log ($_ | Out-String) } }
+        # останавливаем zapret, удаляем старую версию и перезапускаемся уже на новой
+        $ui.AuSub.Text = T $('Перезапускаю на новой версии…'); Anim-Double $ui.AuFillS $SX 1 500
+        if ($script:zuWasOn) { $Settings.autoStartOnce = $true }
+        Get-Process -Name 'winws' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+        [IO.File]::WriteAllText($UpdFlag, "zapret:$($j.Tag)", $utf8)
+        $old = $Root
+        if ($old -and $old -ne $j.NewPath -and (Split-Path -Parent $old) -eq (Split-Path -Parent $j.NewPath)) {
+            Start-Process cmd.exe -ArgumentList "/c timeout /t 4 /nobreak >nul & rmdir /s /q `"$old`"" -WindowStyle Hidden
+        }
+        $script:zuRestartT = New-Object System.Windows.Threading.DispatcherTimer
+        $script:zuRestartT.Interval = [TimeSpan]::FromMilliseconds(700)
+        $script:zuRestartT.Add_Tick({ $script:zuRestartT.Stop(); Restart-App })
+        $script:zuRestartT.Start()
+    } catch { $script:zuTimer.Stop(); $script:zuJob = $null; Write-Log ($_ | Out-String); Close-UpdOverlay; Show-Toast ("Ошибка обновления zapret: " + $_.Exception.Message) -Err }
+})
 function Start-UpdateCheck {
     $ui.UpdText.Text = T $('Проверяю…')
     $ui.UpdFillS.ScaleX = 0; $ui.UpdBar.Opacity = 1
@@ -4278,9 +4437,9 @@ $timer.Add_Tick({
         elseif ($v -eq $LocalVersion) { $script:latest = $v; $ui.UpdText.Text = T $('Версия актуальна ✓') }
         else {
             $script:latest = $v
-            $ui.UpdText.Text = T $("Скачать $v")
+            $ui.UpdText.Text = T $("Обновить до $v")
             $ui.UpdateBtn.Style = $win.FindResource('AccentBtn')
-            Show-Toast "Вышла новая версия zapret: $v. Распакуй её в папку Zapret и нажми ⚙ → «Перенести настройки»."
+            Show-Toast "Вышла новая версия zapret: $v. Нажми «Обновить до $v» — всё сделается само."
         }
     }
 })
@@ -4333,7 +4492,7 @@ $win.Add_Loaded({
     if ($Settings.autoStartOnce) { $Settings.autoStartOnce = $false; Save-Settings; if ($script:state -eq 'off') { Start-Zapret } }
     if (Test-Path -LiteralPath $UpdFile) { Start-AppUpdateCheck }
     if (Test-Path -LiteralPath $UpdFile) { Start-UpdateCheck } else { $ui.UpdText.Text = T $('Обновления') }
-    if ($AllZapret.Count -gt 1) {
+    if ($AllZapret.Count -gt 1 -and -not (Test-Path -LiteralPath $UpdFlag)) {
         Show-Toast "Использую $($Z.Name). Найдено папок zapret: $($AllZapret.Count)."
     }
 })
@@ -4394,6 +4553,42 @@ try {
     $script:trayIcon.Icon = New-Object System.Drawing.Icon($trayMs, [System.Windows.Forms.SystemInformation]::SmallIconSize)
 } catch { $script:trayIcon.Icon = [System.Drawing.SystemIcons]::Application }
 $script:trayIcon.Text = 'Zapret'
+# два варианта значка: цветной с зелёной точкой (работает) и серый (выключен)
+$script:trayIconOn = $null; $script:trayIconOff = $null
+try {
+    $sz = [System.Windows.Forms.SystemInformation]::SmallIconSize
+    $baseIco = $script:trayIcon.Icon
+    $bmp = New-Object System.Drawing.Bitmap $sz.Width, $sz.Height
+    $g = [System.Drawing.Graphics]::FromImage($bmp); $g.SmoothingMode = 'AntiAlias'; $g.InterpolationMode = 'HighQualityBicubic'
+    $g.DrawIcon($baseIco, (New-Object System.Drawing.Rectangle 0, 0, $sz.Width, $sz.Height))
+    $d = [Math]::Max(6, [int]($sz.Width * 0.42)); $x = $sz.Width - $d; $y = $sz.Height - $d
+    $g.FillEllipse((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 15, 17, 21))), $x - 1, $y - 1, $d + 1, $d + 1)
+    $g.FillEllipse((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 61, 220, 151))), $x + 1, $y + 1, $d - 3, $d - 3)
+    $g.Dispose()
+    $script:trayIconOn = [System.Drawing.Icon]::FromHandle($bmp.GetHicon())
+    $gb = New-Object System.Drawing.Bitmap $sz.Width, $sz.Height
+    $g2 = [System.Drawing.Graphics]::FromImage($gb); $g2.InterpolationMode = 'HighQualityBicubic'
+    $cm = New-Object System.Drawing.Imaging.ColorMatrix
+    $cm.Matrix00 = 0.3; $cm.Matrix01 = 0.3; $cm.Matrix02 = 0.3
+    $cm.Matrix10 = 0.59; $cm.Matrix11 = 0.59; $cm.Matrix12 = 0.59
+    $cm.Matrix20 = 0.11; $cm.Matrix21 = 0.11; $cm.Matrix22 = 0.11
+    $cm.Matrix33 = 0.75; $cm.Matrix44 = 1
+    $ia = New-Object System.Drawing.Imaging.ImageAttributes; $ia.SetColorMatrix($cm)
+    $src = $baseIco.ToBitmap()
+    $g2.DrawImage($src, (New-Object System.Drawing.Rectangle 0, 0, $sz.Width, $sz.Height), 0, 0, $src.Width, $src.Height, [System.Drawing.GraphicsUnit]::Pixel, $ia)
+    $g2.Dispose()
+    $script:trayIconOff = [System.Drawing.Icon]::FromHandle($gb.GetHicon())
+} catch { Write-Log ($_ | Out-String) }
+function Update-TrayIcon {
+    if (-not $script:trayIcon) { return }
+    try {
+        $on = ($script:state -eq 'on')
+        $ic = if ($on) { $script:trayIconOn } else { $script:trayIconOff }
+        if ($ic) { $script:trayIcon.Icon = $ic }
+        $script:trayIcon.Text = T $(if ($on) { 'Zapret · работает' } else { 'Zapret · выключен' })
+    } catch {}
+}
+Update-TrayIcon
 # меню трея в стиле приложения (WPF), а не стандартное серое меню Windows
 try { Add-Type -Namespace ZapretTray -Name Native -MemberDefinition '[System.Runtime.InteropServices.DllImport("user32.dll")] public static extern bool SetForegroundWindow(System.IntPtr h);' } catch {}
 $trayXaml = @'
