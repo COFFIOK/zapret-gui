@@ -19,7 +19,8 @@ try {
 } catch {}
 
 $utf8 = New-Object System.Text.UTF8Encoding($false)
-$TempDir = Join-Path $env:TEMP ('zapret-setup-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+# временные файлы — в системной папке Temp: туда не может писать обычная программа пользователя
+$TempDir = Join-Path $env:SystemRoot ('Temp\zapret-setup-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
 New-Item -ItemType Directory -Path $TempDir | Out-Null
 function Save-Payload([string]$name, [string]$dest) { [IO.File]::WriteAllBytes($dest, [Convert]::FromBase64String($Payload[$name])) }
 $IconTmp = Join-Path $TempDir 'zapret.ico'
@@ -558,6 +559,9 @@ Start-Process cmd.exe -ArgumentList "/c timeout /t 2 /nobreak >nul & rmdir /s /q
     $props = @{ DisplayName = 'Zapret GUI'; DisplayVersion = $AppVersion; DisplayIcon = (Join-Path $app 'zapret.ico'); InstallLocation = $script:dest
                 UninstallString = "`"$(Join-Path $app 'uninstall.cmd')`""; Publisher = 'COFFIOK'; NoModify = 1; NoRepair = 1 }
     foreach ($k in $props.Keys) { New-ItemProperty -Path $UninstKey -Name $k -Value $props[$k] -PropertyType $(if ($props[$k] -is [int]) { 'DWord' } else { 'String' }) -Force | Out-Null }
+    # безопасность: менять файлы в папке Zapret могут только администраторы и система.
+    # Иначе любая программа без прав могла бы подменить Zapret.exe или winws.exe, которые запускаются с правами администратора.
+    try { & icacls.exe "$($script:dest)" /inheritance:r /grant:r '*S-1-5-32-544:(OI)(CI)F' '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-545:(OI)(CI)RX' /T /C /Q 2>&1 | Out-Null } catch {}
 }
 function New-Shortcut($path) {
     $sh = New-Object -ComObject WScript.Shell

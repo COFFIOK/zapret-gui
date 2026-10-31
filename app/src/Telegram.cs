@@ -390,11 +390,13 @@ namespace ZapretCS
         {
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             var req = (HttpWebRequest)WebRequest.Create(url);
-            req.UserAgent = "ZapretGUI"; req.AllowAutoRedirect = true;
+            if (!Sec.TrustedHost(req.RequestUri)) throw new Exception("скачивание разрешено только с GitHub");
+            req.UserAgent = "ZapretGUI"; req.AllowAutoRedirect = true; req.MaximumAutomaticRedirections = 5;
             using (var resp = req.GetResponse())
             using (var input = resp.GetResponseStream())
             using (var fs = File.Create(file))
             {
+                if (!Sec.TrustedHost(resp.ResponseUri)) throw new Exception("файл пришёл не с GitHub: " + resp.ResponseUri.Host);
                 long total = resp.ContentLength, got = 0;
                 var buf = new byte[65536]; int n;
                 while ((n = input.Read(buf, 0, buf.Length)) > 0) { fs.Write(buf, 0, n); got += n; if (progress != null) progress(got, total); }

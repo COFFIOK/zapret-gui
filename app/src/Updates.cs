@@ -32,6 +32,7 @@ namespace ZapretCS
         bool updDoneShown;
         string latestZapret;
         string appUpdTag, appUpdUrl;
+        static string appUpdDigest;
 
         static Version ParseVer(string s)
         {
@@ -50,6 +51,15 @@ namespace ZapretCS
         }
         static string LatestTag(string repo, out string exeUrl)
         {
+            exeUrl = null; appUpdDigest = null;
+            string tag = LatestTagRaw(repo, out exeUrl);
+            // проверяем, что обновление берётся только из релизов этого репозитория на GitHub
+            if (!Sec.SafeTag(tag)) throw new Exception("странное имя версии: " + tag);
+            if (exeUrl != null && !exeUrl.StartsWith("https://github.com/" + repo + "/releases/download/", StringComparison.OrdinalIgnoreCase)) { Log.Write("update: чужой адрес " + exeUrl); exeUrl = null; }
+            return tag;
+        }
+        static string LatestTagRaw(string repo, out string exeUrl)
+        {
             exeUrl = null;
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             try
@@ -61,7 +71,13 @@ namespace ZapretCS
                     var assets = j["assets"] as object[];
                     if (assets != null)
                         foreach (System.Collections.Generic.Dictionary<string, object> a in assets)
-                            if (((string)a["name"]).EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) { exeUrl = (string)a["browser_download_url"]; break; }
+                            if (((string)a["name"]).EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                            {
+                                exeUrl = (string)a["browser_download_url"];
+                                // GitHub сообщает SHA-256 файла — сверим после скачивания
+                                object dg; if (a.TryGetValue("digest", out dg) && dg is string && ((string)dg).StartsWith("sha256:")) appUpdDigest = ((string)dg).Substring(7).ToLowerInvariant();
+                                break;
+                            }
                     return (string)j["tag_name"];
                 }
             }
@@ -134,16 +150,26 @@ namespace ZapretCS
             OpenAu(false);
             Tb("AuTitle").Text = Translate.T("Обновление до " + appUpdTag);
             Tb("AuSub").Text = Translate.T("Скачиваю обновление…"); Tb("AuPct").Text = "";
-            string file = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ZapretSetup-" + appUpdTag + ".exe");
+            string file = null;
+            try { file = System.IO.Path.Combine(Sec.TempDir("upd"), "ZapretSetup-" + appUpdTag + ".exe"); }
+            catch (Exception ex) { CloseAu(); Toast("Не удалось подготовить обновление: " + ex.Message, true); ShowAppUpdate(appUpdTag, appUpdUrl); return; }
+            string digest = appUpdDigest;
             long got = 0, total = 0;
             var tick = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
             tick.Tick += (s, e) => ShowProgress(Interlocked.Read(ref got), Interlocked.Read(ref total), 0.9);
             tick.Start();
-            Background(() => Net.Download(appUpdUrl, file, (g, t) => { Interlocked.Exchange(ref got, g); Interlocked.Exchange(ref total, t); }), err =>
+            Background(() =>
+            {
+                Net.Download(appUpdUrl, file, (g, t) => { Interlocked.Exchange(ref got, g); Interlocked.Exchange(ref total, t); });
+                // проверка: это программа, и она совпадает с тем, что выложено в релизе
+                if (!Sec.LooksLikeExe(file)) throw new Exception("скачанный файл повреждён");
+                if (digest != null && Sec.Sha256(file) != digest) throw new Exception("файл не совпадает с релизом на GitHub (контрольная сумма)");
+            }, err =>
             {
                 tick.Stop();
                 if (err != null)
                 {
+                    try { File.Delete(file); } catch { }
                     CloseAu(); Toast("Не удалось скачать обновление: " + err.Message, true);
                     ShowAppUpdate(appUpdTag, appUpdUrl); Btn("AppUpdBtn").Content = Translate.T("Повторить");
                     return;
@@ -290,19 +316,22 @@ namespace ZapretCS
                     using (var resp = r0.GetResponse()) { var m = Regex.Match(resp.Headers["Location"] ?? "", "/tag/([^/?#]+)"); if (m.Success) tag = m.Groups[1].Value; }
                 }
                 catch { }
-                string zip = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "zapret-" + tag + ".zip");
+                if (!Sec.SafeTag(tag)) throw new Exception("странное имя версии zapret: " + tag);
+                string tmp = Sec.TempDir("zapret");
+                string zip = System.IO.Path.Combine(tmp, "zapret-" + tag + ".zip");
                 Net.Download("https://github.com/Flowseal/zapret-discord-youtube/releases/download/" + tag + "/zapret-discord-youtube-" + tag + ".zip", zip,
                     (g, t) => { Interlocked.Exchange(ref got, g); Interlocked.Exchange(ref total, t); });
                 phase = 1;
-                string ex = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "zapret-unz-" + Guid.NewGuid().ToString("N"));
-                ZipFile.ExtractToDirectory(zip, ex);
+                // распаковываем рядом с zapret (в защищённую папку), а не во временную папку пользователя
+                string ex = System.IO.Path.Combine(parent, ".unpack-" + Guid.NewGuid().ToString("N").Substring(0, 10));
+                Sec.Extract(zip, ex);
                 var top = Directory.GetDirectories(ex);
                 string src = top.Length == 1 && !File.Exists(System.IO.Path.Combine(ex, "bin\\winws.exe")) ? top[0] : ex;
                 if (!File.Exists(System.IO.Path.Combine(src, "bin\\winws.exe"))) throw new Exception("в архиве нет zapret (bin\\winws.exe)");
                 string dst = System.IO.Path.Combine(parent, "zapret-discord-youtube-" + tag);
                 if (Directory.Exists(dst)) dst += "-" + DateTime.Now.ToString("HHmmss");
                 Directory.Move(src, dst);
-                try { Directory.Delete(ex, true); File.Delete(zip); } catch { }
+                try { Directory.Delete(ex, true); Directory.Delete(tmp, true); } catch { }
                 newPath = dst;
             }, err =>
             {

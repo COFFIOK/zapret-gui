@@ -14,7 +14,14 @@ import (
 var script []byte
 
 func main() {
-	p := filepath.Join(os.TempDir(), fmt.Sprintf("zapret-setup-%d.ps1", time.Now().UnixNano()))
+	// системная папка Temp: обычная программа пользователя не сможет подменить скрипт до запуска
+	dir := os.TempDir()
+	if sr := os.Getenv("SystemRoot"); sr != "" {
+		if st, err := os.Stat(filepath.Join(sr, "Temp")); err == nil && st.IsDir() {
+			dir = filepath.Join(sr, "Temp")
+		}
+	}
+	p := filepath.Join(dir, fmt.Sprintf("zapret-setup-%d.ps1", time.Now().UnixNano()))
 	if err := os.WriteFile(p, script, 0644); err != nil {
 		return
 	}

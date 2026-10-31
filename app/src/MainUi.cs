@@ -84,6 +84,8 @@ namespace ZapretCS
             Step("updates", WireUpdates);
             Step("tray", BuildTray);
             Step("translate", () => Translate.Init(this));
+            // безопасность: права на папку Zapret и уборка старых временных файлов — в фоне, один раз при запуске
+            Step("security", () => new System.Threading.Thread(() => { Sec.CleanTemp(); if (InHome) Sec.HardenFolder(HomeDir); }) { IsBackground = true, Priority = System.Threading.ThreadPriority.BelowNormal }.Start());
 
             timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1000) };
             timer.Tick += (s, e) => { try { RefreshState(); } catch (Exception ex) { Log.Write("refresh: " + ex); } };

@@ -104,7 +104,7 @@ namespace ZapretCS
             foreach (var k in g.Keys)
             {
                 if (g[k].Count == 0) continue;
-                lines.Add("# @group " + k);
+                lines.Add("# @group " + (CleanGroupName(k) ?? "Прочее"));
                 lines.AddRange(g[k]);
             }
             File.WriteAllText(ZapretCore.UserListFile, string.Join("\r\n", lines) + "\r\n", new UTF8Encoding(false));
@@ -129,6 +129,15 @@ namespace ZapretCS
             }
             foreach (var k in g.Keys.ToList()) if (g[k].Count == 0) g.Remove(k);
             return g;
+        }
+        // имя группы приходит и от друзей — убираем переносы строк и служебные символы, ограничиваем длину
+        public static string CleanGroupName(string n)
+        {
+            if (n == null) return null;
+            n = Regex.Replace(n, @"[\p{C}#]+", " ");
+            n = Regex.Replace(n, @"\s+", " ").Trim();
+            if (n.Length > 40) n = n.Substring(0, 40).Trim();
+            return n.Length == 0 ? null : n;
         }
         static string NormalizeDomain(string raw)
         {
@@ -591,7 +600,7 @@ namespace ZapretCS
                 string s = raw.Trim();
                 if (s.Length == 0) continue;
                 var m = Regex.Match(s, @"^#\s*@group\s+(.+)$");
-                if (m.Success) { cur = m.Groups[1].Value.Trim(); continue; }
+                if (m.Success) { cur = CleanGroupName(m.Groups[1].Value); continue; }
                 if (s.StartsWith("#") || s == ZapretCore.Placeholder) continue;
                 foreach (var tok in Regex.Split(s, @"[\s,;]+"))
                 {

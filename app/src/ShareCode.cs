@@ -196,6 +196,7 @@ namespace ZapretCS
         static Groups GroupsFromJson(string json)
         {
             var g = new Groups();
+            if (json == null || json.Length > 64 * 1024) return g;
             var o = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(json);
             object gr; if (!o.TryGetValue("groups", out gr)) return g;
             var d = gr as IDictionary<string, object>;
@@ -204,7 +205,8 @@ namespace ZapretCS
             {
                 var list = kv.Value as IEnumerable;
                 if (list == null || kv.Value is string) continue;
-                foreach (var it in list) { var s = it as string; if (s != null && !g[kv.Key].Contains(s)) g[kv.Key].Add(s); }
+                string name = CleanGroupName(kv.Key) ?? "Прочее";
+                foreach (var it in list) { var s = it as string; if (s != null && s.Length <= 253 && !g[name].Contains(s)) g[name].Add(s); }
             }
             foreach (var k in g.Keys.ToList()) if (g[k].Count == 0) g.Remove(k);
             return g;

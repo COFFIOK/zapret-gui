@@ -226,10 +226,12 @@ namespace ZapretCS
                 "<ExecutionTimeLimit>PT0S</ExecutionTimeLimit><Priority>4</Priority></Settings>" +
                 "<Actions Context=\"Author\"><Exec><Command>" + SecurityElement.Escape(exe) + "</Command>" + (args.Length > 0 ? "<Arguments>" + SecurityElement.Escape(args) + "</Arguments>" : "") +
                 "<WorkingDirectory>" + SecurityElement.Escape(System.IO.Path.GetDirectoryName(exe)) + "</WorkingDirectory></Exec></Actions></Task>";
-            string tmp = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "zapret-task-" + Guid.NewGuid().ToString("N") + ".xml");
+            // файл задачи кладём в защищённую папку: из %TEMP% его могла бы подменить другая программа
+            string dir = Sec.TempDir("task");
+            string tmp = System.IO.Path.Combine(dir, "task.xml");
             File.WriteAllText(tmp, xml, Encoding.Unicode);
             try { if (Run("schtasks.exe", "/create /tn \"" + name + "\" /xml \"" + tmp + "\" /f") != 0) throw new Exception("не удалось создать задачу Windows"); }
-            finally { try { File.Delete(tmp); } catch { } }
+            finally { try { Directory.Delete(dir, true); } catch { } }
         }
         void EnableNoPrompt()
         {
