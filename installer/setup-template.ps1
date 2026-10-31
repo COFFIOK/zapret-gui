@@ -509,8 +509,19 @@ function Remove-OldVersion([string]$app) {
         }
     } catch {}
 }
+# права на папку: сама папка — администраторы и система (полный доступ), пользователи — чтение;
+# всё внутри наследует эти права. Заодно чинит файлы с испорченными правами (версия 2.0.1 до исправления).
+function Set-SafeAcl([string]$dir) {
+    if (-not $dir -or -not (Test-Path -LiteralPath $dir)) { return }
+    try {
+        & icacls.exe "$dir" /setowner '*S-1-5-32-544' /T /C /Q 2>&1 | Out-Null
+        & icacls.exe "$dir" /inheritance:r /grant:r '*S-1-5-32-544:(OI)(CI)F' '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-545:(OI)(CI)RX' /C /Q 2>&1 | Out-Null
+        & icacls.exe "$(Join-Path $dir '*')" /reset /T /C /Q 2>&1 | Out-Null
+    } catch {}
+}
 function Install-App {
     $app = Join-Path $script:dest 'app'
+    Set-SafeAcl $script:dest
     New-Item -ItemType Directory -Force -Path $app | Out-Null
     Stop-OldApp
     for ($k = 0; $k -lt 8; $k++) { try { Save-Payload 'Zapret.exe' (Join-Path $app 'Zapret.exe'); break } catch { if ($k -eq 7) { throw }; Start-Sleep -Milliseconds 500 } }
@@ -561,7 +572,7 @@ Start-Process cmd.exe -ArgumentList "/c timeout /t 2 /nobreak >nul & rmdir /s /q
     foreach ($k in $props.Keys) { New-ItemProperty -Path $UninstKey -Name $k -Value $props[$k] -PropertyType $(if ($props[$k] -is [int]) { 'DWord' } else { 'String' }) -Force | Out-Null }
     # безопасность: менять файлы в папке Zapret могут только администраторы и система.
     # Иначе любая программа без прав могла бы подменить Zapret.exe или winws.exe, которые запускаются с правами администратора.
-    try { & icacls.exe "$($script:dest)" /inheritance:r /grant:r '*S-1-5-32-544:(OI)(CI)F' '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-545:(OI)(CI)RX' /T /C /Q 2>&1 | Out-Null } catch {}
+    Set-SafeAcl $script:dest
 }
 function New-Shortcut($path) {
     $sh = New-Object -ComObject WScript.Shell

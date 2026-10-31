@@ -103,6 +103,10 @@ namespace ZapretCS
         // папка Zapret: менять файлы могут только администраторы и система, остальным — только чтение.
         // Иначе любая программа без прав могла бы подменить Zapret.exe или winws.exe,
         // которые потом запускаются с правами администратора.
+        static void Icacls(string args)
+        {
+            using (var p = Process.Start(new ProcessStartInfo("icacls.exe", args) { CreateNoWindow = true, UseShellExecute = false })) p.WaitForExit(60000);
+        }
         public static void HardenFolder(string dir)
         {
             try
@@ -119,11 +123,16 @@ namespace ZapretCS
                     const FileSystemRights write = FileSystemRights.WriteData | FileSystemRights.AppendData | FileSystemRights.Delete | FileSystemRights.ChangePermissions | FileSystemRights.TakeOwnership | FileSystemRights.WriteAttributes;
                     if ((r.FileSystemRights & write) != 0) { weak = true; break; }
                 }
+                // файлы с пустыми правами (так их оставляла ранняя сборка 2.0.1) — тоже чиним
+                if (!weak)
+                    foreach (var f in new[] { System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName })
+                        try { if (File.GetAccessControl(f).GetAccessRules(true, true, typeof(SecurityIdentifier)).Count == 0) weak = true; } catch { weak = true; }
                 if (!weak) return;
                 Log.Write("security: права на " + dir + " исправлены");
-                var psi = new ProcessStartInfo("icacls.exe", "\"" + dir + "\" /inheritance:r /grant:r *S-1-5-32-544:(OI)(CI)F *S-1-5-18:(OI)(CI)F *S-1-5-32-545:(OI)(CI)RX /T /C /Q")
-                { CreateNoWindow = true, UseShellExecute = false };
-                using (var p = Process.Start(psi)) p.WaitForExit(60000);
+                // сама папка: администраторы и система — полный доступ, пользователи — чтение; всё внутри наследует
+                Icacls("\"" + dir + "\" /setowner *S-1-5-32-544 /T /C /Q");
+                Icacls("\"" + dir + "\" /inheritance:r /grant:r *S-1-5-32-544:(OI)(CI)F *S-1-5-18:(OI)(CI)F *S-1-5-32-545:(OI)(CI)RX /C /Q");
+                Icacls("\"" + System.IO.Path.Combine(dir, "*") + "\" /reset /T /C /Q");
             }
             catch (Exception ex) { Log.Write("security harden: " + ex.Message); }
         }
