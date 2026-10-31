@@ -2,7 +2,7 @@ param([string]$SelfPath, [switch]$Auto)
 # ====== Установщик Zapret GUI ======
 $ErrorActionPreference = 'Stop'
 $AppName = 'Zapret'
-$AppVersion = '1.2.2'
+$AppVersion = '2.0.0'
 
 # --- права администратора (один запрос) ---
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -32,7 +32,7 @@ try { $Existing = (Get-ItemProperty -LiteralPath $UninstKey -ErrorAction Stop).I
 if (-not $Existing) {
     # приложение могло быть собрано вручную, без установщика (например, на рабочем столе)
     foreach ($cand in @((Join-Path ([Environment]::GetFolderPath('Desktop')) 'Zapret'), 'C:\Zapret')) {
-        if (Test-Path -LiteralPath (Join-Path $cand 'app\zapret-gui.ps1')) { $Existing = $cand; break }
+        if ((Test-Path -LiteralPath (Join-Path $cand 'app\Zapret.exe')) -or (Test-Path -LiteralPath (Join-Path $cand 'app\zapret-gui.ps1'))) { $Existing = $cand; break }
     }
 }
 # ---- поиск уже установленного zapret ----
@@ -238,14 +238,10 @@ $DefaultDir = if ($Existing -and (Test-Path -LiteralPath $Existing)) { $Existing
             </Ellipse>
             <Grid x:Name="Logo" Width="96" Height="96" RenderTransformOrigin="0.5,0.5">
               <Grid.RenderTransform><ScaleTransform x:Name="LogoFlip"/></Grid.RenderTransform>
-              <Ellipse Fill="#3DDC97">
-                <Ellipse.Effect><DropShadowEffect Color="#3DDC97" BlurRadius="30" ShadowDepth="0" Opacity="0.75"/></Ellipse.Effect>
-              </Ellipse>
-              <Viewbox Width="56" Height="56">
-                <Canvas Width="80" Height="80">
-                  <Path Data="M 16,14 L 64,14 L 64,26 L 34,54 L 64,54 L 64,66 L 16,66 L 16,54 L 46,26 L 16,26 Z" Fill="#0F1115" StrokeLineJoin="Round" Stroke="#0F1115" StrokeThickness="2"/>
-                </Canvas>
-              </Viewbox>
+              <!-- логотип приложения (тот же значок, что у Zapret) -->
+              <Image x:Name="LogoImg" Width="96" Height="96" RenderOptions.BitmapScalingMode="HighQuality">
+                <Image.Effect><DropShadowEffect Color="#3DDC97" BlurRadius="28" ShadowDepth="0" Opacity="0.45"/></Image.Effect>
+              </Image>
             </Grid>
           </Grid>
 
@@ -336,6 +332,7 @@ function Brush($hex) { New-Object System.Windows.Media.SolidColorBrush ([System.
 try {
     $dec = [System.Windows.Media.Imaging.BitmapDecoder]::Create((New-Object Uri $IconTmp), 'None', 'OnLoad')
     $win.Icon = $dec.Frames | Sort-Object PixelWidth -Descending | Select-Object -First 1
+    $ui.LogoImg.Source = $win.Icon
 } catch {}
 $ui.DirBox.Text = $DefaultDir
 function Fill-Src {
@@ -475,17 +472,55 @@ function Start-Download {
     $script:dlPs = $ps; $script:dlH = $ps.BeginInvoke()
 }
 
+# закрыть всё, что осталось от прошлых версий приложения (окно на PowerShell, Zapret.exe, тестовая ZapretCS.exe)
+function Stop-OldApp {
+    try {
+        Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction Stop |
+            Where-Object { $_.CommandLine -like '*zapret-gui.ps1*' -and $_.ProcessId -ne $PID } |
+            ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+    } catch {}
+    Get-Process -Name 'Zapret', 'ZapretCS' -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne $PID -and $_.Path -like '*\app\Zapret*.exe' } | Stop-Process -Force -ErrorAction SilentlyContinue
+    for ($k = 0; $k -lt 20; $k++) {
+        if (-not @(Get-Process -Name 'Zapret', 'ZapretCS' -ErrorAction SilentlyContinue | Where-Object { $_.Path -like '*\app\Zapret*.exe' }).Count) { break }
+        Start-Sleep -Milliseconds 150
+    }
+}
+# убрать остатки старой версии (PowerShell) и тестовой сборки
+function Remove-OldVersion([string]$app) {
+    foreach ($f in 'zapret-gui.ps1', 'untranslated.txt', 'ZapretCS.exe', 'cs-error.log') {
+        Remove-Item -LiteralPath (Join-Path $app $f) -Force -ErrorAction SilentlyContinue
+    }
+    Remove-Item -LiteralPath (Join-Path (Split-Path -Parent $app) 'csharp') -Recurse -Force -ErrorAction SilentlyContinue
+    $desk = [Environment]::GetFolderPath('Desktop')
+    foreach ($f in 'Zapret (новая версия).lnk', 'ZapretCS-build.cmd', 'ZapretCS-setup.cmd') { Remove-Item -LiteralPath (Join-Path $desk $f) -Force -ErrorAction SilentlyContinue }
+    foreach ($tn in 'ZapretCS GUI', 'ZapretCS Autostart', 'ZapretCS Dev') {
+        try { Unregister-ScheduledTask -TaskName $tn -Confirm:$false -ErrorAction Stop } catch {}
+    }
+    # автозапуск с Windows: если был включён — теперь запускает новую версию
+    try {
+        if (Get-ScheduledTask -TaskName 'ZapretGUI Autostart' -ErrorAction Stop) {
+            $user = [Security.Principal.WindowsIdentity]::GetCurrent().Name
+            $act = New-ScheduledTaskAction -Execute (Join-Path $app 'Zapret.exe') -Argument '-AutoStart -Tray' -WorkingDirectory $app
+            $trg = New-ScheduledTaskTrigger -AtLogOn -User $user; $trg.Delay = 'PT5S'
+            $pr = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Highest
+            $set = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -Priority 4
+            Register-ScheduledTask -TaskName 'ZapretGUI Autostart' -Action $act -Trigger $trg -Principal $pr -Settings $set -Description 'Запуск Zapret вместе с Windows' -Force | Out-Null
+        }
+    } catch {}
+}
 function Install-App {
     $app = Join-Path $script:dest 'app'
     New-Item -ItemType Directory -Force -Path $app | Out-Null
-    for ($k = 0; $k -lt 5; $k++) { try { Save-Payload 'zapret-gui.ps1' (Join-Path $app 'zapret-gui.ps1'); break } catch { if ($k -eq 4) { throw }; Start-Sleep -Milliseconds 500 } }
+    Stop-OldApp
+    for ($k = 0; $k -lt 8; $k++) { try { Save-Payload 'Zapret.exe' (Join-Path $app 'Zapret.exe'); break } catch { if ($k -eq 7) { throw }; Start-Sleep -Milliseconds 500 } }
+    Remove-OldVersion $app
     $icoDst = Join-Path $app 'zapret.ico'
     $same = $false
     if (Test-Path -LiteralPath $icoDst) { try { $same = ([Convert]::ToBase64String([IO.File]::ReadAllBytes($icoDst)) -eq [Convert]::ToBase64String([IO.File]::ReadAllBytes($IconTmp))) } catch {} }
     if (-not $same) {
         for ($k = 0; $k -lt 5; $k++) { try { Copy-Item -LiteralPath $IconTmp -Destination $icoDst -Force -ErrorAction Stop; break } catch { Start-Sleep -Milliseconds 400 } }
     }
-    $launcher = "@echo off`r`nschtasks /run /tn `"ZapretGUI`" >nul 2>&1 && exit /b`r`nif exist `"%~dp0app\Zapret.exe`" ( start `"`" `"%~dp0app\Zapret.exe`" & exit /b )`r`npowershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command `"Start-Process powershell -Verb RunAs -WindowStyle Hidden -ArgumentList '-NoProfile -ExecutionPolicy Bypass -STA -WindowStyle Hidden -File \`"%~dp0app\zapret-gui.ps1\`"'`"`r`n"
+    $launcher = "@echo off`r`nschtasks /run /tn `"ZapretGUI`" >nul 2>&1 && exit /b`r`nstart `"`" `"%~dp0app\Zapret.exe`"`r`n"
     [IO.File]::WriteAllText((Join-Path $script:dest 'Zapret.bat'), $launcher, [Text.Encoding]::ASCII)
     # настройка «без запроса прав» для приложения
     $sf = Join-Path $app 'gui-settings.json'
@@ -503,12 +538,13 @@ Add-Type -AssemblyName PresentationFramework
 $r = [System.Windows.MessageBox]::Show("Удалить Zapret?`n`nБудет удалена папка $dir вместе с zapret и твоими списками сайтов.", 'Удаление Zapret', 'YesNo', 'Question')
 if ($r -ne 'Yes') { exit }
 Get-Process -Name winws | Stop-Process -Force
-Get-Process -Name 'Zapret' | Where-Object { $_.Path -like "$dir\*" } | Stop-Process -Force
+Get-Process -Name 'Zapret', 'ZapretCS' | Where-Object { $_.Path -like "$dir\*" } | Stop-Process -Force
 Get-Process -Name 'TgWsProxy_windows' | Stop-Process -Force
 Remove-NetFirewallRule -DisplayName 'Zapret Telegram proxy'
 try { Stop-Service zapret -Force; sc.exe delete zapret | Out-Null } catch {}
 Unregister-ScheduledTask -TaskName 'ZapretGUI' -Confirm:$false
 Unregister-ScheduledTask -TaskName 'ZapretGUI Autostart' -Confirm:$false
+foreach ($tn in 'ZapretCS GUI', 'ZapretCS Autostart', 'ZapretCS Dev') { Unregister-ScheduledTask -TaskName $tn -Confirm:$false }
 foreach ($l in @((Join-Path ([Environment]::GetFolderPath('Desktop')) 'Zapret.lnk'), (Join-Path ([Environment]::GetFolderPath('Programs')) 'Zapret.lnk'))) { Remove-Item -LiteralPath $l -Force }
 Remove-Item -LiteralPath 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\ZapretGUI' -Recurse -Force
 Start-Process cmd.exe -ArgumentList "/c timeout /t 2 /nobreak >nul & rmdir /s /q `"$dir`"" -WindowStyle Hidden
@@ -531,11 +567,10 @@ function New-Shortcut($path) {
     $l.Save()
 }
 function Register-NoPrompt {
-    $ps1 = Join-Path $script:dest 'app\zapret-gui.ps1'
-    $arg = "-NoProfile -ExecutionPolicy Bypass -STA -WindowStyle Hidden -File `"$ps1`""
-    $act = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $arg -WorkingDirectory (Join-Path $script:dest 'app')
+    $app = Join-Path $script:dest 'app'
+    $act = New-ScheduledTaskAction -Execute (Join-Path $app 'Zapret.exe') -WorkingDirectory $app
     $pr = New-ScheduledTaskPrincipal -UserId ([Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Highest
-    $set = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew
+    $set = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -Priority 4
     Register-ScheduledTask -TaskName 'ZapretGUI' -Action $act -Principal $pr -Settings $set -Description 'Запуск приложения Zapret без запроса прав администратора' -Force | Out-Null
 }
 
@@ -678,14 +713,7 @@ function Begin-Install {
     $script:localSrc = if ($src -and $src -ne 'download' -and -not $script:manualZip) { $src } else { $null }
     $script:wasRunning = [bool](Get-Process -Name winws -ErrorAction SilentlyContinue)
     # закрыть открытое окно Zapret, чтобы обновить его файлы
-    try {
-        Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction Stop |
-            Where-Object { $_.CommandLine -like '*zapret-gui.ps1*' -and $_.ProcessId -ne $PID } |
-            ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
-        # с версии 1.2 приложение работает как Zapret.exe
-        Get-Process -Name 'Zapret' -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne $PID -and $_.Path -like '*\app\Zapret.exe' } | Stop-Process -Force -ErrorAction SilentlyContinue
-        Start-Sleep -Milliseconds 600
-    } catch {}
+    Stop-OldApp
     Get-Process -Name winws -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
     $ui.PageSetup.Visibility = 'Collapsed'
     $ui.PageProgress.Visibility = 'Visible'; Anim $ui.PageProgress $OP 1 300 0
@@ -712,7 +740,7 @@ $ui.MainBtn.Add_Click({
     if ($script:finished) {
         $bat = Join-Path $script:dest 'Zapret.bat'
         if ($ui.OptNoPrompt.IsChecked) { Start-Process schtasks.exe -ArgumentList '/run /tn "ZapretGUI"' -WindowStyle Hidden }
-        else { Start-Process powershell -WindowStyle Hidden -ArgumentList "-NoProfile -ExecutionPolicy Bypass -STA -WindowStyle Hidden -File `"$(Join-Path $script:dest 'app\zapret-gui.ps1')`"" }
+        else { Start-Process -FilePath (Join-Path $script:dest 'app\Zapret.exe') }
         $win.Close(); return
     }
     Begin-Install
@@ -746,26 +774,22 @@ if ($Auto -and $Existing -and (Test-Path -LiteralPath (Join-Path $Existing 'app'
         $ui.OptDesktop.IsChecked = Test-Path -LiteralPath (Join-Path ([Environment]::GetFolderPath('Desktop')) 'Zapret.lnk')
         # ждём, пока приложение закроется само (оно закрывается с анимацией), потом подстраховка
         for ($k = 0; $k -lt 30; $k++) {
-            $alive = @(Get-Process -Name 'Zapret' -ErrorAction SilentlyContinue | Where-Object { $_.Path -like '*\app\Zapret.exe' })
+            $alive = @(Get-Process -Name 'Zapret', 'ZapretCS' -ErrorAction SilentlyContinue | Where-Object { $_.Path -like '*\app\Zapret*.exe' })
             if (-not $alive.Count) { break }
             Start-Sleep -Milliseconds 200
         }
-        Get-Process -Name 'Zapret' -ErrorAction SilentlyContinue | Where-Object { $_.Path -like '*\app\Zapret.exe' } | Stop-Process -Force -ErrorAction SilentlyContinue
-        try {
-            Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction Stop |
-                Where-Object { $_.CommandLine -like '*zapret-gui.ps1*' -and $_.ProcessId -ne $PID } |
-                ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
-        } catch {}
+        Stop-OldApp
         Start-Sleep -Milliseconds 300
         Install-App
+        # задача «без запроса прав» у старых версий запускала PowerShell — перенастраиваем на Zapret.exe
+        if ($hasTask) { Register-NoPrompt }
         New-Shortcut (Join-Path ([Environment]::GetFolderPath('Programs')) 'Zapret.lnk')
         if ($ui.OptDesktop.IsChecked) { New-Shortcut (Join-Path ([Environment]::GetFolderPath('Desktop')) 'Zapret.lnk') }
         # отметка для приложения: показать «Обновлено»
         [IO.File]::WriteAllText((Join-Path $Existing 'app\updated.flag'), $AppVersion, (New-Object System.Text.UTF8Encoding($false)))
         $exe = Join-Path $Existing 'app\Zapret.exe'
         if ($hasTask) { Start-Process schtasks.exe -ArgumentList '/run /tn "ZapretGUI"' -WindowStyle Hidden }
-        elseif (Test-Path -LiteralPath $exe) { Start-Process -FilePath $exe }
-        else { Start-Process powershell -WindowStyle Hidden -ArgumentList "-NoProfile -ExecutionPolicy Bypass -STA -WindowStyle Hidden -File `"$(Join-Path $Existing 'app\zapret-gui.ps1')`"" }
+        else { Start-Process -FilePath $exe }
         try { Remove-Item -LiteralPath $TempDir -Recurse -Force -ErrorAction SilentlyContinue } catch {}
         exit 0
     } catch {

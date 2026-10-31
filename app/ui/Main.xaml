@@ -1,0 +1,1174 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Zapret" Width="920" Height="660" WindowStyle="None" AllowsTransparency="True"
+        Background="Transparent" ResizeMode="CanMinimize" WindowStartupLocation="CenterScreen"
+        FontFamily="Segoe UI" Foreground="#E6E8EE" UseLayoutRounding="True">
+  <Window.Resources>
+    <SolidColorBrush x:Key="Accent" Color="#3DDC97"/>
+    <SolidColorBrush x:Key="Card" Color="#1A1D24"/>
+    <SolidColorBrush x:Key="Field" Color="#22262F"/>
+    <SolidColorBrush x:Key="Line" Color="#2E3340"/>
+    <SolidColorBrush x:Key="Muted" Color="#8A90A0"/>
+
+    <Style x:Key="Btn" TargetType="Button">
+      <Setter Property="Background" Value="#22262F"/>
+      <Setter Property="Foreground" Value="#E6E8EE"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="Padding" Value="14,9"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+      <Setter Property="RenderTransform"><Setter.Value><ScaleTransform/></Setter.Value></Setter>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="10" Padding="{TemplateBinding Padding}" BorderBrush="#2E3340" BorderThickness="1">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="BorderBrush" Value="#3DDC97"/>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True">
+                <Setter Property="RenderTransform"><Setter.Value><ScaleTransform ScaleX="0.96" ScaleY="0.96"/></Setter.Value></Setter>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.4"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="AccentBtn" TargetType="Button" BasedOn="{StaticResource Btn}">
+      <Setter Property="Background" Value="#3DDC97"/>
+      <Setter Property="Foreground" Value="#0F1115"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+
+    <Style x:Key="TitleBtn" TargetType="Button">
+      <Setter Property="Foreground" Value="#8A90A0"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Bd" Background="Transparent" CornerRadius="8" Width="34" Height="28">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="#2A2E38"/>
+                <Setter Property="Foreground" Value="#FFFFFF"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style TargetType="ComboBoxItem">
+      <Setter Property="Foreground" Value="#E6E8EE"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ComboBoxItem">
+            <Border x:Name="Bd" Background="Transparent" CornerRadius="7" Padding="12,7" Margin="4,1">
+              <ContentPresenter/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsHighlighted" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="#2A2E38"/>
+              </Trigger>
+              <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Foreground" Value="#3DDC97"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style TargetType="ComboBox">
+      <Setter Property="Foreground" Value="#E6E8EE"/>
+      <Setter Property="Height" Value="38"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ComboBox">
+            <Grid>
+              <ToggleButton Focusable="False" ClickMode="Press"
+                            IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                <ToggleButton.Template>
+                  <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Bd" Background="#22262F" CornerRadius="10" BorderBrush="#2E3340" BorderThickness="1">
+                      <Path HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,14,0"
+                            Data="M0,0 L5,5 L10,0" Stroke="#8A90A0" StrokeThickness="1.6"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                      <Trigger Property="IsMouseOver" Value="True">
+                        <Setter TargetName="Bd" Property="BorderBrush" Value="#3DDC97"/>
+                      </Trigger>
+                    </ControlTemplate.Triggers>
+                  </ControlTemplate>
+                </ToggleButton.Template>
+              </ToggleButton>
+              <ContentPresenter IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}"
+                                Margin="14,0,34,0" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+              <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True"
+                     Focusable="False" PopupAnimation="Fade">
+                <Border Background="#22262F" CornerRadius="10" BorderBrush="#2E3340" BorderThickness="1"
+                        Margin="0,4,0,0" MinWidth="{TemplateBinding ActualWidth}" MaxHeight="320" Padding="0,4">
+                  <ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsPresenter/></ScrollViewer>
+                </Border>
+              </Popup>
+            </Grid>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="Toggle" TargetType="CheckBox">
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="CheckBox">
+            <Border x:Name="Track" Width="44" Height="24" CornerRadius="12" Background="#2E3340">
+              <Ellipse x:Name="Knob" Width="18" Height="18" Fill="#E6E8EE" HorizontalAlignment="Left" Margin="3,0,0,0">
+                <Ellipse.RenderTransform><TranslateTransform x:Name="KnobT" X="0"/></Ellipse.RenderTransform>
+              </Ellipse>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsChecked" Value="True">
+                <Trigger.EnterActions>
+                  <BeginStoryboard><Storyboard>
+                    <DoubleAnimation Storyboard.TargetName="KnobT" Storyboard.TargetProperty="X" To="20" Duration="0:0:0.18"/>
+                    <ColorAnimation Storyboard.TargetName="Track" Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" To="#3DDC97" Duration="0:0:0.18"/>
+                  </Storyboard></BeginStoryboard>
+                </Trigger.EnterActions>
+                <Trigger.ExitActions>
+                  <BeginStoryboard><Storyboard>
+                    <DoubleAnimation Storyboard.TargetName="KnobT" Storyboard.TargetProperty="X" To="0" Duration="0:0:0.18"/>
+                    <ColorAnimation Storyboard.TargetName="Track" Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" To="#2E3340" Duration="0:0:0.18"/>
+                  </Storyboard></BeginStoryboard>
+                </Trigger.ExitActions>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="PickRow" TargetType="ToggleButton">
+      <Setter Property="Foreground" Value="#9AA3B5"/>
+      <Setter Property="FontSize" Value="12.5"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ToggleButton">
+            <Border x:Name="Bd" Background="#1E2129" BorderBrush="#262A33" BorderThickness="1" CornerRadius="9" Padding="9,6" Margin="0,0,6,6">
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <Border x:Name="Box" Width="16" Height="16" CornerRadius="4" BorderBrush="#3A3F4D" BorderThickness="1.5" Background="#00000000" Margin="0,0,9,0" VerticalAlignment="Center">
+                  <TextBlock x:Name="Tick" Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="10" Foreground="#0F1115" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0"/>
+                </Border>
+                <ContentPresenter Grid.Column="1" VerticalAlignment="Center"/>
+              </Grid>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#22262F"/></Trigger>
+              <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="Bd" Property="BorderBrush" Value="#2D5A47"/>
+                <Setter TargetName="Box" Property="Background" Value="#3DDC97"/>
+                <Setter TargetName="Box" Property="BorderBrush" Value="#3DDC97"/>
+                <Setter TargetName="Tick" Property="Opacity" Value="1"/>
+                <Setter Property="Foreground" Value="#E6E8EE"/>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="Chip" TargetType="ToggleButton">
+      <Setter Property="Foreground" Value="#9AA3B5"/>
+      <Setter Property="FontSize" Value="12.5"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Margin" Value="0,0,6,6"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ToggleButton">
+            <Border x:Name="Bd" Background="#22262F" BorderBrush="#2E3340" BorderThickness="1" CornerRadius="14" Padding="12,5">
+              <ContentPresenter VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="Bd" Property="BorderBrush" Value="#3DDC97"/>
+                <Setter Property="Foreground" Value="#E6E8EE"/>
+                <Trigger.EnterActions>
+                  <BeginStoryboard><Storyboard>
+                    <ColorAnimation Storyboard.TargetName="Bd" Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" To="#1B3329" Duration="0:0:0.18"/>
+                  </Storyboard></BeginStoryboard>
+                </Trigger.EnterActions>
+                <Trigger.ExitActions>
+                  <BeginStoryboard><Storyboard>
+                    <ColorAnimation Storyboard.TargetName="Bd" Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" To="#22262F" Duration="0:0:0.18"/>
+                  </Storyboard></BeginStoryboard>
+                </Trigger.ExitActions>
+              </Trigger>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Opacity" Value="0.85"/>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.4"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="NavItem" TargetType="RadioButton">
+      <Setter Property="Foreground" Value="#9AA3B5"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Margin" Value="0,0,0,4"/>
+      <Setter Property="GroupName" Value="SetNav"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="RadioButton">
+            <Border x:Name="Bd" Background="Transparent" CornerRadius="10" Padding="12,9">
+              <Grid>
+                <Border x:Name="Ind" Width="3" CornerRadius="1.5" Background="#3DDC97" HorizontalAlignment="Left" Margin="-12,2,0,2" Opacity="0"/>
+                <ContentPresenter VerticalAlignment="Center"/>
+              </Grid>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="#1E2129"/>
+              </Trigger>
+              <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="#22262F"/>
+                <Setter TargetName="Ind" Property="Opacity" Value="1"/>
+                <Setter Property="Foreground" Value="#E6E8EE"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="SetCard" TargetType="Border">
+      <Setter Property="Background" Value="#1E2129"/>
+      <Setter Property="CornerRadius" Value="14"/>
+      <Setter Property="Padding" Value="16,14"/>
+      <Setter Property="BorderBrush" Value="#262A33"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+
+    <Style x:Key="RowBtn" TargetType="Button">
+      <Setter Property="Foreground" Value="#E6E8EE"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Margin" Value="0,0,0,8"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Bd" Background="#1E2129" CornerRadius="12" Padding="14,10" BorderBrush="#262A33" BorderThickness="1">
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Right" Text="›" FontSize="18" Foreground="#5A6070" VerticalAlignment="Center"/>
+                <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Left"/>
+              </DockPanel>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="BorderBrush" Value="#3DDC97"/>
+                <Setter TargetName="Bd" Property="Background" Value="#22262F"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="Check" TargetType="CheckBox">
+      <Setter Property="Foreground" Value="#E6E8EE"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="CheckBox">
+            <StackPanel Orientation="Horizontal" Background="Transparent">
+              <Grid Width="18" Height="18" VerticalAlignment="Center">
+                <Border x:Name="Box" CornerRadius="5" BorderBrush="#3A3F4D" BorderThickness="1.5" Background="Transparent"/>
+                <TextBlock x:Name="Mark" Text="✓" FontSize="12" FontWeight="Bold" Foreground="#0F1115" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Hidden"/>
+              </Grid>
+              <ContentPresenter Margin="9,0,0,0" VerticalAlignment="Center"/>
+            </StackPanel>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Box" Property="BorderBrush" Value="#3DDC97"/></Trigger>
+              <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="Box" Property="Background" Value="#3DDC97"/>
+                <Setter TargetName="Box" Property="BorderBrush" Value="#3DDC97"/>
+                <Setter TargetName="Mark" Property="Visibility" Value="Visible"/>
+              </Trigger>
+              <Trigger Property="IsChecked" Value="{x:Null}">
+                <Setter TargetName="Box" Property="Background" Value="#2D5A47"/>
+                <Setter TargetName="Box" Property="BorderBrush" Value="#3DDC97"/>
+                <Setter TargetName="Mark" Property="Text" Value="–"/>
+                <Setter TargetName="Mark" Property="Foreground" Value="#E6E8EE"/>
+                <Setter TargetName="Mark" Property="Visibility" Value="Visible"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="DelBtn" TargetType="Button">
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Foreground" Value="#8A90A0"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Bd" Background="Transparent" CornerRadius="6" Width="26" Height="26">
+              <TextBlock Text="✕" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{TemplateBinding Foreground}"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="#3A2328"/>
+                <Setter Property="Foreground" Value="#FF6B81"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style TargetType="ScrollBar">
+      <Setter Property="Width" Value="6"/>
+      <Setter Property="MinWidth" Value="6"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ScrollBar">
+            <Track x:Name="PART_Track" IsDirectionReversed="True">
+              <Track.Thumb>
+                <Thumb>
+                  <Thumb.Template>
+                    <ControlTemplate TargetType="Thumb">
+                      <Border Background="#3A3F4D" CornerRadius="3"/>
+                    </ControlTemplate>
+                  </Thumb.Template>
+                </Thumb>
+              </Track.Thumb>
+            </Track>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+  </Window.Resources>
+
+  <Grid Margin="14">
+    <Grid x:Name="Shell" Opacity="0">
+    <Grid.RenderTransform><TranslateTransform x:Name="ShellShift" Y="18"/></Grid.RenderTransform>
+    <!-- тень окна отдельно от содержимого: анимации внутри не заставляют её перерисовываться -->
+    <Border CornerRadius="20" Background="#121419" IsHitTestVisible="False">
+      <Border.Effect><DropShadowEffect BlurRadius="24" ShadowDepth="0" Opacity="0.55" Color="#000000" RenderingBias="Performance"/></Border.Effect>
+    </Border>
+    <Border x:Name="ShellBody" CornerRadius="20" Background="#121419" BorderBrush="#252933" BorderThickness="1">
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="48"/>
+          <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Заголовок -->
+        <Grid x:Name="TitleBar" Grid.Row="0" Background="Transparent" Margin="20,0,10,0">
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <!-- логотип приложения с точкой состояния (зелёная — zapret работает) -->
+            <Grid Width="24" Height="24" Margin="0,0,10,0" VerticalAlignment="Center">
+              <Image x:Name="TitleLogo" Width="24" Height="24" RenderOptions.BitmapScalingMode="HighQuality"/>
+              <Ellipse x:Name="TitleDot" Width="9" Height="9" Fill="#5A6070" Stroke="#121419" StrokeThickness="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-3,-3"/>
+            </Grid>
+            <TextBlock Text="ZAPRET" FontWeight="Bold" FontSize="14" VerticalAlignment="Center"/>
+            <TextBlock x:Name="TitleVer" Text="" Foreground="{StaticResource Muted}" FontSize="12" Margin="10,1,0,0" VerticalAlignment="Center"/>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+            <Button x:Name="GearBtn" Style="{StaticResource TitleBtn}" Margin="0,0,4,0" ToolTip="Настройки">
+              <TextBlock Text="⚙" FontFamily="Segoe UI Symbol" FontSize="16" RenderTransformOrigin="0.5,0.55">
+                <TextBlock.RenderTransform><RotateTransform x:Name="GearRot"/></TextBlock.RenderTransform>
+              </TextBlock>
+            </Button>
+            <Button x:Name="MinBtn" Style="{StaticResource TitleBtn}" ToolTip="Свернуть"><TextBlock Text="—" FontSize="12"/></Button>
+            <Button x:Name="CloseBtn" Style="{StaticResource TitleBtn}" Margin="4,0,0,0"><TextBlock Text="✕" FontSize="13"/></Button>
+          </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="1" Margin="22,4,22,20">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="330"/>
+            <ColumnDefinition Width="22"/>
+            <ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+
+          <!-- Левая колонка -->
+          <Grid Grid.Column="0">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="*"/>
+              <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <StackPanel VerticalAlignment="Center">
+              <Button x:Name="PowerBtn" Width="200" Height="200" Cursor="Hand" HorizontalAlignment="Center" Focusable="False">
+                <Button.Template>
+                  <ControlTemplate TargetType="Button"><ContentPresenter/></ControlTemplate>
+                </Button.Template>
+                <Grid x:Name="PowerGrid" Width="200" Height="200" RenderTransformOrigin="0.5,0.5">
+                  <Grid.RenderTransform><ScaleTransform x:Name="PowerScale"/></Grid.RenderTransform>
+                  <Ellipse x:Name="Glow1" Width="160" Height="160" StrokeThickness="3" Stroke="#3DDC97" Opacity="0" RenderTransformOrigin="0.5,0.5">
+                    <Ellipse.RenderTransform><ScaleTransform x:Name="Glow1S"/></Ellipse.RenderTransform>
+                  </Ellipse>
+                  <Ellipse x:Name="Glow2" Width="160" Height="160" StrokeThickness="3" Stroke="#3DDC97" Opacity="0" RenderTransformOrigin="0.5,0.5">
+                    <Ellipse.RenderTransform><ScaleTransform x:Name="Glow2S"/></Ellipse.RenderTransform>
+                  </Ellipse>
+                  <Ellipse Width="176" Height="176" Fill="#171A20" Stroke="#252933" StrokeThickness="1"/>
+                  <Ellipse x:Name="Spinner" Width="176" Height="176" StrokeThickness="3" Stroke="#3DDC97"
+                           StrokeDashArray="18 40" StrokeDashCap="Round" Opacity="0" RenderTransformOrigin="0.5,0.5">
+                    <Ellipse.RenderTransform><RotateTransform x:Name="SpinRot"/></Ellipse.RenderTransform>
+                  </Ellipse>
+                  <Ellipse Width="150" Height="150">
+                    <Ellipse.Fill><SolidColorBrush x:Name="PowerFill" Color="#262A33"/></Ellipse.Fill>
+                    <Ellipse.Effect><DropShadowEffect x:Name="PowerShadow" BlurRadius="0" ShadowDepth="0" Color="#3DDC97" Opacity="0.8"/></Ellipse.Effect>
+                  </Ellipse>
+                  <Grid x:Name="IconWrap" Width="64" Height="64" RenderTransformOrigin="0.5,0.5">
+                    <Grid.RenderTransform>
+                      <TransformGroup>
+                        <ScaleTransform x:Name="PowerIconScale"/>
+                        <RotateTransform x:Name="PowerIconRot"/>
+                      </TransformGroup>
+                    </Grid.RenderTransform>
+                    <Viewbox Width="64" Height="64">
+                      <Canvas Width="80" Height="80">
+                        <Path Data="M 54.1,23.15 A 22,22 0 1 1 25.86,23.15" StrokeThickness="6" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
+                          <Path.Stroke><SolidColorBrush x:Name="IconBrush" Color="#8A90A0"/></Path.Stroke>
+                        </Path>
+                        <Path Data="M 40,12 L 40,38" StrokeThickness="6" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
+                          <Path.Stroke><SolidColorBrush x:Name="IconBrush2" Color="#8A90A0"/></Path.Stroke>
+                        </Path>
+                      </Canvas>
+                    </Viewbox>
+                  </Grid>
+                  <Grid x:Name="ZWrap" Width="78" Height="78" Opacity="0" RenderTransformOrigin="0.5,0.5" IsHitTestVisible="False">
+                    <Grid.RenderTransform>
+                      <TransformGroup>
+                        <ScaleTransform x:Name="ZScale" ScaleX="0.3" ScaleY="0.3"/>
+                        <ScaleTransform x:Name="ZFlip"/>
+                        <RotateTransform x:Name="ZTilt"/>
+                      </TransformGroup>
+                    </Grid.RenderTransform>
+                    <Viewbox>
+                      <Canvas Width="80" Height="80">
+                        <Path x:Name="ZFill" Data="M 16,14 L 64,14 L 64,26 L 34,54 L 64,54 L 64,66 L 16,66 L 16,54 L 46,26 L 16,26 Z" StrokeLineJoin="Round" StrokeThickness="2">
+                          <Path.Fill><SolidColorBrush x:Name="ZBrush" Color="#3DDC97"/></Path.Fill>
+                          <Path.Stroke><SolidColorBrush x:Name="ZStroke" Color="#3DDC97"/></Path.Stroke>
+                        </Path>
+                        <!-- контур Z: «рисуется» при включении и бегает змейкой при запуске -->
+                        <Path x:Name="ZDraw" Data="M 16,14 L 64,14 L 64,26 L 34,54 L 64,54 L 64,66 L 16,66 L 16,54 L 46,26 L 16,26 Z" StrokeLineJoin="Round" StrokeThickness="3" StrokeDashCap="Round" Opacity="0"/>
+                        <!-- блик, пробегающий по букве -->
+                        <Canvas Width="80" Height="80" IsHitTestVisible="False">
+                          <Canvas.Clip><PathGeometry Figures="M 16,14 L 64,14 L 64,26 L 34,54 L 64,54 L 64,66 L 16,66 L 16,54 L 46,26 L 16,26 Z"/></Canvas.Clip>
+                          <Rectangle Width="16" Height="120" Canvas.Top="-20" Opacity="0.55">
+                            <Rectangle.Fill>
+                              <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                <GradientStop Color="#00FFFFFF" Offset="0"/>
+                                <GradientStop Color="#FFFFFFFF" Offset="0.5"/>
+                                <GradientStop Color="#00FFFFFF" Offset="1"/>
+                              </LinearGradientBrush>
+                            </Rectangle.Fill>
+                            <Rectangle.RenderTransform>
+                              <TransformGroup>
+                                <RotateTransform Angle="22"/>
+                                <TranslateTransform x:Name="ZShineT" X="-60"/>
+                              </TransformGroup>
+                            </Rectangle.RenderTransform>
+                          </Rectangle>
+                        </Canvas>
+                      </Canvas>
+                    </Viewbox>
+                  </Grid>
+                </Grid>
+              </Button>
+
+              <TextBlock x:Name="StatusText" Text="Выключен" FontSize="26" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,14,0,0"/>
+              <TextBlock x:Name="SubText" Text="Нажми, чтобы включить" Foreground="{StaticResource Muted}" FontSize="13" HorizontalAlignment="Center" Margin="0,4,0,0" TextAlignment="Center" TextWrapping="Wrap"/>
+
+              <TextBlock Text="Стратегия" Foreground="{StaticResource Muted}" FontSize="12" Margin="2,26,0,6"/>
+              <ComboBox x:Name="StrategyBox"/>
+
+              <!-- Telegram (tg-ws-proxy): второй модуль Zapret, со своей кнопкой включения -->
+              <Border x:Name="TgCard" Background="#1A1D24" CornerRadius="18" Padding="14,12" Margin="0,16,0,0" BorderBrush="#232731" BorderThickness="1" SnapsToDevicePixels="True" UseLayoutRounding="True">
+                <StackPanel>
+                  <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Button x:Name="TgPower" Width="56" Height="56" Cursor="Hand" Focusable="False" Margin="0,0,14,0" ToolTip="Включить или выключить Telegram-прокси">
+                      <Button.Template><ControlTemplate TargetType="Button"><ContentPresenter/></ControlTemplate></Button.Template>
+                      <Grid Width="56" Height="56" RenderTransformOrigin="0.5,0.5">
+                        <Grid.RenderTransform><ScaleTransform x:Name="TgPowerS"/></Grid.RenderTransform>
+                        <Ellipse x:Name="TgGlow" Stroke="#5ED3F3" StrokeThickness="2" Opacity="0" RenderTransformOrigin="0.5,0.5">
+                          <Ellipse.RenderTransform><ScaleTransform x:Name="TgGlowS"/></Ellipse.RenderTransform>
+                        </Ellipse>
+                        <Ellipse x:Name="TgDot" Margin="3" Stroke="#2E3340" StrokeThickness="1"/>
+                        <TextBlock x:Name="TgPlane" Visibility="Collapsed"/>
+                        <Grid ClipToBounds="True" Margin="3">
+                          <!-- самолётик в стиле буквы Z: такие же жирные прямые грани -->
+                          <Viewbox Width="28" Height="28" Margin="-2,2,0,0">
+                            <Viewbox.RenderTransform><TranslateTransform x:Name="TgPlaneT"/></Viewbox.RenderTransform>
+                            <Canvas Width="80" Height="80">
+                              <Path x:Name="TgPlaneFill" Data="M 66,14 L 12,37 L 30,45 L 37,64 L 45,50 L 60,58 Z" StrokeLineJoin="Round" StrokeThickness="2"/>
+                              <Path x:Name="TgPlaneFold" Data="M 66,14 L 31,45 L 34,54" StrokeThickness="3.5" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                              <Path x:Name="TgPlaneDraw" Data="M 66,14 L 12,37 L 30,45 L 37,64 L 45,50 L 60,58 Z" StrokeLineJoin="Round" StrokeThickness="3" StrokeDashCap="Round" Opacity="0"/>
+                            </Canvas>
+                          </Viewbox>
+                        </Grid>
+                      </Grid>
+                    </Button>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                      <DockPanel>
+                        <CheckBox x:Name="TgToggle" DockPanel.Dock="Right" Visibility="Collapsed"/>
+                        <TextBlock Text="Telegram" FontSize="17" FontWeight="SemiBold"/>
+                      </DockPanel>
+                      <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                        <Ellipse x:Name="TgLed" Width="7" Height="7" Margin="0,1,7,0" VerticalAlignment="Center" Fill="#8A90A0"/>
+                        <TextBlock x:Name="TgStatus" Text="Выключен · нажми на самолётик" Foreground="{StaticResource Muted}" FontSize="12.5" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                      </StackPanel>
+                    </StackPanel>
+                  </Grid>
+                  <UniformGrid x:Name="TgActions" Rows="1" Margin="0,12,0,0" Visibility="Collapsed">
+                    <Button x:Name="TgConnect" Style="{StaticResource Btn}" Height="34" Padding="10,0" FontSize="12" Margin="0,0,3,0" Visibility="Collapsed" ToolTip="Настроить прокси в Telegram Desktop">
+                      <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE7F8;" FontFamily="Segoe MDL2 Assets" FontSize="13" Margin="0,1,7,0"/><TextBlock Text="Подключить на ПК"/></StackPanel>
+                    </Button>
+                    <Button x:Name="TgPhone" Style="{StaticResource Btn}" Height="34" Padding="10,0" FontSize="12" Margin="3,0,0,0" Visibility="Collapsed" ToolTip="Подключить Telegram на телефоне по QR-коду">
+                      <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE8EA;" FontFamily="Segoe MDL2 Assets" FontSize="13" Margin="0,1,7,0"/><TextBlock Text="На телефоне"/></StackPanel>
+                    </Button>
+                  </UniformGrid>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+
+            <StackPanel Grid.Row="1">
+              <UniformGrid Columns="2">
+                <Button x:Name="TestBtn" Style="{StaticResource Btn}" Margin="0,0,4,0" Content="Тест стратегий"/>
+                <Button x:Name="UpdateBtn" Style="{StaticResource Btn}" Margin="4,0,0,0">
+                  <Grid>
+                    <TextBlock x:Name="UpdText" Text="Обновления" HorizontalAlignment="Center"/>
+                    <Border x:Name="UpdTrack" Height="3" VerticalAlignment="Bottom" Margin="-6,0,-6,-6" CornerRadius="1.5" Background="#2A2E38" ClipToBounds="True" Opacity="0">
+                      <Grid>
+                        <Rectangle x:Name="UpdBar" Width="40" HorizontalAlignment="Left" RadiusX="1.5" RadiusY="1.5" Fill="#3DDC97">
+                          <Rectangle.RenderTransform><TranslateTransform x:Name="UpdBarT" X="-40"/></Rectangle.RenderTransform>
+                        </Rectangle>
+                        <Rectangle x:Name="UpdFill" RadiusX="1.5" RadiusY="1.5" Fill="#3DDC97" RenderTransformOrigin="0,0.5">
+                          <Rectangle.RenderTransform><ScaleTransform x:Name="UpdFillS" ScaleX="0"/></Rectangle.RenderTransform>
+                        </Rectangle>
+                      </Grid>
+                    </Border>
+                  </Grid>
+                </Button>
+              </UniformGrid>
+            </StackPanel>
+          </Grid>
+
+          <!-- Правая колонка -->
+          <Grid Grid.Column="2">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="*"/>
+              <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Background="{StaticResource Card}" CornerRadius="16" Padding="18" BorderBrush="#232731" BorderThickness="1">
+              <Grid>
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto"/>
+                  <RowDefinition Height="Auto"/>
+                  <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <DockPanel>
+                  <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock x:Name="SitesCount" Foreground="{StaticResource Muted}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <Button x:Name="ShareBtn" Style="{StaticResource Btn}" Padding="10,5" FontSize="12" Margin="0,0,6,0" ToolTip="Выбрать сайты и скопировать их, чтобы отправить другу">
+                      <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE72D;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,1,6,0"/><TextBlock Text="Поделиться"/></StackPanel>
+                    </Button>
+                    <Button x:Name="PasteBtn" Style="{StaticResource Btn}" Padding="10,5" FontSize="12" ToolTip="Добавить сайты из скопированного списка">
+                      <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE77F;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,1,6,0"/><TextBlock Text="Вставить"/></StackPanel>
+                    </Button>
+                  </StackPanel>
+                  <TextBlock Text="Мои сайты" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                </DockPanel>
+                <Grid Grid.Row="1" Margin="0,12,0,10">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                  </Grid.ColumnDefinitions>
+                  <Border Background="#22262F" CornerRadius="10" BorderBrush="#2E3340" BorderThickness="1" Height="38">
+                    <Grid>
+                      <TextBlock x:Name="DomainHint" Text="например: google.com" Foreground="#5A6070" Margin="14,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                      <TextBox x:Name="DomainBox" Background="Transparent" BorderThickness="0" Foreground="#E6E8EE" CaretBrush="#3DDC97"
+                               Margin="10,0" VerticalAlignment="Center" FontSize="13"/>
+                    </Grid>
+                  </Border>
+                  <Button x:Name="AddBtn" Grid.Column="1" Style="{StaticResource AccentBtn}" Content="Добавить" Margin="8,0,0,0"/>
+                </Grid>
+                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                  <StackPanel x:Name="SitesPanel" Margin="0,0,6,0"/>
+                </ScrollViewer>
+              </Grid>
+            </Border>
+
+
+            <Border x:Name="ApplyBar" Grid.Row="1" Background="#1E2B26" CornerRadius="12" Padding="14,8" Margin="0,10,0,0"
+                    BorderBrush="#2D5A47" BorderThickness="1" Visibility="Collapsed" Opacity="0">
+              <DockPanel>
+                <Button x:Name="ApplyBtn" DockPanel.Dock="Right" Style="{StaticResource AccentBtn}" Padding="12,6" Content="Перезапустить"/>
+                <TextBlock Text="Изменения применятся после перезапуска" VerticalAlignment="Center" Foreground="#BFEBD6" FontSize="12" TextWrapping="Wrap"/>
+              </DockPanel>
+            </Border>
+          </Grid>
+        </Grid>
+
+        <!-- Плашка обновления приложения -->
+        <Border x:Name="AppUpdBar" Grid.Row="1" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="0,-6,0,0"
+                Background="#1B2B25" CornerRadius="14" Padding="16,10" BorderBrush="#3DDC97" BorderThickness="1" Visibility="Collapsed" Opacity="0">
+          <Border.Effect><DropShadowEffect BlurRadius="22" ShadowDepth="0" Color="#3DDC97" Opacity="0.35"/></Border.Effect>
+          <Border.RenderTransform><TranslateTransform x:Name="AppUpdShift" Y="-30"/></Border.RenderTransform>
+          <StackPanel>
+            <StackPanel Orientation="Horizontal">
+              <Ellipse Width="8" Height="8" Fill="#3DDC97" VerticalAlignment="Center" Margin="0,0,10,0"/>
+              <TextBlock x:Name="AppUpdText" FontSize="13" VerticalAlignment="Center" Margin="0,0,14,0"/>
+              <Button x:Name="AppUpdBtn" Style="{StaticResource AccentBtn}" Content="Обновить" Padding="14,5"/>
+              <Button x:Name="AppUpdLater" Style="{StaticResource TitleBtn}" Margin="6,0,0,0" ToolTip="Позже"><TextBlock Text="✕" FontSize="12"/></Button>
+            </StackPanel>
+            <Border x:Name="AppUpdTrack" Height="4" CornerRadius="2" Background="#22262F" Margin="0,8,0,0" Visibility="Collapsed">
+              <Border x:Name="AppUpdFill" CornerRadius="2" Background="#3DDC97" RenderTransformOrigin="0,0.5">
+                <Border.RenderTransform><ScaleTransform x:Name="AppUpdFillS" ScaleX="0"/></Border.RenderTransform>
+              </Border>
+            </Border>
+          </StackPanel>
+        </Border>
+
+        <!-- Панель настроек -->
+        <Grid x:Name="SettingsOverlay" Grid.RowSpan="2" Visibility="Collapsed">
+          <Border x:Name="Dim" Background="#B0090A0D" CornerRadius="20" Opacity="0"/>
+          <Border x:Name="SettingsPanel" HorizontalAlignment="Right" Width="600" Background="#171A21" CornerRadius="0,20,20,0"
+                  BorderBrush="#2A2E38" BorderThickness="1,0,0,0">
+            <Border.RenderTransform><TranslateTransform x:Name="SettingsShift" X="620"/></Border.RenderTransform>
+            <Border.Effect><DropShadowEffect BlurRadius="30" ShadowDepth="0" Opacity="0.6"/></Border.Effect>
+            <Grid Margin="22,18,22,20">
+              <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+              <DockPanel Margin="0,0,0,18">
+                <Button x:Name="SettingsClose" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><TextBlock Text="✕" FontSize="13"/></Button>
+                <TextBlock Text="Настройки" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
+              </DockPanel>
+              <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="168"/><ColumnDefinition Width="20"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+
+                <!-- Вкладки -->
+                <StackPanel x:Name="SetNav">
+                  <RadioButton x:Name="Nav0" Style="{StaticResource NavItem}" Tag="0" IsChecked="True">
+                    <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE774;" FontFamily="Segoe MDL2 Assets" FontSize="15" Width="26" VerticalAlignment="Center"/><TextBlock Text="Обход" VerticalAlignment="Center"/></StackPanel>
+                  </RadioButton>
+                  <RadioButton x:Name="Nav1" Style="{StaticResource NavItem}" Tag="1">
+                    <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE7E8;" FontFamily="Segoe MDL2 Assets" FontSize="15" Width="26" VerticalAlignment="Center"/><TextBlock Text="Запуск" VerticalAlignment="Center"/></StackPanel>
+                  </RadioButton>
+                  <RadioButton x:Name="Nav2" Style="{StaticResource NavItem}" Tag="2">
+                    <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE790;" FontFamily="Segoe MDL2 Assets" FontSize="15" Width="26" VerticalAlignment="Center"/><TextBlock Text="Вид" VerticalAlignment="Center"/></StackPanel>
+                  </RadioButton>
+                  <RadioButton x:Name="Nav3" Style="{StaticResource NavItem}" Tag="3">
+                    <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE90F;" FontFamily="Segoe MDL2 Assets" FontSize="15" Width="26" VerticalAlignment="Center"/><TextBlock Text="Инструменты" VerticalAlignment="Center"/></StackPanel>
+                  </RadioButton>
+                  <RadioButton x:Name="Nav4" Style="{StaticResource NavItem}" Tag="4">
+                    <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE946;" FontFamily="Segoe MDL2 Assets" FontSize="15" Width="26" VerticalAlignment="Center"/><TextBlock Text="О программе" VerticalAlignment="Center"/></StackPanel>
+                  </RadioButton>
+                </StackPanel>
+
+                <!-- Содержимое вкладок -->
+                <Grid x:Name="SetPages" Grid.Column="2">
+                  <!-- 0: Обход -->
+                  <StackPanel x:Name="SetPage0">
+                    <TextBlock Text="Обход" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <TextBlock Text="как zapret обходит блокировки" Foreground="{StaticResource Muted}" FontSize="11.5" Margin="0,0,0,16"/>
+                    <Border Style="{StaticResource SetCard}">
+                      <StackPanel>
+                        <Grid Margin="0,0,0,12">
+                          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions>
+                          <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Игровой фильтр" FontSize="13"/>
+                            <TextBlock Text="обход для игр (порты 1024+)" Foreground="{StaticResource Muted}" FontSize="11"/>
+                          </StackPanel>
+                          <ComboBox x:Name="GameBox" Grid.Column="1">
+                            <ComboBoxItem Tag="disabled">Выключен</ComboBoxItem>
+                            <ComboBoxItem Tag="all">TCP и UDP</ComboBoxItem>
+                            <ComboBoxItem Tag="tcp">Только TCP</ComboBoxItem>
+                            <ComboBoxItem Tag="udp">Только UDP</ComboBoxItem>
+                          </ComboBox>
+                        </Grid>
+                        <Grid Margin="0,0,0,12">
+                          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions>
+                          <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="IPSet фильтр" FontSize="13"/>
+                            <TextBlock Text="обход по списку IP-адресов" Foreground="{StaticResource Muted}" FontSize="11"/>
+                          </StackPanel>
+                          <ComboBox x:Name="IpsetBox" Grid.Column="1">
+                            <ComboBoxItem Tag="loaded">По списку</ComboBoxItem>
+                            <ComboBoxItem Tag="none">Выключен</ComboBoxItem>
+                            <ComboBoxItem Tag="any">Все IP</ComboBoxItem>
+                          </ComboBox>
+                        </Grid>
+                        <Grid>
+                          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                          <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Показывать окно winws" FontSize="13"/>
+                            <TextBlock Text="чёрное окно с логом; обычно не нужно" Foreground="{StaticResource Muted}" FontSize="11"/>
+                          </StackPanel>
+                          <CheckBox x:Name="WinToggle" Grid.Column="1" Style="{StaticResource Toggle}" VerticalAlignment="Center"/>
+                        </Grid>
+                      </StackPanel>
+                    </Border>
+                  </StackPanel>
+
+                  <!-- 1: Запуск -->
+                  <StackPanel x:Name="SetPage1" Visibility="Collapsed">
+                    <TextBlock Text="Запуск" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <TextBlock Text="как открывается приложение" Foreground="{StaticResource Muted}" FontSize="11.5" Margin="0,0,0,16"/>
+                    <Border Style="{StaticResource SetCard}">
+                      <StackPanel>
+                        <Grid Margin="0,0,0,12">
+                          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                          <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Запускать без запроса прав" FontSize="13"/>
+                            <TextBlock Text="Windows не будет спрашивать разрешение при запуске" Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap"/>
+                          </StackPanel>
+                          <CheckBox x:Name="NoPromptToggle" Grid.Column="1" Style="{StaticResource Toggle}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                        </Grid>
+                        <Grid>
+                          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                          <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Проверять обновления при запуске" FontSize="13"/>
+                            <TextBlock Text="приложения и zapret" Foreground="{StaticResource Muted}" FontSize="11"/>
+                          </StackPanel>
+                          <CheckBox x:Name="UpdToggle" Grid.Column="1" Style="{StaticResource Toggle}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                        </Grid>
+                      </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource SetCard}" Margin="0,10,0,0">
+                      <StackPanel>
+                        <Grid Margin="0,0,0,12">
+                          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                          <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Запускать вместе с Windows" FontSize="13"/>
+                            <TextBlock Text="Zapret откроется в трее и сам включит zapret" Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap"/>
+                          </StackPanel>
+                          <CheckBox x:Name="AutoRunToggle" Grid.Column="1" Style="{StaticResource Toggle}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                        </Grid>
+                        <Grid>
+                          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="170"/></Grid.ColumnDefinitions>
+                          <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Кнопка ✕" FontSize="13"/>
+                            <TextBlock Text="что делать при закрытии окна" Foreground="{StaticResource Muted}" FontSize="11"/>
+                          </StackPanel>
+                          <ComboBox x:Name="CloseBox" Grid.Column="1" VerticalAlignment="Center">
+                            <ComboBoxItem Tag="ask">Спрашивать</ComboBoxItem>
+                            <ComboBoxItem Tag="tray">Сворачивать в трей</ComboBoxItem>
+                            <ComboBoxItem Tag="exit">Закрывать полностью</ComboBoxItem>
+                          </ComboBox>
+                        </Grid>
+                      </StackPanel>
+                    </Border>
+                  </StackPanel>
+
+                  <!-- 2: Вид -->
+                  <StackPanel x:Name="SetPage2" Visibility="Collapsed">
+                    <TextBlock Text="Вид" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <TextBlock Text="применяется сразу, окно перезапустится" Foreground="{StaticResource Muted}" FontSize="11.5" Margin="0,0,0,16"/>
+                    <Border Style="{StaticResource SetCard}">
+                      <StackPanel>
+                        <Grid Margin="0,0,0,12">
+                          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions>
+                          <TextBlock Text="Тема" FontSize="13" VerticalAlignment="Center"/>
+                          <ComboBox x:Name="ThemeBox" Grid.Column="1">
+                            <ComboBoxItem Tag="dark">Тёмная</ComboBoxItem>
+                            <ComboBoxItem Tag="light">Светлая</ComboBoxItem>
+                          </ComboBox>
+                        </Grid>
+                        <Grid Margin="0,0,0,12">
+                          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions>
+                          <TextBlock Text="Язык" FontSize="13" VerticalAlignment="Center"/>
+                          <ComboBox x:Name="LangBox" Grid.Column="1">
+                            <ComboBoxItem Tag="ru">Русский</ComboBoxItem>
+                            <ComboBoxItem Tag="en">English</ComboBoxItem>
+                          </ComboBox>
+                        </Grid>
+                        <TextBlock Text="Акцентный цвет" FontSize="13" Margin="0,2,0,8"/>
+                        <WrapPanel x:Name="AccentPanel" Margin="-4,0,0,0"/>
+                      </StackPanel>
+                    </Border>
+                  </StackPanel>
+
+                  <!-- 3: Инструменты -->
+                  <StackPanel x:Name="SetPage3" Visibility="Collapsed">
+                    <TextBlock Text="Инструменты" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <TextBlock Text="обслуживание zapret и приложения" Foreground="{StaticResource Muted}" FontSize="11.5" Margin="0,0,0,16"/>
+                    <Button x:Name="ServiceBtn" Style="{StaticResource RowBtn}">
+                      <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE90F;" FontFamily="Segoe MDL2 Assets" FontSize="16" Width="30" VerticalAlignment="Center" Foreground="#3DDC97"/>
+                        <StackPanel><TextBlock Text="Сервис и диагностика" FontSize="13"/><TextBlock Text="служба, статус и проверка zapret" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel></StackPanel>
+                    </Button>
+                    <Button x:Name="FolderBtn" Style="{StaticResource RowBtn}">
+                      <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE838;" FontFamily="Segoe MDL2 Assets" FontSize="16" Width="30" VerticalAlignment="Center" Foreground="#3DDC97"/>
+                        <StackPanel><TextBlock Text="Открыть папку zapret" FontSize="13"/><TextBlock Text="списки, батники и логи" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel></StackPanel>
+                    </Button>
+                    <Button x:Name="MigrateBtn" Style="{StaticResource RowBtn}">
+                      <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE8AB;" FontFamily="Segoe MDL2 Assets" FontSize="16" Width="30" VerticalAlignment="Center" Foreground="#3DDC97"/>
+                        <StackPanel><TextBlock Text="Перенести настройки из старой версии" FontSize="13"/><TextBlock Text="если вышла новая версия zapret" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel></StackPanel>
+                    </Button>
+                    <Button x:Name="AppCheckBtn" Style="{StaticResource RowBtn}">
+                      <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE895;" FontFamily="Segoe MDL2 Assets" FontSize="16" Width="30" VerticalAlignment="Center" Foreground="#3DDC97"/>
+                        <StackPanel><TextBlock Text="Проверить обновления приложения" FontSize="13"/><TextBlock Text="скачать новую версию с GitHub" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel></StackPanel>
+                    </Button>
+                  </StackPanel>
+
+                  <!-- 4: О программе -->
+                  <StackPanel x:Name="SetPage4" Visibility="Collapsed">
+                    <TextBlock Text="О программе" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,16"/>
+                    <Border Style="{StaticResource SetCard}" Margin="0,0,0,10">
+                      <StackPanel>
+                        <TextBlock FontSize="18" FontWeight="SemiBold">
+                          <Run Text="Zapret GUI "/><Run Text="by " Foreground="#8A90A0" FontWeight="Normal" FontSize="14"/><Run Text="COFFIOK" Foreground="#3DDC97" FontWeight="Bold" FontSize="14"/>
+                        </TextBlock>
+                        <TextBlock x:Name="InfoApp" FontSize="12" Foreground="{StaticResource Muted}" Margin="0,4,0,12"/>
+                        <TextBlock Text="Версия" Foreground="{StaticResource Muted}" FontSize="11"/>
+                        <TextBlock x:Name="InfoVer" FontSize="12.5" Margin="0,2,0,10"/>
+                        <TextBlock Text="Папка zapret" Foreground="{StaticResource Muted}" FontSize="11"/>
+                        <TextBlock x:Name="InfoPath" FontSize="12.5" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                      </StackPanel>
+                    </Border>
+                    <Button x:Name="RepoBtn" Style="{StaticResource RowBtn}">
+                      <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE774;" FontFamily="Segoe MDL2 Assets" FontSize="16" Width="30" VerticalAlignment="Center" Foreground="#3DDC97"/>
+                        <StackPanel><TextBlock Text="Страница на GitHub" FontSize="13"/><TextBlock Text="описание, релизы и обновления" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel></StackPanel>
+                    </Button>
+                    <TextBlock Text="zapret, tg-ws-proxy — Flowseal · bol-van · WinDivert — basil00" Foreground="#5A6070" FontSize="11" Margin="2,8,0,0" TextWrapping="Wrap"/>
+                  </StackPanel>
+                </Grid>
+              </Grid>
+            </Grid>
+          </Border>
+        </Grid>
+
+        <!-- Тест стратегий -->
+        <Grid x:Name="TestOverlay" Grid.RowSpan="2" Visibility="Collapsed">
+          <Border x:Name="TestDim" Background="#C0090A0D" CornerRadius="20" Opacity="0"/>
+          <Border x:Name="TestPanel" Margin="26,22,26,22" Background="#171A21" CornerRadius="18" BorderBrush="#2A2E38" BorderThickness="1"
+                  Opacity="0" RenderTransformOrigin="0.5,0.5">
+            <Border.RenderTransform><ScaleTransform x:Name="TestScale" ScaleX="0.94" ScaleY="0.94"/></Border.RenderTransform>
+            <Border.Effect><DropShadowEffect BlurRadius="30" ShadowDepth="0" Opacity="0.6"/></Border.Effect>
+            <Grid Margin="26,18,26,20">
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+              </Grid.RowDefinitions>
+              <DockPanel Margin="0,0,0,14">
+                <Button x:Name="TestClose" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><TextBlock Text="✕" FontSize="13"/></Button>
+                <StackPanel>
+                  <TextBlock Text="Тест стратегий" FontSize="20" FontWeight="SemiBold"/>
+                  <TextBlock Text="Проверяю, какая стратегия лучше открывает твои сайты" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0"/>
+                </StackPanel>
+              </DockPanel>
+
+              <!-- всё видно сразу: компактная сетка без прокрутки -->
+              <StackPanel x:Name="TestSetup" Grid.Row="1">
+                <DockPanel Margin="2,0,0,6">
+                  <Button x:Name="GroupAll" DockPanel.Dock="Right" Style="{StaticResource Btn}" Padding="10,2" FontSize="11.5" Content="Снять все"/>
+                  <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="ЧТО ПРОВЕРЯТЬ" FontSize="11" FontWeight="SemiBold" Foreground="#8A90A0"/>
+                    <TextBlock x:Name="GroupCount" Foreground="#5A6070" FontSize="11" Margin="8,0,0,0"/>
+                  </StackPanel>
+                </DockPanel>
+                <WrapPanel x:Name="GroupChips" ItemWidth="195" Margin="0,0,0,12"/>
+                <DockPanel Margin="2,0,0,6">
+                  <Button x:Name="StratAll" DockPanel.Dock="Right" Style="{StaticResource Btn}" Padding="10,2" FontSize="11.5" Content="Снять все"/>
+                  <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="СТРАТЕГИИ" FontSize="11" FontWeight="SemiBold" Foreground="#8A90A0"/>
+                    <TextBlock x:Name="StratCount" Foreground="#5A6070" FontSize="11" Margin="8,0,0,0"/>
+                  </StackPanel>
+                </DockPanel>
+                <ScrollViewer MaxHeight="290" VerticalScrollBarVisibility="Auto">
+                  <WrapPanel x:Name="StratChips" ItemWidth="195"/>
+                </ScrollViewer>
+              </StackPanel>
+
+              <Grid Grid.Row="2" Margin="0,14,0,12">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                  <TextBlock x:Name="TestStatus" FontSize="12.5" Foreground="#B8BDC9" TextTrimming="CharacterEllipsis"/>
+                  <Border Height="8" CornerRadius="4" Background="#22262F" Margin="0,8,0,0" ClipToBounds="True">
+                    <Grid>
+                      <Border x:Name="TestBar" CornerRadius="4" RenderTransformOrigin="0,0.5">
+                        <Border.Background>
+                          <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                            <GradientStop Color="#2BB57A" Offset="0"/>
+                            <GradientStop Color="#3DDC97" Offset="1"/>
+                          </LinearGradientBrush>
+                        </Border.Background>
+                        <Border.RenderTransform><ScaleTransform x:Name="TestBarScale" ScaleX="0"/></Border.RenderTransform>
+                      </Border>
+                      <Rectangle x:Name="TestShimmer" Width="120" HorizontalAlignment="Left" Opacity="0" IsHitTestVisible="False">
+                        <Rectangle.Fill>
+                          <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                            <GradientStop Color="#00FFFFFF" Offset="0"/>
+                            <GradientStop Color="#55FFFFFF" Offset="0.5"/>
+                            <GradientStop Color="#00FFFFFF" Offset="1"/>
+                          </LinearGradientBrush>
+                        </Rectangle.Fill>
+                        <Rectangle.RenderTransform><TranslateTransform x:Name="TestShimmerT" X="-120"/></Rectangle.RenderTransform>
+                      </Rectangle>
+                    </Grid>
+                  </Border>
+                </StackPanel>
+                <Button x:Name="RunBtn" Grid.Column="1" Style="{StaticResource AccentBtn}" Content="Запустить тест" Padding="20,10" MinWidth="150"/>
+              </Grid>
+
+              <Grid Grid.Row="3">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <TextBlock x:Name="ResultsHead" Text="РЕЗУЛЬТАТЫ · нажми на строку, чтобы увидеть сайты" FontSize="11" FontWeight="SemiBold" Foreground="#5A6070" Margin="2,0,0,8" Visibility="Collapsed"/>
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                  <StackPanel x:Name="TestResults" Margin="0,0,6,0"/>
+                </ScrollViewer>
+              </Grid>
+            </Grid>
+          </Border>
+        </Grid>
+
+        <!-- Перенос настроек -->
+        <Grid x:Name="MigOverlay" Grid.RowSpan="2" Visibility="Collapsed">
+          <Border x:Name="MigDim" Background="#C0090A0D" CornerRadius="20" Opacity="0"/>
+          <Border x:Name="MigPanel" Width="600" Margin="0,22" Background="#171A21" CornerRadius="18" BorderBrush="#2A2E38" BorderThickness="1"
+                  Opacity="0" RenderTransformOrigin="0.5,0.5">
+            <Border.RenderTransform><ScaleTransform x:Name="MigScale" ScaleX="0.94" ScaleY="0.94"/></Border.RenderTransform>
+            <Border.Effect><DropShadowEffect BlurRadius="30" ShadowDepth="0" Opacity="0.6"/></Border.Effect>
+            <Grid Margin="26,18,26,20">
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/>
+              </Grid.RowDefinitions>
+              <DockPanel Margin="0,0,0,16">
+                <Button x:Name="MigClose" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><TextBlock Text="✕" FontSize="13"/></Button>
+                <StackPanel>
+                  <TextBlock Text="Перенос настроек" FontSize="20" FontWeight="SemiBold"/>
+                  <TextBlock Text="Твои сайты, группы и настройки переедут в новую версию zapret" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0"/>
+                </StackPanel>
+              </DockPanel>
+
+              <Grid x:Name="MigCards" Grid.Row="1" Margin="0,0,0,14">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="90"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <Border Background="#1E2129" CornerRadius="14" Padding="14,12" BorderBrush="#2A2E38" BorderThickness="1">
+                  <StackPanel>
+                    <TextBlock Text="ОТКУДА · старая" FontSize="10.5" FontWeight="SemiBold" Foreground="#5A6070" Margin="2,0,0,8"/>
+                    <ComboBox x:Name="MigFromBox"/>
+                  </StackPanel>
+                </Border>
+                <Canvas Grid.Column="1" Height="10" Width="60" ClipToBounds="True" VerticalAlignment="Center" HorizontalAlignment="Center">
+                  <StackPanel Orientation="Horizontal">
+                    <StackPanel.RenderTransform><TranslateTransform x:Name="MigDotsT" X="-40"/></StackPanel.RenderTransform>
+                    <Ellipse Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="0.35"/>
+                    <Ellipse Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="0.6"/>
+                    <Ellipse Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="1"/>
+                    <Ellipse Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="0.35"/>
+                    <Ellipse Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="0.6"/>
+                    <Ellipse Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="1"/>
+                  </StackPanel>
+                </Canvas>
+                <Border Grid.Column="2" Background="#1A2621" CornerRadius="14" Padding="14,12" BorderBrush="#2D5A47" BorderThickness="1">
+                  <Border.Effect><DropShadowEffect x:Name="MigToGlow" Color="#3DDC97" BlurRadius="0" ShadowDepth="0" Opacity="0.7"/></Border.Effect>
+                  <StackPanel>
+                    <TextBlock Text="КУДА · новая" FontSize="10.5" FontWeight="SemiBold" Foreground="#5A9C80" Margin="2,0,0,8"/>
+                    <ComboBox x:Name="MigToBox"/>
+                  </StackPanel>
+                </Border>
+              </Grid>
+
+
+              <ScrollViewer x:Name="MigScroll" Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                <StackPanel x:Name="MigSteps" Margin="0,0,6,0"/>
+              </ScrollViewer>
+              <StackPanel x:Name="MigEmpty" Grid.Row="2" Panel.ZIndex="5" VerticalAlignment="Center" HorizontalAlignment="Center" Visibility="Collapsed">
+                <TextBlock Text="📦" FontFamily="Segoe UI Emoji" FontSize="40" HorizontalAlignment="Center"/>
+                <TextBlock Text="Новая версия zapret не найдена" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,10,0,4"/>
+                <TextBlock Text="Скачай новую версию и распакуй её в папку Zapret рядом с текущей. Потом открой это окно снова." Foreground="{StaticResource Muted}"
+                           FontSize="12.5" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="380"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,16,0,0">
+                  <Button x:Name="MigOpenFolder" Style="{StaticResource Btn}" Content="Открыть папку Zapret" Margin="0,0,8,0"/>
+                  <Button x:Name="MigDemo" Style="{StaticResource AccentBtn}" Content="Посмотреть демо"/>
+                </StackPanel>
+              </StackPanel>
+
+              <DockPanel Grid.Row="3" Margin="0,14,0,0">
+                <Button x:Name="MigRun" DockPanel.Dock="Right" Style="{StaticResource AccentBtn}" Content="Перенести" Padding="22,10" MinWidth="140"/>
+                <TextBlock x:Name="MigDone" Text="Готово! Оригиналы файлов автора сохранены как .bak" Foreground="#7FE8B8" FontSize="12.5"
+                           VerticalAlignment="Center" Visibility="Collapsed" Opacity="0" TextWrapping="Wrap"/>
+              </DockPanel>
+            </Grid>
+          </Border>
+        </Grid>
+
+        <!-- Поделиться / Вставить -->
+        <Grid x:Name="ShareOverlay" Grid.RowSpan="2" Visibility="Collapsed">
+          <Border x:Name="ShareDim" Background="#C0090A0D" CornerRadius="20" Opacity="0"/>
+          <Border x:Name="SharePanel" Width="560" Margin="0,22" Background="#171A21" CornerRadius="18" BorderBrush="#2A2E38" BorderThickness="1"
+                  Opacity="0" RenderTransformOrigin="0.5,0.5">
+            <Border.RenderTransform><ScaleTransform x:Name="ShareScale" ScaleX="0.94" ScaleY="0.94"/></Border.RenderTransform>
+            <Border.Effect><DropShadowEffect BlurRadius="30" ShadowDepth="0" Opacity="0.6"/></Border.Effect>
+            <Grid Margin="26,18,26,20">
+              <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+              <DockPanel Margin="0,0,0,12">
+                <Button x:Name="ShareClose" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><TextBlock Text="✕" FontSize="13"/></Button>
+                <StackPanel>
+                  <TextBlock x:Name="ShareTitle" FontSize="20" FontWeight="SemiBold"/>
+                  <TextBlock x:Name="ShareSub" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                </StackPanel>
+              </DockPanel>
+              <DockPanel Grid.Row="1" Margin="2,0,8,8">
+                <TextBlock x:Name="ShareAll" DockPanel.Dock="Right" Text="Снять все" Foreground="#7FE8B8" FontSize="12" Cursor="Hand"/>
+                <TextBlock x:Name="ShareCount" Foreground="{StaticResource Muted}" FontSize="12"/>
+              </DockPanel>
+              <Border Grid.Row="2" Background="#1E2129" CornerRadius="14" BorderBrush="#262A33" BorderThickness="1" Padding="6">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                  <StackPanel x:Name="ShareList" Margin="8,6,10,6"/>
+                </ScrollViewer>
+              </Border>
+              <DockPanel Grid.Row="3" Margin="0,14,0,0">
+                <Button x:Name="ShareGo" DockPanel.Dock="Right" Style="{StaticResource AccentBtn}" Padding="22,10" MinWidth="150"/>
+                <TextBlock/>
+              </DockPanel>
+            </Grid>
+          </Border>
+        </Grid>
+
+        <!-- QR для телефона -->
+        <!-- Обновление приложения -->
+        <Grid x:Name="AuOverlay" Grid.RowSpan="2" Visibility="Collapsed" Panel.ZIndex="60">
+          <Border x:Name="AuDim" Background="#C0090A0D" CornerRadius="20" Opacity="0"/>
+          <Border x:Name="AuPanel" Width="380" VerticalAlignment="Center" Background="#171A21" CornerRadius="20" BorderBrush="#2A2E38" BorderThickness="1"
+                  Opacity="0" RenderTransformOrigin="0.5,0.5">
+            <Border.RenderTransform><ScaleTransform x:Name="AuScale" ScaleX="0.94" ScaleY="0.94"/></Border.RenderTransform>
+            <Border.Effect><DropShadowEffect BlurRadius="30" ShadowDepth="0" Opacity="0.6"/></Border.Effect>
+            <StackPanel Margin="28,30,28,26">
+              <Grid Width="96" Height="96" HorizontalAlignment="Center">
+                <Ellipse x:Name="AuRing" Stroke="#22262F" StrokeThickness="4"/>
+                <Ellipse x:Name="AuArc" Stroke="#3DDC97" StrokeThickness="4" StrokeDashArray="16 56" StrokeDashCap="Round" RenderTransformOrigin="0.5,0.5">
+                  <Ellipse.RenderTransform><RotateTransform x:Name="AuArcRot"/></Ellipse.RenderTransform>
+                </Ellipse>
+                <Image x:Name="AuLogo" Width="46" Height="46" RenderOptions.BitmapScalingMode="HighQuality" RenderTransformOrigin="0.5,0.5">
+                  <Image.RenderTransform><ScaleTransform x:Name="AuLogoS"/></Image.RenderTransform>
+                </Image>
+                <Grid x:Name="AuOk" Opacity="0" RenderTransformOrigin="0.5,0.5">
+                  <Grid.RenderTransform><ScaleTransform x:Name="AuOkS" ScaleX="0.4" ScaleY="0.4"/></Grid.RenderTransform>
+                  <Ellipse Fill="#3DDC97"/>
+                  <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="40" Foreground="#0F1115" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Grid>
+                <Ellipse x:Name="AuBurst" Stroke="#3DDC97" StrokeThickness="3" Opacity="0" RenderTransformOrigin="0.5,0.5">
+                  <Ellipse.RenderTransform><ScaleTransform x:Name="AuBurstS"/></Ellipse.RenderTransform>
+                </Ellipse>
+              </Grid>
+              <TextBlock x:Name="AuTitle" FontSize="19" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,18,0,4"/>
+              <TextBlock x:Name="AuSub" Foreground="#8A90A0" FontSize="12.5" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
+              <StackPanel x:Name="AuProgress">
+                <Border Height="6" CornerRadius="3" Background="#22262F" Margin="0,18,0,0" ClipToBounds="True">
+                  <Border CornerRadius="3" Background="#3DDC97" RenderTransformOrigin="0,0.5">
+                    <Border.RenderTransform><ScaleTransform x:Name="AuFillS" ScaleX="0"/></Border.RenderTransform>
+                  </Border>
+                </Border>
+                <TextBlock x:Name="AuPct" FontSize="11.5" Foreground="#8A90A0" HorizontalAlignment="Center" Margin="0,8,0,0"/>
+              </StackPanel>
+              <Border x:Name="AuNews" Visibility="Collapsed" Background="#1E2129" CornerRadius="12" Padding="14,12" Margin="0,16,0,0" BorderBrush="#262A33" BorderThickness="1">
+                <StackPanel x:Name="AuNewsList"/>
+              </Border>
+              <StackPanel x:Name="AuBtns" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,18,0,0" Visibility="Collapsed">
+                <Button x:Name="AuNewsBtn" Style="{StaticResource Btn}" Content="Что нового" Margin="0,0,8,0" Padding="16,8"/>
+                <Button x:Name="AuOkBtn" Style="{StaticResource AccentBtn}" Content="Отлично" Padding="20,8"/>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+        </Grid>
+
+        <!-- Что делать по ✕ -->
+        <Grid x:Name="CloseOverlay" Grid.RowSpan="2" Visibility="Collapsed" Panel.ZIndex="50">
+          <Border x:Name="CloseDim" Background="#C0090A0D" CornerRadius="20" Opacity="0"/>
+          <Border x:Name="ClosePanel" Width="420" VerticalAlignment="Center" Background="#171A21" CornerRadius="18" BorderBrush="#2A2E38" BorderThickness="1"
+                  Opacity="0" RenderTransformOrigin="0.5,0.5">
+            <Border.RenderTransform><ScaleTransform x:Name="CloseScale" ScaleX="0.94" ScaleY="0.94"/></Border.RenderTransform>
+            <Border.Effect><DropShadowEffect BlurRadius="30" ShadowDepth="0" Opacity="0.6"/></Border.Effect>
+            <StackPanel Margin="24,18,24,22">
+              <DockPanel Margin="0,0,0,6">
+                <Button x:Name="CloseAskX" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><TextBlock Text="✕" FontSize="13"/></Button>
+                <TextBlock Text="Закрыть Zapret?" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
+              </DockPanel>
+              <TextBlock Text="Выбор запомнится. Поменять можно в настройках → Запуск." Foreground="#8A90A0" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,16"/>
+              <Button x:Name="CloseToTray" Style="{StaticResource Btn}" Padding="14,12" Margin="0,0,0,8">
+                <Grid Width="330">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="36"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                  <TextBlock Text="&#xE921;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="#3DDC97" VerticalAlignment="Center"/>
+                  <StackPanel Grid.Column="1">
+                    <TextBlock Text="Свернуть в трей" FontSize="14" FontWeight="SemiBold"/>
+                    <TextBlock Text="Значок останется рядом с часами, zapret и Telegram продолжат работать" Foreground="#8A90A0" FontSize="11.5" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                  </StackPanel>
+                </Grid>
+              </Button>
+              <Button x:Name="CloseToExit" Style="{StaticResource Btn}" Padding="14,12">
+                <Grid Width="330">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="36"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                  <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="#FF8C99" VerticalAlignment="Center"/>
+                  <StackPanel Grid.Column="1">
+                    <TextBlock Text="Закрыть полностью" FontSize="14" FontWeight="SemiBold"/>
+                    <TextBlock Text="Окно и значок закроются. Включённый zapret продолжит работать" Foreground="#8A90A0" FontSize="11.5" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                  </StackPanel>
+                </Grid>
+              </Button>
+            </StackPanel>
+          </Border>
+        </Grid>
+
+        <Grid x:Name="QrOverlay" Grid.RowSpan="2" Visibility="Collapsed">
+          <Border x:Name="QrDim" Background="#C0090A0D" CornerRadius="20" Opacity="0"/>
+          <Border x:Name="QrPanel" Width="440" VerticalAlignment="Center" Background="#171A21" CornerRadius="18" BorderBrush="#2A2E38" BorderThickness="1"
+                  Opacity="0" RenderTransformOrigin="0.5,0.5">
+            <Border.RenderTransform><ScaleTransform x:Name="QrScale" ScaleX="0.94" ScaleY="0.94"/></Border.RenderTransform>
+            <Border.Effect><DropShadowEffect BlurRadius="30" ShadowDepth="0" Opacity="0.6"/></Border.Effect>
+            <StackPanel Margin="26,18,26,22">
+              <DockPanel Margin="0,0,0,10">
+                <Button x:Name="QrClose" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><TextBlock Text="✕" FontSize="13"/></Button>
+                <TextBlock Text="Telegram на телефоне" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
+              </DockPanel>
+              <TextBlock Text="1. Телефон должен быть в той же Wi-Fi сети, что и компьютер" Foreground="#B8BDC9" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,3"/>
+              <TextBlock Text="2. Наведи камеру телефона на код" Foreground="#B8BDC9" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,3"/>
+              <TextBlock Text="3. В Telegram нажми «Подключить прокси»" Foreground="#B8BDC9" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,14"/>
+              <Border x:Name="QrBox" Background="#FFFFFF" CornerRadius="14" Padding="14" Width="250" Height="250" HorizontalAlignment="Center" RenderTransformOrigin="0.5,0.5">
+                <Border.RenderTransform><ScaleTransform x:Name="QrBoxS"/></Border.RenderTransform>
+                <Grid>
+                  <Viewbox Stretch="Uniform"><Path x:Name="QrPath" Fill="#000000"/></Viewbox>
+                  <TextBlock x:Name="QrWait" Text="Готовлю…" Foreground="#5A6070" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Grid>
+              </Border>
+              <TextBlock x:Name="QrAddr" Foreground="{StaticResource Muted}" FontSize="11.5" HorizontalAlignment="Center" Margin="0,10,0,12"/>
+              <Button x:Name="QrCopy" Style="{StaticResource Btn}" Content="Скопировать ссылку" HorizontalAlignment="Center"/>
+            </StackPanel>
+          </Border>
+        </Grid>
+
+        <!-- Уведомление -->
+        <Border x:Name="Toast" Grid.Row="1" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,18"
+                Background="#2A2E38" CornerRadius="12" Padding="18,10" Opacity="0" IsHitTestVisible="False" MaxWidth="560">
+          <Border.Effect><DropShadowEffect BlurRadius="16" ShadowDepth="0" Opacity="0.5"/></Border.Effect>
+          <Border.RenderTransform><TranslateTransform x:Name="ToastShift" Y="30"/></Border.RenderTransform>
+          <TextBlock x:Name="ToastText" FontSize="13" TextWrapping="Wrap"/>
+        </Border>
+      </Grid>
+    </Border>
+    </Grid>
+  </Grid>
+</Window>
