@@ -1128,14 +1128,36 @@ $xamlText = @'
                       <TransformGroup>
                         <ScaleTransform x:Name="ZScale" ScaleX="0.3" ScaleY="0.3"/>
                         <ScaleTransform x:Name="ZFlip"/>
+                        <RotateTransform x:Name="ZTilt"/>
                       </TransformGroup>
                     </Grid.RenderTransform>
                     <Viewbox>
                       <Canvas Width="80" Height="80">
-                        <Path Data="M 16,14 L 64,14 L 64,26 L 34,54 L 64,54 L 64,66 L 16,66 L 16,54 L 46,26 L 16,26 Z" StrokeLineJoin="Round" StrokeThickness="2">
+                        <Path x:Name="ZFill" Data="M 16,14 L 64,14 L 64,26 L 34,54 L 64,54 L 64,66 L 16,66 L 16,54 L 46,26 L 16,26 Z" StrokeLineJoin="Round" StrokeThickness="2">
                           <Path.Fill><SolidColorBrush x:Name="ZBrush" Color="#3DDC97"/></Path.Fill>
                           <Path.Stroke><SolidColorBrush x:Name="ZStroke" Color="#3DDC97"/></Path.Stroke>
                         </Path>
+                        <!-- контур Z: «рисуется» при включении и бегает змейкой при запуске -->
+                        <Path x:Name="ZDraw" Data="M 16,14 L 64,14 L 64,26 L 34,54 L 64,54 L 64,66 L 16,66 L 16,54 L 46,26 L 16,26 Z" StrokeLineJoin="Round" StrokeThickness="3" StrokeDashCap="Round" Opacity="0"/>
+                        <!-- блик, пробегающий по букве -->
+                        <Canvas Width="80" Height="80" IsHitTestVisible="False">
+                          <Canvas.Clip><PathGeometry Figures="M 16,14 L 64,14 L 64,26 L 34,54 L 64,54 L 64,66 L 16,66 L 16,54 L 46,26 L 16,26 Z"/></Canvas.Clip>
+                          <Rectangle Width="16" Height="120" Canvas.Top="-20" Opacity="0.55">
+                            <Rectangle.Fill>
+                              <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                <GradientStop Color="#00FFFFFF" Offset="0"/>
+                                <GradientStop Color="#FFFFFFFF" Offset="0.5"/>
+                                <GradientStop Color="#00FFFFFF" Offset="1"/>
+                              </LinearGradientBrush>
+                            </Rectangle.Fill>
+                            <Rectangle.RenderTransform>
+                              <TransformGroup>
+                                <RotateTransform Angle="22"/>
+                                <TranslateTransform x:Name="ZShineT" X="-60"/>
+                              </TransformGroup>
+                            </Rectangle.RenderTransform>
+                          </Rectangle>
+                        </Canvas>
                       </Canvas>
                     </Viewbox>
                   </Grid>
@@ -1862,34 +1884,72 @@ $script:zShown = $false
 $AngP = [System.Windows.Media.RotateTransform]::AngleProperty
 function Back-Ease { $e = New-Object System.Windows.Media.Animation.BackEase; $e.EasingMode = 'EaseOut'; $e.Amplitude = 0.5; $e }
 function Sine-Ease { $e = New-Object System.Windows.Media.Animation.SineEase; $e.EasingMode = 'EaseInOut'; $e }
+$ZLen = 95.4   # длина контура Z в толщинах линии (периметр 286 / толщина 3)
+$DashOffP = [System.Windows.Shapes.Shape]::StrokeDashOffsetProperty
+$TXP = [System.Windows.Media.TranslateTransform]::XProperty
+function Set-ZDash([double]$a, [double]$b) { $ui.ZDraw.StrokeDashArray = New-Object System.Windows.Media.DoubleCollection (, [double[]]@($a, $b)) }
+function Start-ZShine {
+    # блик пробегает по букве раз в несколько секунд
+    $k = New-Object System.Windows.Media.Animation.DoubleAnimationUsingKeyFrames
+    $k.Duration = New-Object System.Windows.Duration ([TimeSpan]::FromMilliseconds(6500))
+    $k.RepeatBehavior = [System.Windows.Media.Animation.RepeatBehavior]::Forever
+    [System.Windows.Media.Animation.Timeline]::SetDesiredFrameRate($k, 40)
+    [void]$k.KeyFrames.Add((New-Object System.Windows.Media.Animation.DiscreteDoubleKeyFrame (-60, [System.Windows.Media.Animation.KeyTime]::FromTimeSpan([TimeSpan]::Zero))))
+    [void]$k.KeyFrames.Add((New-Object System.Windows.Media.Animation.DiscreteDoubleKeyFrame (-60, [System.Windows.Media.Animation.KeyTime]::FromTimeSpan([TimeSpan]::FromMilliseconds(5600)))))
+    $sp = New-Object System.Windows.Media.Animation.EasingDoubleKeyFrame (110, [System.Windows.Media.Animation.KeyTime]::FromTimeSpan([TimeSpan]::FromMilliseconds(6300)))
+    $sp.EasingFunction = Sine-Ease
+    [void]$k.KeyFrames.Add($sp)
+    $k.BeginTime = [TimeSpan]::FromMilliseconds(-5000)   # первый блик почти сразу после включения
+    $ui.ZShineT.BeginAnimation($TXP, $k)
+}
+function Stop-ZShine { $ui.ZShineT.BeginAnimation($TXP, $null); $ui.ZShineT.X = -60 }
 function Show-Z([switch]$Spin) {
+    $ui.ZDraw.Stroke = $ui.ZStroke
     if (-not $script:zShown) {
         $script:zShown = $true
         Anim-Double $ui.IconWrap $OP 0 200
         Anim-Double $ui.PowerIconScale $SX 0.3 260; Anim-Double $ui.PowerIconScale $SY 0.3 260
         Anim-Double $ui.PowerIconRot $AngP 120 260
-        Anim-Double $ui.ZWrap $OP 1 260 0 -beginMs 120
-        Anim-Double $ui.ZScale $SX 1 520 0.3 -beginMs 120 -Easing (Back-Ease)
-        Anim-Double $ui.ZScale $SY 1 520 0.3 -beginMs 120 -Easing (Back-Ease)
+        Anim-Double $ui.ZWrap $OP 1 200 0 -beginMs 100
+        Anim-Double $ui.ZScale $SX 1 520 0.6 -beginMs 100 -Easing (Back-Ease)
+        Anim-Double $ui.ZScale $SY 1 520 0.6 -beginMs 100 -Easing (Back-Ease)
+        Stop-Anim $ui.ZFill $OP; $ui.ZFill.Opacity = 0
     }
     if ($Spin) {
-        # вращение "монеткой" вокруг вертикальной оси
-        Anim-Double $ui.ZFlip $SX -1 420 1 -Forever -AutoReverse -Easing (Sine-Ease)
+        # запуск: по контуру Z бегает «змейка», сама буква еле видна
+        Stop-ZShine
+        Anim-Double $ui.ZFill $OP 0.18 250
+        Set-ZDash 20 ($ZLen - 20)
+        Stop-Anim $ui.ZDraw $OP; $ui.ZDraw.Opacity = 1
+        Anim-Double $ui.ZDraw $DashOffP (-$ZLen) 1000 0 -Forever -NoEase
     } else {
-        # плавно останавливаем вращение
-        Anim-Double $ui.ZFlip $SX 1 450 -Easing (Back-Ease)
+        # включился: контур быстро «дорисовывается», буква заливается и подпрыгивает, пробегает блик
+        Set-ZDash $ZLen $ZLen
+        Stop-Anim $ui.ZDraw $OP; $ui.ZDraw.Opacity = 1
+        Anim-Double $ui.ZDraw $DashOffP 0 480 $ZLen
+        Anim-Double $ui.ZFill $OP 1 260 -beginMs 380
+        Anim-Double $ui.ZDraw $OP 0 300 -beginMs 620
+        Anim-Double $ui.ZScale $SX 1 520 1.16 -beginMs 380 -Easing (Back-Ease)
+        Anim-Double $ui.ZScale $SY 1 520 1.16 -beginMs 380 -Easing (Back-Ease)
+        Start-ZShine
     }
 }
 function Hide-Z {
     if (-not $script:zShown) { return }
     $script:zShown = $false
-    Anim-Double $ui.ZFlip $SX 1 300
-    Anim-Double $ui.ZScale $SX 0.3 280; Anim-Double $ui.ZScale $SY 0.3 280
-    Anim-Double $ui.ZWrap $OP 0 240
-    Anim-Double $ui.IconWrap $OP 1 300 0 -beginMs 150
-    Anim-Double $ui.PowerIconScale $SX 1 520 0.3 -beginMs 150 -Easing (Back-Ease)
-    Anim-Double $ui.PowerIconScale $SY 1 520 0.3 -beginMs 150 -Easing (Back-Ease)
-    Anim-Double $ui.PowerIconRot $AngP 0 520 -120 -beginMs 150
+    Stop-ZShine
+    Anim-Double $ui.ZTilt $AngP 0 200
+    # буква «стирается» по контуру и сжимается, на её место возвращается значок питания
+    Anim-Double $ui.ZFill $OP 0 180
+    Set-ZDash $ZLen $ZLen
+    Stop-Anim $ui.ZDraw $OP; $ui.ZDraw.Opacity = 1
+    Anim-Double $ui.ZDraw $DashOffP (-$ZLen) 380 0
+    Anim-Double $ui.ZScale $SX 0.3 300 -beginMs 220; Anim-Double $ui.ZScale $SY 0.3 300 -beginMs 220
+    Anim-Double $ui.ZWrap $OP 0 240 -beginMs 260
+    Anim-Double $ui.IconWrap $OP 1 300 0 -beginMs 380
+    Anim-Double $ui.PowerIconScale $SX 1 520 0.3 -beginMs 380 -Easing (Back-Ease)
+    Anim-Double $ui.PowerIconScale $SY 1 520 0.3 -beginMs 380 -Easing (Back-Ease)
+    Anim-Double $ui.PowerIconRot $AngP 0 520 -120 -beginMs 380
 }
 function Set-ZColor($hex) { Anim-Color $ui.ZBrush $hex 300; Anim-Color $ui.ZStroke $hex 300 }
 
@@ -2630,8 +2690,8 @@ $ui.RepoBtn.Add_Click({ Safe { Start-Process "https://github.com/$UpdateRepo" } 
 $ui.Dim.Add_MouseLeftButtonUp({ Close-Settings })
 $win.Add_KeyDown({ param($s, $e) if ($e.Key -eq 'Escape' -and $ui.SettingsOverlay.Visibility -eq 'Visible') { Close-Settings } })
 
-$ui.PowerBtn.Add_MouseEnter({ Anim-Double $ui.PowerScale $SX 1.04 200; Anim-Double $ui.PowerScale $SY 1.04 200 })
-$ui.PowerBtn.Add_MouseLeave({ Anim-Double $ui.PowerScale $SX 1 200; Anim-Double $ui.PowerScale $SY 1 200 })
+$ui.PowerBtn.Add_MouseEnter({ Anim-Double $ui.PowerScale $SX 1.04 200; Anim-Double $ui.PowerScale $SY 1.04 200; if ($script:zShown -and $script:state -eq 'on') { Anim-Double $ui.ZTilt $AngP -10 380 -Easing (Back-Ease) } })
+$ui.PowerBtn.Add_MouseLeave({ Anim-Double $ui.PowerScale $SX 1 200; Anim-Double $ui.PowerScale $SY 1 200; Anim-Double $ui.ZTilt $AngP 0 380 -Easing (Back-Ease) })
 $ui.PowerBtn.Add_PreviewMouseLeftButtonDown({ Anim-Double $ui.PowerScale $SX 0.95 90; Anim-Double $ui.PowerScale $SY 0.95 90 })
 $ui.PowerBtn.Add_PreviewMouseLeftButtonUp({ Anim-Double $ui.PowerScale $SX 1.04 160; Anim-Double $ui.PowerScale $SY 1.04 160 })
 $ui.PowerBtn.Add_Click({ Safe {
@@ -4520,12 +4580,14 @@ if (-not $InOwnHost -and $HostReady -and (Test-Path -LiteralPath $HostExe) -and 
 function Pause-Glow {
     foreach ($g in @($ui.Glow1, $ui.Glow2)) { Stop-Anim $g $OP; $g.Opacity = 0 }
     foreach ($s in @($ui.Glow1S, $ui.Glow2S)) { Stop-Anim $s $SX; Stop-Anim $s $SY }
+    Stop-ZShine
     $script:glowPaused = $true
 }
 function Resume-Glow {
     if (-not $script:glowPaused) { return }
     $script:glowPaused = $false
     if ($script:state -ne 'on') { return }
+    Start-ZShine
     foreach ($g in @(@($ui.Glow1, $ui.Glow1S, 0), @($ui.Glow2, $ui.Glow2S, 1100))) {
         Anim-Double $g[0] $OP 0 2200 0.7 -Forever -beginMs $g[2] -NoEase -Low
         Anim-Double $g[1] $SX 1.38 2200 1 -Forever -beginMs $g[2] -Low
