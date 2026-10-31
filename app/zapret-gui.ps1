@@ -4207,9 +4207,9 @@ function Show-UpdatedIfNeeded {
     }
     $ui.AuNews.Visibility = 'Collapsed'
     $ui.AuBtns.Visibility = 'Visible'
-    Open-UpdOverlay -Done
+    Open-AuOverlay -Done
 }
-$ui.AuOkBtn.Add_Click({ Close-UpdOverlay })
+$ui.AuOkBtn.Add_Click({ Close-AuOverlay })
 $ui.AuNewsBtn.Add_Click({ Safe {
     $ui.AuNewsBtn.Visibility = 'Collapsed'
     $ui.AuNews.Visibility = 'Visible'; $ui.AuNews.Opacity = 0
@@ -4305,7 +4305,7 @@ function Start-ZapretUpdate([string]$tag) {
     if (Get-ServiceState) { Show-Toast 'zapret установлен как служба Windows. Удали службу через service.bat, потом обнови здесь.' -Err; return }
     if ($script:zuJob) { return }
     $script:zuWasOn = ($script:state -eq 'on')
-    Open-UpdOverlay
+    Open-AuOverlay
     $ui.AuTitle.Text = T $("Обновление zapret до $tag")
     $ui.AuSub.Text = T $('Скачиваю zapret…')
     $ui.AuPct.Text = ''
@@ -4383,7 +4383,7 @@ $script:zuTimer.Add_Tick({
         if (-not $j.Done) { return }
         $script:zuTimer.Stop(); $script:zuJob = $null
         try { $script:zuPs.Dispose() } catch {}
-        if ($j.Error) { Close-UpdOverlay; Show-Toast "Не удалось обновить zapret: $($j.Error)" -Err; return }
+        if ($j.Error) { Close-AuOverlay; Show-Toast "Не удалось обновить zapret: $($j.Error)" -Err; return }
         # перенос сайтов и настроек в новую версию (быстро, прямо здесь)
         $ui.AuSub.Text = T $('Переношу твои сайты и настройки…'); Anim-Double $ui.AuFillS $SX 0.92 400
         $script:migDemo = $false; $script:migFrom = $Root; $script:migTo = $j.NewPath
@@ -4401,7 +4401,7 @@ $script:zuTimer.Add_Tick({
         $script:zuRestartT.Interval = [TimeSpan]::FromMilliseconds(700)
         $script:zuRestartT.Add_Tick({ $script:zuRestartT.Stop(); Restart-App })
         $script:zuRestartT.Start()
-    } catch { $script:zuTimer.Stop(); $script:zuJob = $null; Write-Log ($_ | Out-String); Close-UpdOverlay; Show-Toast ("Ошибка обновления zapret: " + $_.Exception.Message) -Err }
+    } catch { $script:zuTimer.Stop(); $script:zuJob = $null; Write-Log ($_ | Out-String); Close-AuOverlay; Show-Toast ("Ошибка обновления zapret: " + $_.Exception.Message) -Err }
 })
 function Start-UpdateCheck {
     $ui.UpdText.Text = T $('Проверяю…')
@@ -4553,32 +4553,43 @@ try {
     $script:trayIcon.Icon = New-Object System.Drawing.Icon($trayMs, [System.Windows.Forms.SystemInformation]::SmallIconSize)
 } catch { $script:trayIcon.Icon = [System.Drawing.SystemIcons]::Application }
 $script:trayIcon.Text = 'Zapret'
-# два варианта значка: цветной с зелёной точкой (работает) и серый (выключен)
+# два варианта значка: цветной с зелёной точкой (работает) и серый (выключен).
+# Рисуем через WPF из большого кадра значка — так он чёткий при любом масштабе экрана.
 $script:trayIconOn = $null; $script:trayIconOff = $null
-try {
-    $sz = [System.Windows.Forms.SystemInformation]::SmallIconSize
-    $baseIco = $script:trayIcon.Icon
-    $bmp = New-Object System.Drawing.Bitmap $sz.Width, $sz.Height
-    $g = [System.Drawing.Graphics]::FromImage($bmp); $g.SmoothingMode = 'AntiAlias'; $g.InterpolationMode = 'HighQualityBicubic'
-    $g.DrawIcon($baseIco, (New-Object System.Drawing.Rectangle 0, 0, $sz.Width, $sz.Height))
-    $d = [Math]::Max(6, [int]($sz.Width * 0.42)); $x = $sz.Width - $d; $y = $sz.Height - $d
-    $g.FillEllipse((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 15, 17, 21))), $x - 1, $y - 1, $d + 1, $d + 1)
-    $g.FillEllipse((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 61, 220, 151))), $x + 1, $y + 1, $d - 3, $d - 3)
-    $g.Dispose()
-    $script:trayIconOn = [System.Drawing.Icon]::FromHandle($bmp.GetHicon())
-    $gb = New-Object System.Drawing.Bitmap $sz.Width, $sz.Height
-    $g2 = [System.Drawing.Graphics]::FromImage($gb); $g2.InterpolationMode = 'HighQualityBicubic'
-    $cm = New-Object System.Drawing.Imaging.ColorMatrix
-    $cm.Matrix00 = 0.3; $cm.Matrix01 = 0.3; $cm.Matrix02 = 0.3
-    $cm.Matrix10 = 0.59; $cm.Matrix11 = 0.59; $cm.Matrix12 = 0.59
-    $cm.Matrix20 = 0.11; $cm.Matrix21 = 0.11; $cm.Matrix22 = 0.11
-    $cm.Matrix33 = 0.75; $cm.Matrix44 = 1
-    $ia = New-Object System.Drawing.Imaging.ImageAttributes; $ia.SetColorMatrix($cm)
-    $src = $baseIco.ToBitmap()
-    $g2.DrawImage($src, (New-Object System.Drawing.Rectangle 0, 0, $sz.Width, $sz.Height), 0, 0, $src.Width, $src.Height, [System.Drawing.GraphicsUnit]::Pixel, $ia)
-    $g2.Dispose()
-    $script:trayIconOff = [System.Drawing.Icon]::FromHandle($gb.GetHicon())
-} catch { Write-Log ($_ | Out-String) }
+function New-TrayIcon([bool]$on) {
+    $sz = [System.Windows.Forms.SystemInformation]::SmallIconSize.Width
+    $frames = @($icoDec.Frames | Sort-Object PixelWidth)
+    $fr = $frames | Where-Object { $_.PixelWidth -ge ($sz * 2) } | Select-Object -First 1
+    if (-not $fr) { $fr = $frames[-1] }
+    $dv = New-Object System.Windows.Media.DrawingVisual
+    [System.Windows.Media.RenderOptions]::SetBitmapScalingMode($dv, 'HighQuality')
+    $dc = $dv.RenderOpen()
+    $dc.DrawImage($fr, (New-Object System.Windows.Rect 0, 0, $sz, $sz))
+    if ($on) {
+        $d = [Math]::Round($sz * 0.46); $r = $d / 2; $c = New-Object System.Windows.Point ($sz - $r), ($sz - $r)
+        $dc.DrawEllipse((New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.Color]::FromRgb(15, 17, 21))), $null, $c, $r, $r)
+        $dc.DrawEllipse((New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.Color]::FromRgb(61, 220, 151))), $null, $c, ($r - 1.6), ($r - 1.6))
+    }
+    $dc.Close()
+    $rtb = New-Object System.Windows.Media.Imaging.RenderTargetBitmap $sz, $sz, 96, 96, ([System.Windows.Media.PixelFormats]::Pbgra32)
+    $rtb.Render($dv)
+    $src = $rtb
+    if (-not $on) {
+        # серый и чуть прозрачнее
+        $stride = $sz * 4; $px = New-Object byte[] ($stride * $sz); $rtb.CopyPixels($px, $stride, 0)
+        for ($i = 0; $i -lt $px.Length; $i += 4) {
+            $l = [byte][Math]::Min(255, (0.11 * $px[$i] + 0.59 * $px[$i + 1] + 0.3 * $px[$i + 2]) * 0.9)
+            $px[$i] = $l; $px[$i + 1] = $l; $px[$i + 2] = $l
+        }
+        $src = [System.Windows.Media.Imaging.BitmapSource]::Create($sz, $sz, 96, 96, ([System.Windows.Media.PixelFormats]::Pbgra32), $null, $px, $stride)
+    }
+    $enc = New-Object System.Windows.Media.Imaging.PngBitmapEncoder
+    $enc.Frames.Add([System.Windows.Media.Imaging.BitmapFrame]::Create($src))
+    $ms = New-Object System.IO.MemoryStream; $enc.Save($ms); $ms.Position = 0
+    $bmp = New-Object System.Drawing.Bitmap $ms
+    return [System.Drawing.Icon]::FromHandle($bmp.GetHicon())
+}
+try { if ($icoDec) { $script:trayIconOn = New-TrayIcon $true; $script:trayIconOff = New-TrayIcon $false } } catch { Write-Log ($_ | Out-String) }
 function Update-TrayIcon {
     if (-not $script:trayIcon) { return }
     try {
