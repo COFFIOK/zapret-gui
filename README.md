@@ -55,13 +55,6 @@
 
 > Windows Defender иногда ругается на `winws.exe` и драйвер WinDivert — это особенность самого zapret.
 
-
-```
-app\build.cmd          ->  app\out\Zapret.exe
-```
-
-Установщик собирается по шагам из `installer/build.py`.
-
 ## Благодарности и лицензии
 
 - **zapret-discord-youtube** — [Flowseal](https://github.com/Flowseal/zapret-discord-youtube) (MIT)
