@@ -188,7 +188,7 @@ namespace ZapretCS
             { @"встроенный список zapret · только просмотр", @"built-in zapret list · read only" },
             { @"Удалить группу", @"Delete group" },
             { @"Перетащи, чтобы переместить", @"Drag to move" },
-            { @"Новые анимации включения — каждый раз случайная", @"New power-on animations — a random one every time" },
+            { @"16 анимаций включения: молнии, портал, сверхновая, частицы и другие — каждый раз новая", @"16 power-on animations: lightning, portal, supernova, particles and more — a new one every time" },
             { @"Режим экономии в настройках «Вид»: без анимаций, меньше нагрузка", @"Eco mode in Appearance settings: no animations, less load" },
             { @"Режим экономии", @"Eco mode" },
             { @"без анимаций и эффектов — меньше нагрузка на компьютер и батарею ноутбука. Всё работает как обычно", @"no animations or effects — less load on the PC and laptop battery. Everything works as usual" },

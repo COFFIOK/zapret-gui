@@ -1,5 +1,7 @@
 // Zapret (C#) — анимация буквы Z на кнопке включения
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -61,7 +63,9 @@ namespace ZapretCS
         // ---- случайная анимация включения ----
         static readonly Random zRnd = new Random();
         int lastFx = -1;
-        static readonly string[] FxNames = { "draw", "flip", "drop", "twist", "glitch", "shock", "jelly" };
+        static readonly string[] FxNames = { "draw", "flip", "drop", "twist", "glitch", "shock", "jelly",
+            "assemble", "supernova", "lightning", "shards", "sonar", "spiral", "scanner", "portal", "confetti" };
+        readonly List<int> fxBag = new List<int>();   // «мешок»: все анимации по разу в случайном порядке, потом заново
 
         // ключевые кадры: пары (мс, значение)
         void KF(string name, DependencyProperty p, int begin, params double[] tv)
@@ -82,10 +86,17 @@ namespace ZapretCS
             Anim.Stop(draw, off);
             foreach (var n in new[] { "ZFlip" }) { Anim.Stop(A(n), Anim.SX); Anim.Stop(A(n), Anim.SY); }
             Anim.Stop(A("ZMove"), Anim.TX); Anim.Stop(A("ZMove"), Anim.TY); Anim.Stop(A("ZTilt"), Anim.Ang);
-            int fx;
-            do fx = zRnd.Next(FxNames.Length); while (fx == lastFx && FxNames.Length > 1);
+            if (fxBag.Count == 0)
+            {
+                fxBag.AddRange(Enumerable.Range(0, FxNames.Length).OrderBy(x => zRnd.Next()));
+                if (fxBag[0] == lastFx) { fxBag.Add(fxBag[0]); fxBag.RemoveAt(0); }
+            }
+            int fx = fxBag[0]; fxBag.RemoveAt(0);
             lastFx = fx;
             if (Anim.Eco) fx = 0;
+            FxClear(); El("ZWrap").OpacityMask = null;
+            Anim.Stop(A("ZMove"), Anim.TY); ((TranslateTransform)A("ZMove")).Y = 0; ((TranslateTransform)A("ZMove")).X = 0;
+            if (PlayFx(FxNames[fx])) { StartZShine(); return; }
             switch (FxNames[fx])
             {
                 case "flip":    // буква делает оборот вокруг своей оси
@@ -147,6 +158,7 @@ namespace ZapretCS
             if (!zShown) return;
             zShown = false;
             StopZShine();
+            FxClear(); El("ZWrap").OpacityMask = null;
             Anim.D(A("ZTilt"), Anim.Ang, 0, 200);
             // буква «стирается» по контуру и сжимается, на её место возвращается значок питания
             var draw = E<Shape>("ZDraw");

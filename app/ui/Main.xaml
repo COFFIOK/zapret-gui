@@ -456,6 +456,8 @@
                       </Canvas>
                     </Viewbox>
                   </Grid>
+                  <!-- слой эффектов анимаций включения (частицы, молнии, кольца) -->
+                  <Canvas x:Name="FxLayer" Margin="-30" IsHitTestVisible="False" Panel.ZIndex="10"/>
                   <Grid x:Name="ZWrap" Width="78" Height="78" Opacity="0" RenderTransformOrigin="0.5,0.5" IsHitTestVisible="False">
                     <Grid.RenderTransform>
                       <TransformGroup>
