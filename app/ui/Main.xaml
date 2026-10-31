@@ -592,11 +592,11 @@
                 <DockPanel>
                   <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock x:Name="SitesCount" Foreground="{StaticResource Muted}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <Button x:Name="ShareBtn" Style="{StaticResource Btn}" Padding="10,5" FontSize="12" Margin="0,0,6,0" ToolTip="Выбрать сайты и скопировать их, чтобы отправить другу">
+                    <Button x:Name="ShareBtn" Style="{StaticResource Btn}" Padding="10,5" FontSize="12" Margin="0,0,6,0" ToolTip="Выбрать сайты и получить код для друга">
                       <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE72D;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,1,6,0"/><TextBlock Text="Поделиться"/></StackPanel>
                     </Button>
-                    <Button x:Name="PasteBtn" Style="{StaticResource Btn}" Padding="10,5" FontSize="12" ToolTip="Добавить сайты из скопированного списка">
-                      <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE77F;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,1,6,0"/><TextBlock Text="Вставить"/></StackPanel>
+                    <Button x:Name="PasteBtn" Style="{StaticResource Btn}" Padding="10,5" FontSize="12" ToolTip="Ввести код от друга или вставить скопированный список">
+                      <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE8AC;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,1,6,0"/><TextBlock Text="Ввести код"/></StackPanel>
                     </Button>
                   </StackPanel>
                   <TextBlock Text="Мои сайты" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
@@ -1032,17 +1032,40 @@
                   <TextBlock x:Name="ShareSub" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap"/>
                 </StackPanel>
               </DockPanel>
-              <DockPanel Grid.Row="1" Margin="2,0,8,8">
+              <DockPanel x:Name="ShareCountRow" Grid.Row="1" Margin="2,0,8,8">
                 <TextBlock x:Name="ShareAll" DockPanel.Dock="Right" Text="Снять все" Foreground="#7FE8B8" FontSize="12" Cursor="Hand"/>
                 <TextBlock x:Name="ShareCount" Foreground="{StaticResource Muted}" FontSize="12"/>
               </DockPanel>
-              <Border Grid.Row="2" Background="#1E2129" CornerRadius="14" BorderBrush="#262A33" BorderThickness="1" Padding="6">
+              <Border x:Name="ShareListBox" Grid.Row="2" Background="#1E2129" CornerRadius="14" BorderBrush="#262A33" BorderThickness="1" Padding="6">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                   <StackPanel x:Name="ShareList" Margin="8,6,10,6"/>
                 </ScrollViewer>
               </Border>
+              <!-- готовый код -->
+              <StackPanel x:Name="ShareCodeView" Grid.Row="2" Visibility="Collapsed" VerticalAlignment="Center" Margin="0,0,0,10">
+                <TextBlock Text="Код для друга" Foreground="{StaticResource Muted}" FontSize="13" HorizontalAlignment="Center"/>
+                <Border x:Name="ShareCodeCard" Background="#1B3329" CornerRadius="18" BorderBrush="#2D5A47" BorderThickness="1" Padding="34,14,34,16"
+                        HorizontalAlignment="Center" Margin="0,12,0,12" Cursor="Hand" ToolTip="Нажми, чтобы скопировать" RenderTransformOrigin="0.5,0.5">
+                  <Border.RenderTransform><ScaleTransform x:Name="ShareCodeScale"/></Border.RenderTransform>
+                  <TextBlock x:Name="ShareCodeText" FontFamily="Consolas" FontSize="44" FontWeight="Bold" Foreground="#3DDC97"/>
+                </Border>
+                <TextBlock x:Name="ShareCodeInfo" Foreground="{StaticResource Muted}" FontSize="12.5" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="400"/>
+              </StackPanel>
+              <!-- ввод кода -->
+              <StackPanel x:Name="ShareEnterView" Grid.Row="2" Visibility="Collapsed" VerticalAlignment="Center" Margin="0,0,0,10">
+                <TextBlock Text="Введи код, который прислал друг" FontSize="14" HorizontalAlignment="Center"/>
+                <Border x:Name="ShareCodeBoxWrap" Width="300" Height="66" Background="#22262F" CornerRadius="16" BorderBrush="#2E3340" BorderThickness="1" Margin="0,14,0,10">
+                  <TextBox x:Name="ShareCodeBox" Background="Transparent" BorderThickness="0" Foreground="#E6E8EE" CaretBrush="#3DDC97"
+                           FontFamily="Consolas" FontSize="32" FontWeight="Bold" HorizontalContentAlignment="Center" VerticalAlignment="Center"
+                           CharacterCasing="Upper" MaxLength="9"/>
+                </Border>
+                <TextBlock x:Name="ShareEnterMsg" Foreground="{StaticResource Muted}" FontSize="12.5" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="400" MinHeight="18"/>
+                <TextBlock x:Name="SharePasteList" Text="Прислали список текстом? Скопируй его и нажми сюда" Foreground="#7FE8B8" FontSize="12" Cursor="Hand"
+                           HorizontalAlignment="Center" Margin="0,22,0,0"/>
+              </StackPanel>
               <DockPanel Grid.Row="3" Margin="0,14,0,0">
                 <Button x:Name="ShareGo" DockPanel.Dock="Right" Style="{StaticResource AccentBtn}" Padding="22,10" MinWidth="150"/>
+                <Button x:Name="ShareAlt" DockPanel.Dock="Right" Style="{StaticResource Btn}" Padding="16,10" Margin="0,0,10,0" Visibility="Collapsed"/>
                 <TextBlock/>
               </DockPanel>
             </Grid>

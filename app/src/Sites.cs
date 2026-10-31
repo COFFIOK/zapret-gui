@@ -610,20 +610,22 @@ namespace ZapretCS
         {
             return new CheckBox { Style = (Style)Win.FindResource("Check"), IsChecked = true, Content = new TextBlock { Text = text, FontSize = size } };
         }
-        void OpenShare(string mode, Groups groups)
+        void OpenShare(string mode, Groups groups, bool open = true)
         {
             shareMode = mode;
+            ShareView("list");
             var list = E<Panel>("ShareList"); list.Children.Clear(); shareBoxes.Clear();
             if (mode == "share")
             {
                 Tb("ShareTitle").Text = Translate.T("Поделиться сайтами");
-                Tb("ShareSub").Text = Translate.T("Отметь, чем поделиться. Список скопируется — останется вставить его в сообщение.");
-                Btn("ShareGo").Content = Translate.T("Скопировать");
+                Tb("ShareSub").Text = Translate.T("Отметь, чем поделиться, — получишь короткий код. Друг введёт его в своём Zapret.");
+                Btn("ShareGo").Content = Translate.T("Получить код");
+                var alt = Btn("ShareAlt"); alt.Content = Translate.T("Скопировать текстом"); alt.Visibility = Visibility.Visible; alt.IsEnabled = true;
             }
             else
             {
                 Tb("ShareTitle").Text = Translate.T("Добавить сайты");
-                Tb("ShareSub").Text = Translate.T("Вот что нашлось в скопированном тексте. Отметь, что добавить к себе.");
+                Tb("ShareSub").Text = Translate.T("Вот что тебе прислали. Отметь, что добавить к себе.");
                 Btn("ShareGo").Content = Translate.T("Добавить");
             }
             int i = 0;
@@ -651,13 +653,14 @@ namespace ZapretCS
                 list.Children.Add(wrap); i++;
             }
             UpdateShareCount();
-            OpenOverlay("Share");
+            if (open) OpenOverlay("Share");
         }
         void UpdateShareCount()
         {
             int n = shareBoxes.Count(c => c.IsChecked == true);
             Tb("ShareCount").Text = Translate.T("Выбрано: " + Plural(n) + " из " + shareBoxes.Count);
-            Btn("ShareGo").IsEnabled = n > 0;
+            Btn("ShareGo").IsEnabled = n > 0 && !shareBusy;
+            if (shareMode == "share") Btn("ShareAlt").IsEnabled = n > 0;
             Tb("ShareAll").Text = Translate.T(n == shareBoxes.Count ? "Снять все" : "Выбрать все");
         }
         Groups ShareSelection()
@@ -666,6 +669,33 @@ namespace ZapretCS
             foreach (var c in shareBoxes) if (c.IsChecked == true) { var t = (string[])c.Tag; sel[t[0]].Add(t[1]); }
             return sel;
         }
+        // «Ввести код»: если в буфере список сайтов — сразу показываем его, иначе окно ввода кода
+        void PasteList(bool fromEnter)
+        {
+            string txt = null;
+            try { txt = Clipboard.ContainsText() ? Clipboard.GetText() : null; } catch { }
+            string code = NormCode(txt);
+            if (!fromEnter && code != null) { OpenEnterCode(code); return; }
+            if (!string.IsNullOrEmpty(txt) && code == null)
+            {
+                var parsed = ParseSites(txt);
+                if (parsed.Count > 0) { OpenShare("import", parsed, fromEnter == false); return; }
+                if (fromEnter)
+                {
+                    var msg = Tb("ShareEnterMsg"); msg.Foreground = Theme.B("#8A90A0");
+                    msg.Text = Translate.T(parseSkipped > 0 ? "Все сайты из скопированного списка у тебя уже есть (" + parseSkipped + ")." : "В скопированном тексте не нашлось адресов сайтов.");
+                    return;
+                }
+            }
+            else if (fromEnter)
+            {
+                var msg = Tb("ShareEnterMsg"); msg.Foreground = Theme.B("#8A90A0");
+                msg.Text = Translate.T("Сначала скопируй список сайтов, который тебе прислали.");
+                return;
+            }
+            OpenEnterCode(null);
+        }
+
         void WireShare()
         {
             Btn("ShareBtn").Click += (s, e) => Safe(() =>
@@ -674,19 +704,8 @@ namespace ZapretCS
                 if (g.Count == 0) { Toast("Пока нечем делиться — добавь сайты", true); return; }
                 OpenShare("share", g);
             });
-            Btn("PasteBtn").Click += (s, e) => Safe(() =>
-            {
-                string txt = Clipboard.ContainsText() ? Clipboard.GetText() : null;
-                if (string.IsNullOrEmpty(txt)) { Toast("Сначала скопируй список сайтов, который тебе прислали", true); return; }
-                var parsed = ParseSites(txt);
-                if (parsed.Count == 0)
-                {
-                    if (parseSkipped > 0) Toast("Все сайты из списка у тебя уже есть (" + parseSkipped + ")");
-                    else Toast("В скопированном тексте не нашлось адресов сайтов", true);
-                    return;
-                }
-                OpenShare("import", parsed);
-            });
+            Btn("PasteBtn").Click += (s, e) => Safe(() => PasteList(false));
+            WireShareCode();
             Tb("ShareAll").MouseLeftButtonUp += (s, e) =>
             {
                 bool all = shareBoxes.Count(c => c.IsChecked == true) != shareBoxes.Count;
@@ -698,13 +717,10 @@ namespace ZapretCS
             El("ShareDim").MouseLeftButtonUp += (s, e) => CloseOverlay("Share");
             Btn("ShareGo").Click += (s, e) => Safe(() =>
             {
+                if (shareMode == "code") { CloseOverlay("Share"); return; }
+                if (shareMode == "enter") { ShareFindCode(); return; }
                 var sel = ShareSelection(); int n = sel.Total;
-                if (shareMode == "share")
-                {
-                    Clipboard.SetText(TextFromGroups(sel));
-                    CloseOverlay("Share");
-                    Toast("Скопировано: " + Plural(n) + ". Вставь в сообщение другу (Ctrl+V)");
-                }
+                if (shareMode == "share") ShareMakeCode(sel);
                 else
                 {
                     var g = ReadUserGroups();
