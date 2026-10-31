@@ -42,13 +42,14 @@ namespace ZapretCS
             E<CheckBox>("UpdToggle").IsChecked = File.Exists(UpdFile);
             E<CheckBox>("WinToggle").IsChecked = S.Bool("showWindow");
             // задачи Windows проверяем в фоне: schtasks небыстрый, окно ждать не должно
-            bool noPromptOff = S.Bool("noPromptOff"), hasTask = false, hasAuto = false;
+            bool hasAuto = false;
             Background(() =>
             {
-                if (!noPromptOff) { try { EnableNoPrompt(); } catch (Exception ex) { Log.Write("noprompt: " + ex.Message); } }
-                hasTask = TaskExists(TaskName); hasAuto = TaskExists(AutoRunTaskName);
+                // запуск без запроса прав включён всегда
+                try { EnableNoPrompt(); } catch (Exception ex) { Log.Write("noprompt: " + ex.Message); }
+                hasAuto = TaskExists(AutoRunTaskName);
                 if (hasAuto) { try { EnableAutoRun(); } catch { } }   // путь мог поменяться
-            }, err => { loading = true; E<CheckBox>("NoPromptToggle").IsChecked = hasTask; E<CheckBox>("AutoRunToggle").IsChecked = hasAuto; loading = false; });
+            }, err => { loading = true; E<CheckBox>("AutoRunToggle").IsChecked = hasAuto; loading = false; });
             FillAccents();
             loading = false;
 
@@ -74,12 +75,6 @@ namespace ZapretCS
                 else if (File.Exists(UpdFile)) File.Delete(UpdFile);
             });
             E<CheckBox>("WinToggle").Click += (s, e) => Safe(() => { S.Set("showWindow", E<CheckBox>("WinToggle").IsChecked == true); S.Save(); MarkChanged(); });
-            E<CheckBox>("NoPromptToggle").Click += (s, e) => Safe(() =>
-            {
-                if (E<CheckBox>("NoPromptToggle").IsChecked == true) { S.Set("noPromptOff", false); EnableNoPrompt(); Toast("Готово: Zapret будет открываться без запроса прав"); }
-                else { S.Set("noPromptOff", true); DeleteTask(TaskName); Toast("Отключено: Windows снова будет спрашивать разрешение"); }
-                S.Save();
-            });
             E<CheckBox>("AutoRunToggle").Click += (s, e) => Safe(() =>
             {
                 if (E<CheckBox>("AutoRunToggle").IsChecked == true) { EnableAutoRun(); Toast("Готово: Zapret будет запускаться вместе с Windows"); }

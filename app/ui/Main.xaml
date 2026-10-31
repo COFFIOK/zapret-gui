@@ -738,14 +738,6 @@
                     <TextBlock Text="как открывается приложение" Foreground="{StaticResource Muted}" FontSize="11.5" Margin="0,0,0,16"/>
                     <Border Style="{StaticResource SetCard}">
                       <StackPanel>
-                        <Grid Margin="0,0,0,12">
-                          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                          <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="Запускать без запроса прав" FontSize="13"/>
-                            <TextBlock Text="Windows не будет спрашивать разрешение при запуске" Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap"/>
-                          </StackPanel>
-                          <CheckBox x:Name="NoPromptToggle" Grid.Column="1" Style="{StaticResource Toggle}" VerticalAlignment="Center" Margin="10,0,0,0"/>
-                        </Grid>
                         <Grid>
                           <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                           <StackPanel VerticalAlignment="Center">

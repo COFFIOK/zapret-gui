@@ -268,14 +268,6 @@ $DefaultDir = if ($Existing -and (Test-Path -LiteralPath $Existing)) { $Existing
               <TextBlock Text="Ярлык на рабочем столе" FontSize="13" VerticalAlignment="Center"/>
               <CheckBox x:Name="OptDesktop" Grid.Column="1" Style="{StaticResource Toggle}" IsChecked="True"/>
             </Grid>
-            <Grid Margin="0,0,0,12">
-              <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-              <StackPanel>
-                <TextBlock Text="Запускать без запроса прав" FontSize="13"/>
-                <TextBlock Text="Windows не будет каждый раз спрашивать разрешение" Foreground="#8A90A0" FontSize="11"/>
-              </StackPanel>
-              <CheckBox x:Name="OptNoPrompt" Grid.Column="1" Style="{StaticResource Toggle}" IsChecked="True" VerticalAlignment="Center"/>
-            </Grid>
           </StackPanel>
           </ScrollViewer>
 
@@ -580,7 +572,7 @@ function Install-App {
     $sf = Join-Path $app 'gui-settings.json'
     $st = @{ strategy = 'general' }
     if (Test-Path -LiteralPath $sf) { try { $j = Get-Content -LiteralPath $sf -Raw -Encoding UTF8 | ConvertFrom-Json; foreach ($pp in $j.PSObject.Properties) { $st[$pp.Name] = $pp.Value } } catch {} }
-    $st.noPromptOff = -not [bool]$ui.OptNoPrompt.IsChecked
+    $st.noPromptOff = $false
     if ($DetectedStrategy) { $st.strategy = $DetectedStrategy }
     if ($script:wasRunning) { $st.autoStartOnce = $true }
     [IO.File]::WriteAllText($sf, ($st | ConvertTo-Json), $utf8)
@@ -719,8 +711,7 @@ $tick.Add_Tick({
             }
             5 {
                 if ($script:phase -eq 'start') { Step-Run 5; $script:phase = 'go'; return }
-                if ($ui.OptNoPrompt.IsChecked) { Register-NoPrompt; Step-Done 5 'ok' 'включено' }
-                else { try { Unregister-ScheduledTask -TaskName 'ZapretGUI' -Confirm:$false -ErrorAction Stop } catch {}; Step-Done 5 'skip' 'выключено — Windows будет спрашивать' }
+                Register-NoPrompt; Step-Done 5 'ok' 'включено'
                 Set-Bar 1; $script:step = 6
             }
             6 {
@@ -796,8 +787,7 @@ $ui.BrowseBtn.Add_Click({
 $ui.MainBtn.Add_Click({
     if ($script:finished) {
         $bat = Join-Path $script:dest 'Zapret.bat'
-        if ($ui.OptNoPrompt.IsChecked) { Start-Process schtasks.exe -ArgumentList '/run /tn "ZapretGUI"' -WindowStyle Hidden }
-        else { Start-Process -FilePath (Join-Path $script:dest 'app\Zapret.exe') }
+        Start-Process schtasks.exe -ArgumentList '/run /tn "ZapretGUI"' -WindowStyle Hidden
         $win.Close(); return
     }
     Begin-Install
@@ -826,8 +816,7 @@ if ($Auto -and $Existing -and (Test-Path -LiteralPath (Join-Path $Existing 'app'
     try {
         $script:dest = $Existing
         $script:wasRunning = $false
-        $hasTask = $false; try { $hasTask = [bool](Get-ScheduledTask -TaskName 'ZapretGUI' -ErrorAction Stop) } catch {}
-        $ui.OptNoPrompt.IsChecked = $hasTask
+        $hasTask = $true
         $ui.OptDesktop.IsChecked = Test-Path -LiteralPath (Join-Path ([Environment]::GetFolderPath('Desktop')) 'Zapret.lnk')
         # ждём, пока приложение закроется само (оно закрывается с анимацией), потом подстраховка
         for ($k = 0; $k -lt 30; $k++) {
