@@ -188,6 +188,7 @@ namespace ZapretCS
             { @"встроенный список zapret · только просмотр", @"built-in zapret list · read only" },
             { @"Удалить группу", @"Delete group" },
             { @"Перетащи, чтобы переместить", @"Drag to move" },
+            { @"Безопасность: папку Zapret могут менять только администраторы, обновления проверяются по контрольной сумме", @"Security: only administrators can change the Zapret folder, updates are verified by checksum" },
             { @"Поделиться сайтами можно коротким кодом: друг вводит его в своём Zapret, и сайты появляются у него", @"Share sites with a short code: your friend enters it in their Zapret and the sites appear" },
             { @"Выбрать сайты и получить код для друга", @"Pick sites and get a code for a friend" },
             { @"Ввести код от друга или вставить скопированный список", @"Enter a friend's code or paste a copied list" },
