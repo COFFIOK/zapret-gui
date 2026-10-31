@@ -22,11 +22,10 @@ namespace ZapretCS
         public const string UpdateRepo = "COFFIOK/zapret-gui";
         // что нового в этой версии (показывается после обновления)
         static readonly string[] WhatsNew = {
+            "Сайты можно перетаскивать мышкой: менять порядок и переносить из группы в группу",
             "Zapret переписан на C#: запускается мгновенно и почти не нагружает компьютер",
             "Обновление zapret в один клик — сайты и настройки переезжают сами",
-            "Новая карточка Telegram со своей кнопкой и QR-кодом для телефона",
-            "Удобный тест стратегий: всё видно сразу",
-            "Новая анимация буквы Z и логотип в окне"
+            "Новая карточка Telegram со своей кнопкой и QR-кодом для телефона"
         };
         string UpdFlag { get { return System.IO.Path.Combine(GuiDir, "updated.flag"); } }
         bool updDoneShown;

@@ -204,7 +204,10 @@ namespace ZapretCS
             var body = new StackPanel { Margin = new Thickness(14, 4, 0, 6), RenderTransform = new TranslateTransform() };
             foreach (var d in domains)
             {
-                var row = new DockPanel { Margin = new Thickness(0, 1, 0, 1) };
+                var row = new DockPanel();
+                // рамка строки: подсветка при наведении и полоска «вставить сюда» при перетаскивании
+                var cell = new Border { CornerRadius = new CornerRadius(7), Background = Brushes.Transparent, BorderThickness = new Thickness(0, 2, 0, 2), BorderBrush = Brushes.Transparent, Padding = new Thickness(0, 0, 0, 0), Child = row };
+                if (editable) MakeDraggable(cell, row, name, d);
                 if (editable)
                 {
                     var del = new Button { Style = (Style)Win.FindResource("DelBtn"), ToolTip = Translate.T("Удалить") };
@@ -218,7 +221,8 @@ namespace ZapretCS
                 }
                 var tx = Txt(d, 12.5, "#B8BDC9"); tx.Margin = new Thickness(6, 3, 0, 3); tx.TextTrimming = TextTrimming.CharacterEllipsis;
                 row.Children.Add(tx);
-                body.Children.Add(row);
+                if (d == lastMoved && editable) FlashMoved(cell);
+                body.Children.Add(cell);
             }
             if (!editable)
             {
@@ -283,8 +287,137 @@ namespace ZapretCS
                 Anim.D(wrap, Anim.OP, 1, 320, 0, begin: index * 40);
                 Anim.D(tt, Anim.TY, 0, 380, 12, begin: index * 40);
             }
+            if (editable) MakeGroupDropTarget(head, name, key, color);
             wrap.Children.Add(head); wrap.Children.Add(body);
             return wrap;
+        }
+
+        // ================= перетаскивание сайтов =================
+        const string DragFmt = "ZapretSite";
+        string lastMoved;
+        Point dragStart; bool dragArmed;
+
+        void MakeDraggable(Border cell, DockPanel row, string grp, string dom)
+        {
+            var grip = Txt("⋮⋮", 12, "#5A6070");
+            grip.Margin = new Thickness(2, 0, 0, 1); grip.Opacity = 0; grip.ToolTip = Translate.T("Перетащи, чтобы переместить");
+            DockPanel.SetDock(grip, Dock.Left);
+            row.Children.Insert(0, grip);
+            cell.Cursor = Cursors.SizeAll;
+            cell.MouseEnter += (s, e) => { if (!dragArmed || Mouse.LeftButton != MouseButtonState.Pressed) { Anim.Color(cell.Background, "#2A2E38", 140); grip.Opacity = 1; } };
+            cell.MouseLeave += (s, e) => { Anim.Color(cell.Background, "#00000000", 200); grip.Opacity = 0; };
+            cell.Background = new SolidColorBrush(Colors.Transparent);
+            cell.PreviewMouseLeftButtonDown += (s, e) =>
+            {
+                // кнопку «удалить» не трогаем
+                var src = e.OriginalSource as DependencyObject;
+                while (src != null && src != cell) { if (src is Button) { dragArmed = false; return; } src = VisualTreeHelper.GetParent(src); }
+                dragStart = e.GetPosition(Win); dragArmed = true;
+            };
+            cell.PreviewMouseLeftButtonUp += (s, e) => dragArmed = false;
+            cell.MouseMove += (s, e) =>
+            {
+                if (!dragArmed || e.LeftButton != MouseButtonState.Pressed) return;
+                var p = e.GetPosition(Win);
+                if (Math.Abs(p.X - dragStart.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(p.Y - dragStart.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+                dragArmed = false;
+                cell.Opacity = 0.35;
+                try { DragDrop.DoDragDrop(cell, new DataObject(DragFmt, grp + "\n" + dom), DragDropEffects.Move); }
+                catch (Exception ex) { Log.Write("drag: " + ex.Message); }
+                cell.Opacity = 1;
+            };
+
+            // строка — тоже место, куда можно бросить: выше или ниже неё
+            cell.AllowDrop = true;
+            cell.DragOver += (s, e) =>
+            {
+                e.Handled = true;
+                if (!e.Data.GetDataPresent(DragFmt)) { e.Effects = DragDropEffects.None; return; }
+                e.Effects = DragDropEffects.Move;
+                bool below = e.GetPosition(cell).Y > cell.ActualHeight / 2;
+                cell.BorderBrush = Theme.B(Theme.Accent);
+                cell.BorderThickness = below ? new Thickness(0, 0, 0, 2) : new Thickness(0, 2, 0, 0);
+            };
+            cell.DragLeave += (s, e) => { cell.BorderBrush = Brushes.Transparent; cell.BorderThickness = new Thickness(0, 2, 0, 2); };
+            cell.Drop += (s, e) => Safe(() =>
+            {
+                e.Handled = true;
+                cell.BorderBrush = Brushes.Transparent; cell.BorderThickness = new Thickness(0, 2, 0, 2);
+                if (!e.Data.GetDataPresent(DragFmt)) return;
+                bool below = e.GetPosition(cell).Y > cell.ActualHeight / 2;
+                var parts = ((string)e.Data.GetData(DragFmt)).Split('\n');
+                MoveSite(parts[0], parts[1], grp, dom, below);
+            });
+        }
+
+        void MakeGroupDropTarget(Border head, string grp, string key, string color)
+        {
+            head.AllowDrop = true;
+            System.Windows.Threading.DispatcherTimer openTimer = null;
+            head.DragEnter += (s, e) =>
+            {
+                if (!e.Data.GetDataPresent(DragFmt)) return;
+                head.BorderBrush = Theme.B(color); Anim.Color(head.Background, "#2A2E38", 120);
+                // подержал над закрытой группой — она раскрывается, чтобы бросить в нужное место
+                bool o; expanded.TryGetValue(key, out o);
+                if (!o)
+                {
+                    openTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(650) };
+                    openTimer.Tick += (s2, e2) =>
+                    {
+                        openTimer.Stop();
+                        var wrap = head.Parent as StackPanel;
+                        if (wrap == null || wrap.Children.Count < 2) return;
+                        expanded[key] = true;
+                        var body = (FrameworkElement)wrap.Children[1];
+                        body.Visibility = Visibility.Visible;
+                        Anim.D((TranslateTransform)body.RenderTransform, Anim.TY, 0, 220, -6);
+                    };
+                    openTimer.Start();
+                }
+            };
+            head.DragOver += (s, e) => { e.Handled = true; e.Effects = e.Data.GetDataPresent(DragFmt) ? DragDropEffects.Move : DragDropEffects.None; };
+            Action reset = () =>
+            {
+                if (openTimer != null) openTimer.Stop();
+                bool o; expanded.TryGetValue(key, out o);
+                head.BorderBrush = o ? Theme.B(color) : Brushes.Transparent;
+                Anim.Color(head.Background, "#20232B", 200);
+            };
+            head.DragLeave += (s, e) => reset();
+            head.Drop += (s, e) => Safe(() =>
+            {
+                e.Handled = true; reset();
+                if (!e.Data.GetDataPresent(DragFmt)) return;
+                var parts = ((string)e.Data.GetData(DragFmt)).Split('\n');
+                MoveSite(parts[0], parts[1], grp, null, true);
+            });
+        }
+
+        // переместить сайт: в группу dstGrp рядом с сайтом near (выше/ниже) или в конец группы
+        void MoveSite(string srcGrp, string dom, string dstGrp, string near, bool below)
+        {
+            if (near == dom) return;
+            var g = ReadUserGroups();
+            if (!g.Has(srcGrp) || !g[srcGrp].Contains(dom)) { RefreshSites(); return; }
+            g[srcGrp].Remove(dom);
+            var list = g[dstGrp];
+            int i = near != null ? list.IndexOf(near) : -1;
+            if (i < 0) list.Add(dom); else list.Insert(below ? i + 1 : i, dom);
+            WriteUserGroups(g);
+            expanded["u:" + dstGrp] = true;
+            lastMoved = dom;
+            RefreshSites();
+            lastMoved = null;
+            if (srcGrp != dstGrp) Toast(dom + " → " + dstGrp);
+        }
+
+        void FlashMoved(Border cell)
+        {
+            var b = new SolidColorBrush(Theme.C("#2D5A47"));
+            cell.Background = b;
+            var a = new System.Windows.Media.Animation.ColorAnimation { To = Colors.Transparent, BeginTime = TimeSpan.FromMilliseconds(250), Duration = new Duration(TimeSpan.FromMilliseconds(900)), EasingFunction = Anim.Ease() };
+            b.BeginAnimation(SolidColorBrush.ColorProperty, a);
         }
 
         void AddSite(string raw, string group)

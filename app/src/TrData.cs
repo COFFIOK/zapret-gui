@@ -187,6 +187,8 @@ namespace ZapretCS
             { @"Удалить", @"Remove" },
             { @"встроенный список zapret · только просмотр", @"built-in zapret list · read only" },
             { @"Удалить группу", @"Delete group" },
+            { @"Перетащи, чтобы переместить", @"Drag to move" },
+            { @"Сайты можно перетаскивать мышкой: менять порядок и переносить из группы в группу", @"Drag sites with the mouse to reorder them or move them between groups" },
             { @"МОИ", @"MINE" },
             { @"Пока пусто. Добавь сайт, который не открывается.", @"Empty for now. Add a site that doesn't open." },
             { @"ВСТРОЕННЫЕ В ZAPRET", @"BUILT INTO ZAPRET" },

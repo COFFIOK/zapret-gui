@@ -2,7 +2,7 @@ param([string]$SelfPath, [switch]$Auto)
 # ====== Установщик Zapret GUI ======
 $ErrorActionPreference = 'Stop'
 $AppName = 'Zapret'
-$AppVersion = '2.0.0'
+$AppVersion = '2.0.1'
 
 # --- права администратора (один запрос) ---
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)

@@ -5,5 +5,5 @@ using System.Reflection;
 [assembly: AssemblyDescription("Zapret — удобное окно для zapret-discord-youtube")]
 [assembly: AssemblyCompany("COFFIOK")]
 [assembly: AssemblyCopyright("by COFFIOK")]
-[assembly: AssemblyVersion("2.0.0.0")]
-[assembly: AssemblyFileVersion("2.0.0.0")]
+[assembly: AssemblyVersion("2.0.1.0")]
+[assembly: AssemblyFileVersion("2.0.1.0")]
