@@ -38,6 +38,15 @@ namespace ZapretCS
         List<TestTarget> TestTargets()
         {
             var list = new List<TestTarget>();
+            // сначала — свои группы сайтов из «Мои сайты» (до 20 сайтов из каждой, чтобы тест не затягивался)
+            try
+            {
+                var ug = ReadUserGroups();
+                foreach (var k in ug.Keys)
+                    foreach (var d in ug[k].Where(x => !x.StartsWith("#")).Take(20))
+                        list.Add(new TestTarget { Name = d, Url = "https://" + d, Ping = d, Group = k });
+            }
+            catch (Exception ex) { Log.Write("test user groups: " + ex.Message); }
             var file = System.IO.Path.Combine(ZapretCore.Utils, "targets.txt");
             if (!File.Exists(file)) return list;
             string grp = "Другое";

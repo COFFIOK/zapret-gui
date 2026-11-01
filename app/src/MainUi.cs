@@ -20,7 +20,7 @@ namespace ZapretCS
     partial class MainUi
     {
         public static MainUi Current;
-        public const string AppVersion = "2.0.2";
+        public const string AppVersion = "2.0.3";
 
         public readonly string GuiDir, HomeDir;
         public readonly bool InHome;
