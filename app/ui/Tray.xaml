@@ -7,7 +7,7 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="MenuItem">
-            <Border x:Name="Bd" Background="Transparent" CornerRadius="9" Padding="10,8" Margin="6,1">
+            <Border x:Name="Bd" Background="Transparent" Padding="10,8" Margin="6,1">
               <ContentPresenter ContentSource="Header" RecognizesAccessKey="False"/>
             </Border>
             <ControlTemplate.Triggers>
@@ -33,8 +33,8 @@
   </ContextMenu.Resources>
   <ContextMenu.Template>
     <ControlTemplate TargetType="ContextMenu">
-      <Border Margin="12" Background="#1A1D24" CornerRadius="14" BorderBrush="#2A2E38" BorderThickness="1" Padding="0,6" MinWidth="260">
-        <Border.Effect><DropShadowEffect BlurRadius="20" ShadowDepth="2" Opacity="0.45" Color="#000000"/></Border.Effect>
+      <Border Margin="12" Background="#1A1D24" BorderBrush="#2A2E38" BorderThickness="2" Padding="0,6" MinWidth="260">
+        <Border.Effect><DropShadowEffect BlurRadius="0" ShadowDepth="5" Direction="315" Opacity="0.6" Color="#000000"/></Border.Effect>
         <ItemsPresenter/>
       </Border>
     </ControlTemplate>
@@ -50,7 +50,7 @@
         <StackPanel VerticalAlignment="Center">
           <TextBlock Text="Zapret" FontSize="14" FontWeight="SemiBold"/>
           <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-            <Ellipse x:Name="TrDot" Width="6" Height="6" Margin="0,1,6,0" VerticalAlignment="Center" Fill="#8A90A0"/>
+            <Rectangle x:Name="TrDot" Width="6" Height="6" Margin="0,1,6,0" VerticalAlignment="Center" Fill="#8A90A0"/>
             <TextBlock x:Name="TrSub" FontSize="11.5" Foreground="#8A90A0"/>
           </StackPanel>
         </StackPanel>
@@ -61,10 +61,10 @@
   <MenuItem x:Name="TrZ" StaysOpenOnClick="True">
     <MenuItem.Header>
       <DockPanel>
-        <Border x:Name="TrZTrack" DockPanel.Dock="Right" Width="34" Height="18" CornerRadius="9" Background="#2E3340" Margin="18,0,0,0" VerticalAlignment="Center">
-          <Ellipse Width="12" Height="12" Fill="#FFFFFF" HorizontalAlignment="Left" Margin="3,0,0,0">
-            <Ellipse.RenderTransform><TranslateTransform x:Name="TrZKnob"/></Ellipse.RenderTransform>
-          </Ellipse>
+        <Border x:Name="TrZTrack" DockPanel.Dock="Right" Width="34" Height="18" Background="#2E3340" Margin="18,0,0,0" VerticalAlignment="Center">
+          <Rectangle Width="12" Height="12" Fill="#FFFFFF" HorizontalAlignment="Left" Margin="3,0,0,0">
+            <Rectangle.RenderTransform><TranslateTransform x:Name="TrZKnob"/></Rectangle.RenderTransform>
+          </Rectangle>
         </Border>
         <TextBlock Style="{StaticResource Ico}" Text="&#xE7E8;"/>
         <TextBlock Text="zapret" VerticalAlignment="Center"/>
@@ -74,10 +74,10 @@
   <MenuItem x:Name="TrTg" StaysOpenOnClick="True">
     <MenuItem.Header>
       <DockPanel>
-        <Border x:Name="TrTgTrack" DockPanel.Dock="Right" Width="34" Height="18" CornerRadius="9" Background="#2E3340" Margin="18,0,0,0" VerticalAlignment="Center">
-          <Ellipse Width="12" Height="12" Fill="#FFFFFF" HorizontalAlignment="Left" Margin="3,0,0,0">
-            <Ellipse.RenderTransform><TranslateTransform x:Name="TrTgKnob"/></Ellipse.RenderTransform>
-          </Ellipse>
+        <Border x:Name="TrTgTrack" DockPanel.Dock="Right" Width="34" Height="18" Background="#2E3340" Margin="18,0,0,0" VerticalAlignment="Center">
+          <Rectangle Width="12" Height="12" Fill="#FFFFFF" HorizontalAlignment="Left" Margin="3,0,0,0">
+            <Rectangle.RenderTransform><TranslateTransform x:Name="TrTgKnob"/></Rectangle.RenderTransform>
+          </Rectangle>
         </Border>
         <TextBlock Style="{StaticResource Ico}" Text="&#xE724;"/>
         <TextBlock Text="Telegram-прокси" VerticalAlignment="Center"/>

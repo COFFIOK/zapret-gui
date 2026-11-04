@@ -91,7 +91,7 @@ namespace ZapretCS
             {"#E6E8EE","#1C2028"},{"#8A90A0","#6B7280"},{"#5A6070","#9AA1AE"},{"#9AA3B5","#5B6372"},{"#B8BDC9","#4A5160"},{"#C9CED8","#4A5160"},
             {"#C0090A0D","#66101418"},{"#B0090A0D","#55101418"},
             {"#3A2328","#FDE7EA"},{"#FF8C99","#D9364B"},{"#C9606F","#C93A50"},
-            {"#2B5664","#9BDDEF"},{"#CFEFF8","#2B5664"}
+            {"#2B5664","#9BDDEF"},{"#CFEFF8","#2B5664"},{"#15171D","#ECEFF3"},{"#08090B","#C9CED8"}
         };
 
         public static void Init(string theme, string accent)
@@ -119,6 +119,7 @@ namespace ZapretCS
                 map["#BFEBD6"] = Mix(a, "#FFFFFF", 0.3);
             }
             map["#2BB57A"] = Mix(a, "#000000", 0.8);
+            map["#1B5E42"] = Mix(a, "#000000", 0.45);   // жёсткая тень акцентной кнопки
             map["#3DDC97"] = a;
         }
 
@@ -160,7 +161,7 @@ namespace ZapretCS
         public static bool Eco;
 
         public static void D(IAnimatable t, DependencyProperty p, double to, int ms = 250, double? from = null,
-            bool forever = false, int begin = 0, bool noEase = false, bool autoReverse = false, IEasingFunction ease = null, bool low = false)
+            bool forever = false, int begin = 0, bool noEase = false, bool autoReverse = false, IEasingFunction ease = null, bool low = false, bool px = false)
         {
             if (t == null) return;
             if (Eco)
@@ -176,15 +177,18 @@ namespace ZapretCS
             if (forever) a.RepeatBehavior = RepeatBehavior.Forever;
             if (low) Timeline.SetDesiredFrameRate(a, 30);
             if (autoReverse) a.AutoReverse = true;
-            if (ease != null) a.EasingFunction = ease; else if (!noEase) a.EasingFunction = Ease();
+            // окна и панели двигаются плавно; px — покадрово, в пиксельном стиле (кнопка включения и т.п.)
+            var e = ease ?? (noEase ? null : Ease());
+            if (px) e = new PxSteps(e, Px.Frames(ms));
+            if (e != null) a.EasingFunction = e;
             t.BeginAnimation(p, a);
         }
-        public static void Color(Brush brush, string hex, int ms = 350)
+        public static void Color(Brush brush, string hex, int ms = 350, bool px = false)
         {
             var b = brush as SolidColorBrush;
             if (b == null || b.IsFrozen) return;
             if (Eco) { b.BeginAnimation(SolidColorBrush.ColorProperty, null); b.Color = Theme.C(hex); return; }
-            var a = new ColorAnimation { To = Theme.C(hex), Duration = new Duration(TimeSpan.FromMilliseconds(ms)), EasingFunction = Ease() };
+            var a = new ColorAnimation { To = Theme.C(hex), Duration = new Duration(TimeSpan.FromMilliseconds(ms)), EasingFunction = px ? (IEasingFunction)new PxSteps(null, Math.Min(4, Px.Frames(ms))) : Ease() };
             b.BeginAnimation(SolidColorBrush.ColorProperty, a);
         }
         public static void Stop(IAnimatable t, DependencyProperty p) { if (t != null) t.BeginAnimation(p, null); }

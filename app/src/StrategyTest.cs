@@ -104,10 +104,10 @@ namespace ZapretCS
             if (!string.IsNullOrEmpty(right)) { var r = Txt(right, 12, "#5A6070"); r.Margin = new Thickness(8, 0, 2, 0); DockPanel.SetDock(r, Dock.Right); dp.Children.Add(r); }
             if (!string.IsNullOrEmpty(badge))
             {
-                var bb = new Border { CornerRadius = new CornerRadius(7), Padding = new Thickness(7, 1, 7, 1), Margin = new Thickness(8, 0, 0, 0), Background = Theme.B("#1B3329"), VerticalAlignment = VerticalAlignment.Center };
+                var bb = new Border { CornerRadius = new CornerRadius(0), Padding = new Thickness(7, 1, 7, 1), Margin = new Thickness(8, 0, 0, 0), Background = Theme.B("#1B3329"), VerticalAlignment = VerticalAlignment.Center };
                 bb.Child = Txt(badge, 10.5, "#7FE8B8"); DockPanel.SetDock(bb, Dock.Right); dp.Children.Add(bb);
             }
-            if (color != null) dp.Children.Add(new System.Windows.Shapes.Ellipse { Width = 8, Height = 8, Fill = Theme.B(color), Margin = new Thickness(0, 0, 9, 0), VerticalAlignment = VerticalAlignment.Center });
+            if (color != null) dp.Children.Add(new System.Windows.Shapes.Rectangle { Width = 8, Height = 8, Fill = Theme.B(color), Margin = new Thickness(0, 0, 9, 0), VerticalAlignment = VerticalAlignment.Center });
             var tb = new TextBlock { Text = Translate.T(text), VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
             dp.Children.Add(tb);
             c.Content = dp;
@@ -303,7 +303,7 @@ namespace ZapretCS
         FrameworkElement ResultRow(StratResult r, bool best, int rank)
         {
             var wrap = new StackPanel { Margin = new Thickness(0, 0, 0, 6) };
-            var b = new Border { CornerRadius = new CornerRadius(12), Padding = new Thickness(14, 10, 14, 10), Cursor = Cursors.Hand, Background = Theme.B(best ? "#18302A" : "#1E2129"), BorderThickness = new Thickness(1), BorderBrush = Theme.B(best ? "#3DDC97" : "#262A33") };
+            var b = new Border { CornerRadius = new CornerRadius(0), Padding = new Thickness(14, 10, 14, 10), Cursor = Cursors.Hand, Background = Theme.B(best ? "#18302A" : "#1E2129"), BorderThickness = new Thickness(2), BorderBrush = Theme.B(best ? "#3DDC97" : "#262A33") };
             var g = new Grid();
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
@@ -314,15 +314,15 @@ namespace ZapretCS
             var nm = Txt(r.Name, 13.5, "#E6E8EE"); nm.FontWeight = FontWeights.SemiBold; nameSp.Children.Add(nm);
             if (best)
             {
-                var bd = new Border { Background = Theme.B("#3DDC97"), CornerRadius = new CornerRadius(8), Padding = new Thickness(8, 1, 8, 1), Margin = new Thickness(10, 0, 0, 0) };
+                var bd = new Border { Background = Theme.B("#3DDC97"), CornerRadius = new CornerRadius(0), Padding = new Thickness(8, 1, 8, 1), Margin = new Thickness(10, 0, 0, 0) };
                 var bt = Txt("★ лучшая", 11, "#0F1115"); bt.FontWeight = FontWeights.SemiBold; bd.Child = bt; nameSp.Children.Add(bd);
             }
             g.Children.Add(nameSp);
             double ratio = r.Total > 0 ? (double)r.OK / r.Total : 0;
             string col = r.Failed ? "#FF5E62" : ratio >= 0.85 ? "#3DDC97" : ratio >= 0.5 ? "#FFB86B" : "#FF5E62";
-            var track = new Border { Height = 6, CornerRadius = new CornerRadius(3), Background = Theme.B("#2A2E38"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 10, 0) };
+            var track = new Border { Height = 6, CornerRadius = new CornerRadius(0), Background = Theme.B("#2A2E38"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 10, 0) };
             var sc = new ScaleTransform(0, 1);
-            track.Child = new Border { CornerRadius = new CornerRadius(3), Background = Theme.B(col), RenderTransformOrigin = new Point(0, 0.5), RenderTransform = sc };
+            track.Child = new Border { CornerRadius = new CornerRadius(0), Background = Theme.B(col), RenderTransformOrigin = new Point(0, 0.5), RenderTransform = sc };
             Grid.SetColumn(track, 1); g.Children.Add(track);
             Anim.D(sc, Anim.SX, ratio, 700, 0, begin: 150);
             var txt = Txt(r.Failed ? "не запустилась" : r.OK + "/" + r.Total + " · " + (int)(ratio * 100) + "%" + (r.PingTotal > 0 ? " · ping " + r.PingOK + "/" + r.PingTotal : ""), 12, col);
@@ -343,7 +343,7 @@ namespace ZapretCS
                 bool okAll = true, any = false;
                 foreach (var tk in d.Tokens) if (!tk.Contains("UNSUP")) { any = true; if (!tk.EndsWith(":OK")) okAll = false; }
                 if (!d.IsUrl) okAll = d.Ping != "Timeout";
-                var pill = new Border { CornerRadius = new CornerRadius(8), Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 6, 6), Background = Theme.B(okAll ? "#18302A" : "#3A2328") };
+                var pill = new Border { CornerRadius = new CornerRadius(0), Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 6, 6), Background = Theme.B(okAll ? "#18302A" : "#3A2328") };
                 string toks = string.Join("  ", d.Tokens.Select(tk => Regex.Replace(Regex.Replace(Regex.Replace(tk, ":OK$", " ✓"), ":(ERR|SSL)$", " ✕"), ":UNSUP$", " –")));
                 pill.Child = Txt(d.Name + "  " + toks + (d.Ping != null && d.Ping != "n/a" ? "  · " + d.Ping : ""), 11.5, okAll ? "#7FE8B8" : "#FF8C99");
                 det.Children.Add(pill);

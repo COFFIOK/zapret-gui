@@ -13,6 +13,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using Path = System.Windows.Shapes.Path;
 using System.Windows.Threading;
 
 namespace ZapretCS
@@ -20,7 +21,7 @@ namespace ZapretCS
     partial class MainUi
     {
         public static MainUi Current;
-        public const string AppVersion = "2.0.3";
+        public const string AppVersion = "2.1.0";
 
         public readonly string GuiDir, HomeDir;
         public readonly bool InHome;
@@ -73,8 +74,9 @@ namespace ZapretCS
             folderCount = all.Count;
 
             Log.Write("start " + AppVersion);
-            Win = (Window)XamlReader.Parse(Theme.Apply(Res("Main.xaml")));
+            Win = (Window)XamlReader.Parse(Theme.Apply(Res("Main.xaml")).Replace("PXFONT", Px.PrepareFont(GuiDir)));
             LoadIcon();
+            Step("pixel", InitPixelArt);
             Step("fill", Fill);
             Step("wire", Wire);
             Step("sites", WireSites);
@@ -185,10 +187,11 @@ namespace ZapretCS
 
             var pb = Btn("PowerBtn");
             pb.Click += (s, e) => Safe(() => { if (State == "on") { StopZapret(); HideApply(); } else if (State == "off") StartZapret(); });
-            pb.MouseEnter += (s, e) => { Scale("PowerScale", 1.04, 200); if (zShown && State == "on") Anim.D(A("ZTilt"), Anim.Ang, -10, 380, null, ease: Anim.Back()); };
-            pb.MouseLeave += (s, e) => { Scale("PowerScale", 1, 200); Anim.D(A("ZTilt"), Anim.Ang, 0, 380, null, ease: Anim.Back()); };
-            pb.PreviewMouseLeftButtonDown += (s, e) => Scale("PowerScale", 0.95, 90);
-            pb.PreviewMouseLeftButtonUp += (s, e) => Scale("PowerScale", 1.04, 160);
+            // пиксельная кнопка: при наведении подпрыгивает на 4 px, при нажатии «вдавливается»
+            pb.MouseEnter += (s, e) => Px.Steps(A("PowerLift"), Anim.TY, 0, 0, -2, 50, -4);
+            pb.MouseLeave += (s, e) => Px.Steps(A("PowerLift"), Anim.TY, 0, 0, -2, 50, 0);
+            pb.PreviewMouseLeftButtonDown += (s, e) => Px.Steps(A("PowerLift"), Anim.TY, 0, 0, 3);
+            pb.PreviewMouseLeftButtonUp += (s, e) => Px.Steps(A("PowerLift"), Anim.TY, 0, 0, 0, 60, -4);
 
             E<ComboBox>("StrategyBox").SelectionChanged += (s, e) => Safe(() =>
             {
@@ -345,7 +348,6 @@ namespace ZapretCS
                 if (trayMenu != null && trayMenu.IsOpen) UpdateTrayMenu(false);
             }
             var status = Tb("StatusText"); var sub = Tb("SubText");
-            var powerFill = (Brush)Win.FindName("PowerFill");
             switch (mode)
             {
                 case "on":
@@ -353,44 +355,52 @@ namespace ZapretCS
                     sub.Text = Translate.T(detail);
                     if (prev != "on")
                     {
+                        status.Foreground = (Brush)Win.FindResource("Accent");
                         SetZColor("#0F1115");
-                        Anim.Color(powerFill, "#3DDC97");
+                        SetPowerColors(true);
                         Anim.Color((Brush)Win.FindName("IconBrush"), "#0F1115"); Anim.Color((Brush)Win.FindName("IconBrush2"), "#0F1115");
                         E<Shape>("TitleDot").Fill = (Brush)Win.FindResource("Accent");
-                        Anim.D(A("PowerShadow"), DropShadowEffect.BlurRadiusProperty, 40, 500);
-                        ShowZ(false);   // после свечения: некоторые анимации включения сами управляют свечением
-                        Anim.Stop(A("Spinner"), Anim.OP); El("Spinner").Opacity = 0;
+                        StopSpinner();
+                        ShowZ(false);
                         glowPaused = true; ResumeGlow();
                     }
                     break;
                 case "off":
                     status.Text = Translate.T("Выключен");
+                    status.Foreground = Theme.B("#E6E8EE");
                     HideZ();
                     sub.Text = Translate.T(string.IsNullOrEmpty(detail) ? "Нажми, чтобы включить" : detail);
-                    Anim.Color(powerFill, "#262A33");
+                    SetPowerColors(false);
                     Anim.Color((Brush)Win.FindName("IconBrush"), "#8A90A0"); Anim.Color((Brush)Win.FindName("IconBrush2"), "#8A90A0");
                     E<Shape>("TitleDot").Fill = Theme.B("#5A6070");
-                    Anim.D(A("PowerShadow"), DropShadowEffect.BlurRadiusProperty, 0, 400);
-                    foreach (var g in new[] { "Glow1", "Glow2" }) { Anim.Stop(A(g), Anim.OP); El(g).Opacity = 0; }
-                    Anim.Stop(A("Spinner"), Anim.OP); El("Spinner").Opacity = 0; Anim.Stop(A("SpinRot"), Anim.Ang);
+                    StopGlow();
+                    StopSpinner();
                     break;
                 default:   // starting / stopping
                     status.Text = Translate.T(mode == "starting" ? "Запуск…" : "Остановка…");
+                    status.Foreground = Theme.B("#E6E8EE");
                     if (mode == "starting") SetZColor("#3DDC97");
+                    StopGlow();
                     ShowZ(true);
                     sub.Text = Translate.T(detail ?? "");
-                    Anim.D(A("Spinner"), Anim.OP, 1, 200);
-                    Anim.D(A("SpinRot"), Anim.Ang, 360, 900, 0, forever: true, noEase: true);
+                    StartSpinner();
                     break;
             }
         }
 
-        // ---- пульсирующие кольца вокруг кнопки ----
+        // ---- пиксельные волны вокруг кнопки ----
         bool glowPaused;
+        void StopGlow()
+        {
+            foreach (var g in new[] { "Glow1", "Glow2" })
+            {
+                var p = E<Path>(g); p.BeginAnimation(Path.DataProperty, null); p.Data = null;
+                Anim.Stop(p, Anim.OP); p.Opacity = 0;
+            }
+        }
         public void PauseGlow()
         {
-            foreach (var g in new[] { "Glow1", "Glow2" }) { Anim.Stop(A(g), Anim.OP); El(g).Opacity = 0; }
-            foreach (var g in new[] { "Glow1S", "Glow2S" }) { Anim.Stop(A(g), Anim.SX); Anim.Stop(A(g), Anim.SY); }
+            StopGlow();
             StopZShine();
             glowPaused = true;
         }
@@ -400,12 +410,23 @@ namespace ZapretCS
             glowPaused = false;
             if (State != "on") return;
             StartZShine();
-            var gl = new[] { new { E = "Glow1", S = "Glow1S", B = 0 }, new { E = "Glow2", S = "Glow2S", B = 1100 } };
-            foreach (var g in gl)
+            if (Anim.Eco) return;
+            // волна: 6 кадров расходится от кнопки и гаснет, потом пауза; вторая — со сдвигом
+            for (int w = 0; w < 2; w++)
             {
-                Anim.D(A(g.E), Anim.OP, 0, 2200, 0.7, forever: true, begin: g.B, noEase: true, low: true);
-                Anim.D(A(g.S), Anim.SX, 1.38, 2200, 1, forever: true, begin: g.B, low: true);
-                Anim.D(A(g.S), Anim.SY, 1.38, 2200, 1, forever: true, begin: g.B, low: true);
+                var p = E<Path>(w == 0 ? "Glow1" : "Glow2");
+                var a = new ObjectAnimationUsingKeyFrames { Duration = new Duration(TimeSpan.FromMilliseconds(2600)), RepeatBehavior = RepeatBehavior.Forever, BeginTime = TimeSpan.FromMilliseconds(w * 360) };
+                var o = new DoubleAnimationUsingKeyFrames { Duration = new Duration(TimeSpan.FromMilliseconds(2600)), RepeatBehavior = RepeatBehavior.Forever, BeginTime = TimeSpan.FromMilliseconds(w * 360) };
+                for (int k = 0; k < glowFrames.Count; k++)
+                {
+                    a.KeyFrames.Add(new DiscreteObjectKeyFrame(glowFrames[k], KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(k * 90))));
+                    o.KeyFrames.Add(new DiscreteDoubleKeyFrame(0.75 - k * 0.12, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(k * 90))));
+                }
+                a.KeyFrames.Add(new DiscreteObjectKeyFrame(null, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(glowFrames.Count * 90))));
+                o.KeyFrames.Add(new DiscreteDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(glowFrames.Count * 90))));
+                p.Opacity = 0;
+                p.BeginAnimation(Path.DataProperty, a);
+                p.BeginAnimation(UIElement.OpacityProperty, o);
             }
         }
     }

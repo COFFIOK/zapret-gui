@@ -13,6 +13,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using Path = System.Windows.Shapes.Path;
 using System.Windows.Threading;
 
 namespace ZapretCS
@@ -22,9 +23,9 @@ namespace ZapretCS
         public const string UpdateRepo = "COFFIOK/zapret-gui";
         // что нового в этой версии (показывается после обновления)
         static readonly string[] WhatsNew = {
-            "В тесте стратегий теперь есть твои группы сайтов — проверяй именно то, что нужно тебе",
-            "Режим экономии в настройках «Вид»: меньше нагрузка на компьютер",
-            "Запуск без запроса прав включён всегда"
+            "Новый пиксельный дизайн: кнопки, окна и значки",
+            "16 новых пиксельных анимаций включения",
+            "Все анимации стали покадровыми, в стиле старых игр"
         };
         string UpdFlag { get { return System.IO.Path.Combine(GuiDir, "updated.flag"); } }
         bool updDoneShown;
@@ -205,7 +206,7 @@ namespace ZapretCS
                 El("AuProgress").Visibility = Visibility.Visible; ((ScaleTransform)Win.FindName("AuFillS")).ScaleX = 0;
                 El("AuBtns").Visibility = Visibility.Collapsed; El("AuNews").Visibility = Visibility.Collapsed; updDoneShown = false;
                 El("AuArc").Opacity = 1; El("AuLogo").Opacity = 1; ok.Opacity = 0;
-                Anim.D(A("AuArcRot"), Anim.Ang, 360, 1100, 0, forever: true, noEase: true);
+                StartAuSpinner();
                 Anim.D(A("AuLogoS"), Anim.SX, 0.92, 900, 1, forever: true, autoReverse: true, low: true);
                 Anim.D(A("AuLogoS"), Anim.SY, 0.92, 900, 1, forever: true, autoReverse: true, low: true);
             }
@@ -213,7 +214,7 @@ namespace ZapretCS
         void CloseAu()
         {
             CloseOverlay("Au");
-            After(210, () => { Anim.Stop(A("AuArcRot"), Anim.Ang); Anim.Stop(A("AuLogoS"), Anim.SX); Anim.Stop(A("AuLogoS"), Anim.SY); });
+            After(210, () => { StopAuSpinner(); Anim.Stop(A("AuLogoS"), Anim.SX); Anim.Stop(A("AuLogoS"), Anim.SY); });
         }
         // после обновления установщик оставляет отметку — показываем «Обновлено»
         void ShowUpdatedIfNeeded()
@@ -240,7 +241,7 @@ namespace ZapretCS
                 foreach (var s in WhatsNew)
                 {
                     var row = new DockPanel { Margin = new Thickness(0, 3, 0, 3) };
-                    row.Children.Add(new Ellipse { Width = 6, Height = 6, Fill = Theme.B("#3DDC97"), Margin = new Thickness(0, 6, 10, 0), VerticalAlignment = VerticalAlignment.Top });
+                    row.Children.Add(new System.Windows.Shapes.Rectangle { Width = 6, Height = 6, Fill = Theme.B("#3DDC97"), Margin = new Thickness(0, 6, 10, 0), VerticalAlignment = VerticalAlignment.Top });
                     row.Children.Add(new TextBlock { Text = Translate.T(s), FontSize = 12.5, TextWrapping = TextWrapping.Wrap, Foreground = Theme.B("#E6E8EE") });
                     list.Children.Add(row);
                 }
@@ -251,7 +252,7 @@ namespace ZapretCS
         }
 
         // ---------- zapret ----------
-        void StartUpdateCheck()
+        void StartUpdateCheck(bool manual = false)
         {
             Tb("UpdText").Text = Translate.T("Проверяю…");
             ((ScaleTransform)Win.FindName("UpdFillS")).ScaleX = 0; El("UpdBar").Opacity = 1;
@@ -273,13 +274,15 @@ namespace ZapretCS
                 E<Shape>("UpdFill").Fill = Theme.B(v.Length > 0 ? "#3DDC97" : "#FF5E62");
                 Anim.D(A("UpdFillS"), Anim.SX, 1, 350, 0);
                 Anim.D(A("UpdTrack"), Anim.OP, 0, 400, null, begin: 900);
-                if (v.Length == 0) Tb("UpdText").Text = Translate.T("Нет связи");
-                else if (v == ZapretCore.LocalVersion) { latestZapret = v; Tb("UpdText").Text = Translate.T("Версия актуальна ✓"); }
+                if (v.Length == 0) { if (manual) Toast("Не удалось проверить обновления zapret — нет связи с GitHub", true); }
+                else if (v == ZapretCore.LocalVersion) { latestZapret = v; if (manual) Toast("У тебя последняя версия zapret ✓"); }
                 else
                 {
                     latestZapret = v;
                     Tb("UpdText").Text = Translate.T("Обновить до " + v);
-                    Btn("UpdateBtn").Style = (Style)Win.FindResource("AccentBtn");
+                    var ub = Btn("UpdateBtn");
+                    ub.Style = (Style)Win.FindResource("AccentBtn");
+                    if (ub.Visibility != Visibility.Visible) { ub.Visibility = Visibility.Visible; Anim.D(ub, Anim.OP, 1, 250, 0); }
                     Toast("Вышла новая версия zapret: " + v + ". Нажми «Обновить до " + v + "» — всё сделается само.");
                 }
             });

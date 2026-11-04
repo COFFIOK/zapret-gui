@@ -177,7 +177,7 @@ namespace ZapretCS
         }
         FrameworkElement StepRow(string title, string sub, int i)
         {
-            var b = new Border { CornerRadius = new CornerRadius(12), Padding = new Thickness(14, 10, 14, 10), Margin = new Thickness(0, 0, 0, 6), Background = Theme.B("#1E2129") };
+            var b = new Border { CornerRadius = new CornerRadius(0), Padding = new Thickness(14, 10, 14, 10), Margin = new Thickness(0, 0, 0, 6), Background = Theme.B("#1E2129") };
             var g = new Grid();
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });

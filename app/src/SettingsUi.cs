@@ -87,8 +87,8 @@ namespace ZapretCS
                 if (v)
                 {
                     // останавливаем всё, что крутится и мигает
-                    Anim.Stop(A("SpinRot"), Anim.Ang);
-                    Anim.Stop(E<Shape>("ZDraw"), Shape.StrokeDashOffsetProperty);
+                    if (State == "starting" || State == "stopping") StartSpinner();   // в экономии — неподвижная дуга
+                    StopZSnake();
                     foreach (var n in new[] { "TgPlaneT" }) { Anim.Stop(A(n), Anim.TX); Anim.Stop(A(n), Anim.TY); }
                     Anim.Stop(Btn("TgConnect"), Anim.OP);
                     Toast("Режим экономии включён — анимации выключены");
@@ -96,7 +96,7 @@ namespace ZapretCS
                 else
                 {
                     if (State == "on") ResumeGlow();
-                    else if (State == "starting" || State == "stopping") Anim.D(A("SpinRot"), Anim.Ang, 360, 900, 0, forever: true, noEase: true);
+                    else if (State == "starting" || State == "stopping") { StartSpinner(); ShowZ(true); }
                     Toast("Режим экономии выключен");
                 }
             });
@@ -110,8 +110,8 @@ namespace ZapretCS
             // открыть/закрыть панель
             var gear = Btn("GearBtn");
             gear.Click += (s, e) => Safe(() => { if (El("SettingsOverlay").Visibility == Visibility.Visible) CloseSettings(); else OpenSettings(); });
-            gear.MouseEnter += (s, e) => { if (El("SettingsOverlay").Visibility != Visibility.Visible) Anim.D(A("GearRot"), Anim.Ang, 60, 400); };
-            gear.MouseLeave += (s, e) => { if (El("SettingsOverlay").Visibility != Visibility.Visible) Anim.D(A("GearRot"), Anim.Ang, 0, 400); };
+            gear.MouseEnter += (s, e) => { if (El("SettingsOverlay").Visibility != Visibility.Visible) Anim.D(A("GearRot"), Anim.Ang, 90, 200); };
+            gear.MouseLeave += (s, e) => { if (El("SettingsOverlay").Visibility != Visibility.Visible) Anim.D(A("GearRot"), Anim.Ang, 0, 200); };
             Btn("SettingsClose").Click += (s, e) => CloseSettings();
             El("Dim").MouseLeftButtonUp += (s, e) => CloseSettings();
             Win.KeyDown += (s, e) => { if (e.Key == Key.Escape && El("SettingsOverlay").Visibility == Visibility.Visible) CloseSettings(); };
@@ -125,6 +125,7 @@ namespace ZapretCS
             Btn("ServiceBtn").Click += (s, e) => Safe(() => Process.Start(new ProcessStartInfo(System.IO.Path.Combine(ZapretCore.Root, "service.bat")) { WorkingDirectory = ZapretCore.Root, UseShellExecute = true }));
             Btn("FolderBtn").Click += (s, e) => Safe(() => Process.Start("explorer.exe", "\"" + (InHome ? HomeDir : ZapretCore.Root) + "\""));
             Btn("MigrateBtn").Click += (s, e) => Safe(() => { CloseSettings(); OpenMigrate(); });
+            Btn("ZapretCheckBtn").Click += (s, e) => Safe(() => { CloseSettings(); Toast("Проверяю обновления zapret…"); StartUpdateCheck(true); });
             Btn("AppCheckBtn").Click += (s, e) => Safe(() => { CloseSettings(); Toast("Проверяю обновления приложения…"); StartAppUpdateCheck(true); });
         }
         static string Tag(ComboBox c) { var it = c.SelectedItem as ComboBoxItem; return it == null ? null : it.Tag as string; }
@@ -132,7 +133,7 @@ namespace ZapretCS
         void FillAccents()
         {
             var panel = E<Panel>("AccentPanel"); panel.Children.Clear();
-            var tpl = (ControlTemplate)XamlReader.Parse("<ControlTemplate xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"Button\"><Grid><Ellipse Stroke=\"{TemplateBinding BorderBrush}\" StrokeThickness=\"2\"/><Ellipse Margin=\"4\" Fill=\"{TemplateBinding Background}\"/></Grid></ControlTemplate>");
+            var tpl = (ControlTemplate)XamlReader.Parse("<ControlTemplate xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"Button\"><Grid><Rectangle Stroke=\"{TemplateBinding BorderBrush}\" StrokeThickness=\"2\"/><Rectangle Margin=\"4\" Fill=\"{TemplateBinding Background}\"/></Grid></ControlTemplate>");
             foreach (var c in AccentChoices)
             {
                 var st = new ScaleTransform();
@@ -166,7 +167,7 @@ namespace ZapretCS
         {
             El("SettingsOverlay").Visibility = Visibility.Visible;
             Anim.D(A("Dim"), Anim.OP, 1, 260, 0);
-            Anim.D(A("SettingsShift"), Anim.TX, 0, 400, 620);
+            Anim.D(A("SettingsShift"), Anim.TX, 0, 360, 620, ease: new System.Windows.Media.Animation.QuinticEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut });
             Anim.D(A("GearRot"), Anim.Ang, 180, 500);
             int i = 0;
             foreach (UIElement nv in E<Panel>("SetNav").Children)
@@ -182,7 +183,7 @@ namespace ZapretCS
         public void CloseSettings()
         {
             Anim.D(A("Dim"), Anim.OP, 0, 220);
-            Anim.D(A("SettingsShift"), Anim.TX, 620, 300);
+            Anim.D(A("SettingsShift"), Anim.TX, 620, 260, ease: new System.Windows.Media.Animation.CubicEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseIn });
             Anim.D(A("GearRot"), Anim.Ang, 0, 450);
             After(290, () => El("SettingsOverlay").Visibility = Visibility.Collapsed);
         }

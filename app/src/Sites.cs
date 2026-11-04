@@ -194,17 +194,16 @@ namespace ZapretCS
         {
             string color = GroupColor(name, !editable);
             var wrap = new StackPanel { Margin = new Thickness(0, 0, 0, 4) };
-            var head = new Border { CornerRadius = new CornerRadius(10), Padding = new Thickness(12, 9, 8, 9), Cursor = Cursors.Hand, Background = Theme.B("#20232B"), BorderThickness = new Thickness(3, 0, 0, 0), BorderBrush = Brushes.Transparent };
+            var head = new Border { CornerRadius = new CornerRadius(0), Padding = new Thickness(12, 9, 8, 9), Cursor = Cursors.Hand, Background = Theme.B("#20232B"), BorderThickness = new Thickness(4, 0, 0, 0), BorderBrush = Brushes.Transparent };
             var g = new Grid();
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            var dot = new Ellipse { Width = 8, Height = 8, Margin = new Thickness(0, 0, 11, 0), VerticalAlignment = VerticalAlignment.Center, Fill = Theme.B(color) };
-            dot.Effect = new DropShadowEffect { Color = Theme.C(color), BlurRadius = 10, ShadowDepth = 0, Opacity = 0.9 };
+            var dot = new System.Windows.Shapes.Rectangle { Width = 8, Height = 8, Margin = new Thickness(0, 0, 11, 0), SnapsToDevicePixels = true, VerticalAlignment = VerticalAlignment.Center, Fill = Theme.B(color) };
             var nm = Txt(name, 13.5, "#E6E8EE"); nm.FontWeight = FontWeights.SemiBold; nm.TextTrimming = TextTrimming.CharacterEllipsis; Grid.SetColumn(nm, 1);
             var cnt = Txt(Plural(domains.Count), 12, "#8A90A0"); cnt.Margin = new Thickness(8, 0, 8, 0); Grid.SetColumn(cnt, 2);
-            var dots = new Border { Width = 30, Height = 24, CornerRadius = new CornerRadius(7) };
+            var dots = new Border { Width = 30, Height = 24, CornerRadius = new CornerRadius(0) };
             var dt = Txt("⋯", 16, "#8A90A0"); dt.HorizontalAlignment = HorizontalAlignment.Center; dt.Margin = new Thickness(0, -3, 0, 0);
             dots.Child = dt; Grid.SetColumn(dots, 3);
             g.Children.Add(dot); g.Children.Add(nm); g.Children.Add(cnt); g.Children.Add(dots);
@@ -216,7 +215,7 @@ namespace ZapretCS
             {
                 var row = new DockPanel();
                 // рамка строки: подсветка при наведении и полоска «вставить сюда» при перетаскивании
-                var cell = new Border { CornerRadius = new CornerRadius(7), Background = Brushes.Transparent, BorderThickness = new Thickness(0, 2, 0, 2), BorderBrush = Brushes.Transparent, Padding = new Thickness(0, 0, 0, 0), Child = row };
+                var cell = new Border { CornerRadius = new CornerRadius(0), Background = Brushes.Transparent, BorderThickness = new Thickness(0, 2, 0, 2), BorderBrush = Brushes.Transparent, Padding = new Thickness(0, 0, 0, 0), Child = row };
                 if (editable) MakeDraggable(cell, row, name, d);
                 if (editable)
                 {
@@ -244,7 +243,7 @@ namespace ZapretCS
                 var foot = new Grid { Margin = new Thickness(0, 6, 0, 2) };
                 foot.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                 foot.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-                var bx = new Border { Background = Theme.B("#22262F"), CornerRadius = new CornerRadius(8), BorderBrush = Theme.B("#2E3340"), BorderThickness = new Thickness(1), Height = 32 };
+                var bx = new Border { Background = Theme.B("#22262F"), CornerRadius = new CornerRadius(0), BorderBrush = Theme.B("#2E3340"), BorderThickness = new Thickness(2), Height = 32 };
                 var tb = new TextBox { Background = Brushes.Transparent, BorderThickness = new Thickness(0), Foreground = Theme.B("#E6E8EE"), CaretBrush = Theme.B("#3DDC97"), Margin = new Thickness(8, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center, FontSize = 12.5, ToolTip = Translate.T("Добавить сайт в группу " + name) };
                 string grp = name;
                 tb.KeyDown += (s, e) => { if (e.Key == Key.Return) Safe(() => AddSite(tb.Text, grp)); };
@@ -302,8 +301,8 @@ namespace ZapretCS
                 Anim.D(wrap, Anim.OP, 1, 320, 0, begin: index * 40);
                 Anim.D(tt, Anim.TY, 0, 380, 12, begin: index * 40);
             }
-            var topLine = new Border { Height = 3, CornerRadius = new CornerRadius(2), Margin = new Thickness(6, 0, 6, 2), Background = Brushes.Transparent };
-            var botLine = new Border { Height = 3, CornerRadius = new CornerRadius(2), Margin = new Thickness(6, 2, 6, 0), Background = Brushes.Transparent };
+            var topLine = new Border { Height = 3, CornerRadius = new CornerRadius(0), Margin = new Thickness(6, 0, 6, 2), Background = Brushes.Transparent };
+            var botLine = new Border { Height = 3, CornerRadius = new CornerRadius(0), Margin = new Thickness(6, 2, 6, 0), Background = Brushes.Transparent };
             if (editable) MakeGroupDropTarget(head, body, topLine, botLine, name, key, color);
             wrap.Children.Add(topLine); wrap.Children.Add(head); wrap.Children.Add(body); wrap.Children.Add(botLine);
             return wrap;
@@ -643,7 +642,7 @@ namespace ZapretCS
                 var wrap = new StackPanel { Margin = new Thickness(0, 4, 0, 8) };
                 var head = new StackPanel { Orientation = Orientation.Horizontal };
                 var gc = ShareCheck(k, 13.5); ((TextBlock)gc.Content).FontWeight = FontWeights.SemiBold;
-                var dot = new Ellipse { Width = 7, Height = 7, Fill = Theme.B(GroupColor(k, false)), Margin = new Thickness(10, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
+                var dot = new System.Windows.Shapes.Rectangle { Width = 7, Height = 7, Fill = Theme.B(GroupColor(k, false)), Margin = new Thickness(10, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
                 head.Children.Add(gc); head.Children.Add(dot); head.Children.Add(Txt(Plural(groups[k].Count), 11.5, "#8A90A0"));
                 var sites = new WrapPanel { Margin = new Thickness(27, 6, 0, 0) };
                 var kids = new List<CheckBox>();

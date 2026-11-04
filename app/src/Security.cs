@@ -37,6 +37,18 @@ namespace ZapretCS
             Directory.CreateDirectory(d);
             return d;
         }
+        // папка, в которую может писать только администратор и система (остальным — чтение)
+        public static void ProtectedDir(string dir)
+        {
+            var ds = new DirectorySecurity();
+            ds.SetAccessRuleProtection(true, false);
+            const InheritanceFlags inh = InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit;
+            ds.AddAccessRule(new FileSystemAccessRule(Admins, FileSystemRights.FullControl, inh, PropagationFlags.None, AccessControlType.Allow));
+            ds.AddAccessRule(new FileSystemAccessRule(System_, FileSystemRights.FullControl, inh, PropagationFlags.None, AccessControlType.Allow));
+            ds.AddAccessRule(new FileSystemAccessRule(Users, FileSystemRights.ReadAndExecute, inh, PropagationFlags.None, AccessControlType.Allow));
+            if (!Directory.Exists(dir)) Directory.CreateDirectory(dir, ds);
+            else Directory.SetAccessControl(dir, ds);
+        }
         public static void CleanTemp()
         {
             try

@@ -2,7 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Zapret" Width="920" Height="660" WindowStyle="None" AllowsTransparency="True"
         Background="Transparent" ResizeMode="CanMinimize" WindowStartupLocation="CenterScreen"
-        FontFamily="Segoe UI" Foreground="#E6E8EE" UseLayoutRounding="True">
+        FontFamily="Segoe UI" Foreground="#E6E8EE" UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
   <Window.Resources>
     <SolidColorBrush x:Key="Accent" Color="#3DDC97"/>
     <SolidColorBrush x:Key="Card" Color="#1A1D24"/>
@@ -10,26 +10,43 @@
     <SolidColorBrush x:Key="Line" Color="#2E3340"/>
     <SolidColorBrush x:Key="Muted" Color="#8A90A0"/>
 
+    <!-- ===== пиксельный стиль ===== -->
+    <FontFamily x:Key="Px">PXFONT</FontFamily>
+    <Style x:Key="PxText" TargetType="TextBlock">
+      <Setter Property="FontFamily" Value="{StaticResource Px}"/>
+      <Setter Property="FontWeight" Value="Normal"/>
+      <Setter Property="TextOptions.TextRenderingMode" Value="Aliased"/>
+    </Style>
+    <!-- пиксельные значки (клетка 2 px) -->
+    <Geometry x:Key="PxX">M0,0h2v2h-2z M2,2h2v2h-2z M4,4h2v2h-2z M6,6h2v2h-2z M8,8h2v2h-2z M8,0h2v2h-2z M6,2h2v2h-2z M2,6h2v2h-2z M0,8h2v2h-2z</Geometry>
+    <Geometry x:Key="PxMin">M0,8h10v2h-10z</Geometry>
+    <Geometry x:Key="PxGear">M4,0h2v2h2v-2h2v2h2v2h-2v2h2v2h2v2h-2v2h-2v2h2v2h-2v-2h-2v2h-2v-2h-2v2h-2v-2h2v-2h-2v-2h-2v-2h2v-2h2v-2h-2v-2h2z M6,6v4h4v-4z</Geometry>
+    <Geometry x:Key="PxTick">M0,4h2v2h-2z M2,6h2v2h-2z M4,4h2v2h-2z M6,2h2v2h-2z M8,0h2v2h-2z</Geometry>
+    <Geometry x:Key="PxDown">M0,0h10v2h-2v2h-2v2h-2v-2h-2v-2h-2z</Geometry>
+    <Geometry x:Key="PxRight">M0,0h2v2h2v2h2v2h-2v2h-2v2h-2z</Geometry>
+
+    <!-- кнопка: квадратная, рамка 2 px, жёсткая тень; при нажатии «вдавливается» в тень -->
     <Style x:Key="Btn" TargetType="Button">
       <Setter Property="Background" Value="#22262F"/>
       <Setter Property="Foreground" Value="#E6E8EE"/>
       <Setter Property="FontSize" Value="13"/>
-      <Setter Property="Padding" Value="14,9"/>
+      <Setter Property="Padding" Value="14,8"/>
       <Setter Property="Cursor" Value="Hand"/>
-      <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
-      <Setter Property="RenderTransform"><Setter.Value><ScaleTransform/></Setter.Value></Setter>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="10" Padding="{TemplateBinding Padding}" BorderBrush="#2E3340" BorderThickness="1">
-              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-            </Border>
+            <Grid>
+              <Border x:Name="Sh" Background="#08090B" Margin="3,3,0,0"/>
+              <Border x:Name="Bd" Background="{TemplateBinding Background}" Margin="0,0,3,3" Padding="{TemplateBinding Padding}" BorderBrush="#2E3340" BorderThickness="2">
+                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              </Border>
+            </Grid>
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True">
                 <Setter TargetName="Bd" Property="BorderBrush" Value="#3DDC97"/>
               </Trigger>
               <Trigger Property="IsPressed" Value="True">
-                <Setter Property="RenderTransform"><Setter.Value><ScaleTransform ScaleX="0.96" ScaleY="0.96"/></Setter.Value></Setter>
+                <Setter TargetName="Bd" Property="Margin" Value="3,3,0,0"/>
               </Trigger>
               <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Opacity" Value="0.4"/>
@@ -43,7 +60,30 @@
     <Style x:Key="AccentBtn" TargetType="Button" BasedOn="{StaticResource Btn}">
       <Setter Property="Background" Value="#3DDC97"/>
       <Setter Property="Foreground" Value="#0F1115"/>
-      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Grid>
+              <Border x:Name="Sh" Background="#1B5E42" Margin="3,3,0,0"/>
+              <Border x:Name="Bd" Background="{TemplateBinding Background}" Margin="0,0,3,3" Padding="{TemplateBinding Padding}" BorderBrush="{TemplateBinding Background}" BorderThickness="2">
+                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              </Border>
+            </Grid>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="BorderBrush" Value="#7FE8B8"/>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True">
+                <Setter TargetName="Bd" Property="Margin" Value="3,3,0,0"/>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.4"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
     </Style>
 
     <Style x:Key="TitleBtn" TargetType="Button">
@@ -52,7 +92,7 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="Bd" Background="Transparent" CornerRadius="8" Width="34" Height="28">
+            <Border x:Name="Bd" Background="Transparent" Width="34" Height="28">
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
             <ControlTemplate.Triggers>
@@ -72,12 +112,16 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="ComboBoxItem">
-            <Border x:Name="Bd" Background="Transparent" CornerRadius="7" Padding="12,7" Margin="4,1">
-              <ContentPresenter/>
+            <Border x:Name="Bd" Background="Transparent" Padding="10,7" Margin="2,0">
+              <DockPanel>
+                <Path x:Name="Mk" Data="{StaticResource PxRight}" Fill="#3DDC97" Width="6" Height="10" Stretch="None" VerticalAlignment="Center" Margin="0,0,8,0" Visibility="Hidden" SnapsToDevicePixels="True"/>
+                <ContentPresenter/>
+              </DockPanel>
             </Border>
             <ControlTemplate.Triggers>
               <Trigger Property="IsHighlighted" Value="True">
                 <Setter TargetName="Bd" Property="Background" Value="#2A2E38"/>
+                <Setter TargetName="Mk" Property="Visibility" Value="Visible"/>
               </Trigger>
               <Trigger Property="IsSelected" Value="True">
                 <Setter Property="Foreground" Value="#3DDC97"/>
@@ -90,37 +134,41 @@
 
     <Style TargetType="ComboBox">
       <Setter Property="Foreground" Value="#E6E8EE"/>
-      <Setter Property="Height" Value="38"/>
+      <Setter Property="Height" Value="40"/>
       <Setter Property="FontSize" Value="13"/>
       <Setter Property="Cursor" Value="Hand"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="ComboBox">
             <Grid>
-              <ToggleButton Focusable="False" ClickMode="Press"
+              <Border Background="#08090B" Margin="3,3,0,0"/>
+              <ToggleButton Focusable="False" ClickMode="Press" Margin="0,0,3,3"
                             IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
                 <ToggleButton.Template>
                   <ControlTemplate TargetType="ToggleButton">
-                    <Border x:Name="Bd" Background="#22262F" CornerRadius="10" BorderBrush="#2E3340" BorderThickness="1">
-                      <Path HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,14,0"
-                            Data="M0,0 L5,5 L10,0" Stroke="#8A90A0" StrokeThickness="1.6"/>
+                    <Border x:Name="Bd" Background="#1A1D24" BorderBrush="#2E3340" BorderThickness="2">
+                      <Path x:Name="Arr" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,14,0"
+                            Data="{StaticResource PxDown}" Fill="#8A90A0" SnapsToDevicePixels="True"/>
                     </Border>
                     <ControlTemplate.Triggers>
                       <Trigger Property="IsMouseOver" Value="True">
                         <Setter TargetName="Bd" Property="BorderBrush" Value="#3DDC97"/>
+                        <Setter TargetName="Arr" Property="Fill" Value="#3DDC97"/>
                       </Trigger>
                     </ControlTemplate.Triggers>
                   </ControlTemplate>
                 </ToggleButton.Template>
               </ToggleButton>
               <ContentPresenter IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}"
-                                Margin="14,0,34,0" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                                Margin="14,0,38,3" VerticalAlignment="Center" HorizontalAlignment="Left"/>
               <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True"
-                     Focusable="False" PopupAnimation="Fade">
-                <Border Background="#22262F" CornerRadius="10" BorderBrush="#2E3340" BorderThickness="1"
-                        Margin="0,4,0,0" MinWidth="{TemplateBinding ActualWidth}" MaxHeight="320" Padding="0,4">
-                  <ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsPresenter/></ScrollViewer>
-                </Border>
+                     Focusable="False" PopupAnimation="None">
+                <Grid Margin="0,2,6,6" MinWidth="{TemplateBinding ActualWidth}">
+                  <Border Background="#08090B" Margin="4,4,-4,-4"/>
+                  <Border Background="#1A1D24" BorderBrush="#3DDC97" BorderThickness="2" MaxHeight="320" Padding="0,4">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsPresenter/></ScrollViewer>
+                  </Border>
+                </Grid>
               </Popup>
             </Grid>
           </ControlTemplate>
@@ -128,28 +176,41 @@
       </Setter>
     </Style>
 
+    <!-- переключатель: квадратный трек и квадратный ползунок, двигается рывками по 7 px -->
     <Style x:Key="Toggle" TargetType="CheckBox">
       <Setter Property="Cursor" Value="Hand"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="CheckBox">
-            <Border x:Name="Track" Width="44" Height="24" CornerRadius="12" Background="#2E3340">
-              <Ellipse x:Name="Knob" Width="18" Height="18" Fill="#E6E8EE" HorizontalAlignment="Left" Margin="3,0,0,0">
-                <Ellipse.RenderTransform><TranslateTransform x:Name="KnobT" X="0"/></Ellipse.RenderTransform>
-              </Ellipse>
+            <Border x:Name="Track" Width="44" Height="24" Background="#2E3340" BorderBrush="#08090B" BorderThickness="0,0,2,2">
+              <Rectangle x:Name="Knob" Width="14" Height="14" Fill="#E6E8EE" HorizontalAlignment="Left" Margin="4,0,0,0">
+                <Rectangle.RenderTransform><TranslateTransform x:Name="KnobT" X="0"/></Rectangle.RenderTransform>
+              </Rectangle>
             </Border>
             <ControlTemplate.Triggers>
               <Trigger Property="IsChecked" Value="True">
                 <Trigger.EnterActions>
                   <BeginStoryboard><Storyboard>
-                    <DoubleAnimation Storyboard.TargetName="KnobT" Storyboard.TargetProperty="X" To="20" Duration="0:0:0.18"/>
-                    <ColorAnimation Storyboard.TargetName="Track" Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" To="#3DDC97" Duration="0:0:0.18"/>
+                    <DoubleAnimationUsingKeyFrames Storyboard.TargetName="KnobT" Storyboard.TargetProperty="X">
+                      <DiscreteDoubleKeyFrame KeyTime="0:0:0.04" Value="8"/>
+                      <DiscreteDoubleKeyFrame KeyTime="0:0:0.08" Value="16"/>
+                      <DiscreteDoubleKeyFrame KeyTime="0:0:0.12" Value="22"/>
+                    </DoubleAnimationUsingKeyFrames>
+                    <ColorAnimationUsingKeyFrames Storyboard.TargetName="Track" Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)">
+                      <DiscreteColorKeyFrame KeyTime="0:0:0.08" Value="#3DDC97"/>
+                    </ColorAnimationUsingKeyFrames>
                   </Storyboard></BeginStoryboard>
                 </Trigger.EnterActions>
                 <Trigger.ExitActions>
                   <BeginStoryboard><Storyboard>
-                    <DoubleAnimation Storyboard.TargetName="KnobT" Storyboard.TargetProperty="X" To="0" Duration="0:0:0.18"/>
-                    <ColorAnimation Storyboard.TargetName="Track" Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" To="#2E3340" Duration="0:0:0.18"/>
+                    <DoubleAnimationUsingKeyFrames Storyboard.TargetName="KnobT" Storyboard.TargetProperty="X">
+                      <DiscreteDoubleKeyFrame KeyTime="0:0:0.04" Value="14"/>
+                      <DiscreteDoubleKeyFrame KeyTime="0:0:0.08" Value="6"/>
+                      <DiscreteDoubleKeyFrame KeyTime="0:0:0.12" Value="0"/>
+                    </DoubleAnimationUsingKeyFrames>
+                    <ColorAnimationUsingKeyFrames Storyboard.TargetName="Track" Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)">
+                      <DiscreteColorKeyFrame KeyTime="0:0:0.08" Value="#2E3340"/>
+                    </ColorAnimationUsingKeyFrames>
                   </Storyboard></BeginStoryboard>
                 </Trigger.ExitActions>
               </Trigger>
@@ -167,11 +228,11 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="ToggleButton">
-            <Border x:Name="Bd" Background="#1E2129" BorderBrush="#262A33" BorderThickness="1" CornerRadius="9" Padding="9,6" Margin="0,0,6,6">
+            <Border x:Name="Bd" Background="#1E2129" BorderBrush="#262A33" BorderThickness="2" Padding="9,6" Margin="0,0,6,6">
               <Grid>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                <Border x:Name="Box" Width="16" Height="16" CornerRadius="4" BorderBrush="#3A3F4D" BorderThickness="1.5" Background="#00000000" Margin="0,0,9,0" VerticalAlignment="Center">
-                  <TextBlock x:Name="Tick" Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="10" Foreground="#0F1115" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0"/>
+                <Border x:Name="Box" Width="16" Height="16" BorderBrush="#3A3F4D" BorderThickness="2" Background="#00000000" Margin="0,0,9,0" VerticalAlignment="Center">
+                  <Path x:Name="Tick" Data="{StaticResource PxTick}" Fill="#0F1115" Width="10" Height="8" Stretch="None" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0" SnapsToDevicePixels="True"/>
                 </Border>
                 <ContentPresenter Grid.Column="1" VerticalAlignment="Center"/>
               </Grid>
@@ -199,23 +260,14 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="ToggleButton">
-            <Border x:Name="Bd" Background="#22262F" BorderBrush="#2E3340" BorderThickness="1" CornerRadius="14" Padding="12,5">
+            <Border x:Name="Bd" Background="#22262F" BorderBrush="#2E3340" BorderThickness="2" Padding="12,5">
               <ContentPresenter VerticalAlignment="Center"/>
             </Border>
             <ControlTemplate.Triggers>
               <Trigger Property="IsChecked" Value="True">
                 <Setter TargetName="Bd" Property="BorderBrush" Value="#3DDC97"/>
+                <Setter TargetName="Bd" Property="Background" Value="#1B3329"/>
                 <Setter Property="Foreground" Value="#E6E8EE"/>
-                <Trigger.EnterActions>
-                  <BeginStoryboard><Storyboard>
-                    <ColorAnimation Storyboard.TargetName="Bd" Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" To="#1B3329" Duration="0:0:0.18"/>
-                  </Storyboard></BeginStoryboard>
-                </Trigger.EnterActions>
-                <Trigger.ExitActions>
-                  <BeginStoryboard><Storyboard>
-                    <ColorAnimation Storyboard.TargetName="Bd" Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" To="#22262F" Duration="0:0:0.18"/>
-                  </Storyboard></BeginStoryboard>
-                </Trigger.ExitActions>
               </Trigger>
               <Trigger Property="IsMouseOver" Value="True">
                 <Setter Property="Opacity" Value="0.85"/>
@@ -238,9 +290,9 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="RadioButton">
-            <Border x:Name="Bd" Background="Transparent" CornerRadius="10" Padding="12,9">
+            <Border x:Name="Bd" Background="Transparent" Padding="12,9">
               <Grid>
-                <Border x:Name="Ind" Width="3" CornerRadius="1.5" Background="#3DDC97" HorizontalAlignment="Left" Margin="-12,2,0,2" Opacity="0"/>
+                <Border x:Name="Ind" Width="4" Background="#3DDC97" HorizontalAlignment="Left" Margin="-12,0,0,0" Opacity="0"/>
                 <ContentPresenter VerticalAlignment="Center"/>
               </Grid>
             </Border>
@@ -261,10 +313,9 @@
 
     <Style x:Key="SetCard" TargetType="Border">
       <Setter Property="Background" Value="#1E2129"/>
-      <Setter Property="CornerRadius" Value="14"/>
       <Setter Property="Padding" Value="16,14"/>
       <Setter Property="BorderBrush" Value="#262A33"/>
-      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="BorderThickness" Value="2"/>
     </Style>
 
     <Style x:Key="RowBtn" TargetType="Button">
@@ -274,16 +325,23 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="Bd" Background="#1E2129" CornerRadius="12" Padding="14,10" BorderBrush="#262A33" BorderThickness="1">
-              <DockPanel>
-                <TextBlock DockPanel.Dock="Right" Text="›" FontSize="18" Foreground="#5A6070" VerticalAlignment="Center"/>
-                <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Left"/>
-              </DockPanel>
-            </Border>
+            <Grid>
+              <Border Background="#08090B" Margin="3,3,0,0"/>
+              <Border x:Name="Bd" Background="#1E2129" Padding="14,10" Margin="0,0,3,3" BorderBrush="#262A33" BorderThickness="2">
+                <DockPanel>
+                  <Path x:Name="Chev" DockPanel.Dock="Right" Data="{StaticResource PxRight}" Fill="#5A6070" VerticalAlignment="Center" SnapsToDevicePixels="True"/>
+                  <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                </DockPanel>
+              </Border>
+            </Grid>
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True">
                 <Setter TargetName="Bd" Property="BorderBrush" Value="#3DDC97"/>
                 <Setter TargetName="Bd" Property="Background" Value="#22262F"/>
+                <Setter TargetName="Chev" Property="Fill" Value="#3DDC97"/>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True">
+                <Setter TargetName="Bd" Property="Margin" Value="3,3,0,0"/>
               </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
@@ -299,8 +357,9 @@
           <ControlTemplate TargetType="CheckBox">
             <StackPanel Orientation="Horizontal" Background="Transparent">
               <Grid Width="18" Height="18" VerticalAlignment="Center">
-                <Border x:Name="Box" CornerRadius="5" BorderBrush="#3A3F4D" BorderThickness="1.5" Background="Transparent"/>
-                <TextBlock x:Name="Mark" Text="✓" FontSize="12" FontWeight="Bold" Foreground="#0F1115" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Hidden"/>
+                <Border x:Name="Box" BorderBrush="#3A3F4D" BorderThickness="2" Background="Transparent"/>
+                <Path x:Name="Mark" Data="{StaticResource PxTick}" Fill="#0F1115" Width="10" Height="8" Stretch="None" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Hidden" SnapsToDevicePixels="True"/>
+                <Rectangle x:Name="Dash" Width="8" Height="2" Fill="#E6E8EE" Visibility="Hidden"/>
               </Grid>
               <ContentPresenter Margin="9,0,0,0" VerticalAlignment="Center"/>
             </StackPanel>
@@ -314,9 +373,7 @@
               <Trigger Property="IsChecked" Value="{x:Null}">
                 <Setter TargetName="Box" Property="Background" Value="#2D5A47"/>
                 <Setter TargetName="Box" Property="BorderBrush" Value="#3DDC97"/>
-                <Setter TargetName="Mark" Property="Text" Value="–"/>
-                <Setter TargetName="Mark" Property="Foreground" Value="#E6E8EE"/>
-                <Setter TargetName="Mark" Property="Visibility" Value="Visible"/>
+                <Setter TargetName="Dash" Property="Visibility" Value="Visible"/>
               </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
@@ -330,8 +387,8 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="Bd" Background="Transparent" CornerRadius="6" Width="26" Height="26">
-              <TextBlock Text="✕" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{TemplateBinding Foreground}"/>
+            <Border x:Name="Bd" Background="Transparent" Width="26" Height="26">
+              <Path Data="{StaticResource PxX}" Fill="{TemplateBinding Foreground}" Width="10" Height="10" Stretch="None" HorizontalAlignment="Center" VerticalAlignment="Center" SnapsToDevicePixels="True"/>
             </Border>
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True">
@@ -355,7 +412,7 @@
                 <Thumb>
                   <Thumb.Template>
                     <ControlTemplate TargetType="Thumb">
-                      <Border Background="#3A3F4D" CornerRadius="3"/>
+                      <Border Background="#3A3F4D"/>
                     </ControlTemplate>
                   </Thumb.Template>
                 </Thumb>
@@ -371,10 +428,18 @@
     <Grid x:Name="Shell" Opacity="0">
     <Grid.RenderTransform><TranslateTransform x:Name="ShellShift" Y="18"/></Grid.RenderTransform>
     <!-- тень окна отдельно от содержимого: анимации внутри не заставляют её перерисовываться -->
-    <Border CornerRadius="20" Background="#121419" IsHitTestVisible="False">
-      <Border.Effect><DropShadowEffect BlurRadius="24" ShadowDepth="0" Opacity="0.55" Color="#000000" RenderingBias="Performance"/></Border.Effect>
-    </Border>
-    <Border x:Name="ShellBody" CornerRadius="20" Background="#121419" BorderBrush="#252933" BorderThickness="1">
+    <Border x:Name="ShellShadow" Background="#000000" Opacity="0.5" Margin="6,6,-6,-6" IsHitTestVisible="False"/>
+    <Border x:Name="ShellBody" BorderBrush="#252933" BorderThickness="2">
+      <Border.Background>
+        <DrawingBrush TileMode="Tile" Viewport="0,0,4,4" ViewportUnits="Absolute" Stretch="None" RenderOptions.CachingHint="Cache">
+          <DrawingBrush.Drawing>
+            <DrawingGroup>
+              <GeometryDrawing Brush="#121419" Geometry="M0,0 H4 V4 H0 Z"/>
+              <GeometryDrawing Brush="#15171D" Geometry="M0,3 H4 V4 H0 Z"/>
+            </DrawingGroup>
+          </DrawingBrush.Drawing>
+        </DrawingBrush>
+      </Border.Background>
       <Grid>
         <Grid.RowDefinitions>
           <RowDefinition Height="48"/>
@@ -387,19 +452,19 @@
             <!-- логотип приложения с точкой состояния (зелёная — zapret работает) -->
             <Grid Width="24" Height="24" Margin="0,0,10,0" VerticalAlignment="Center">
               <Image x:Name="TitleLogo" Width="24" Height="24" RenderOptions.BitmapScalingMode="HighQuality"/>
-              <Ellipse x:Name="TitleDot" Width="9" Height="9" Fill="#5A6070" Stroke="#121419" StrokeThickness="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-3,-3"/>
+              <Rectangle x:Name="TitleDot" Width="8" Height="8" Fill="#5A6070" Stroke="#121419" StrokeThickness="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-3,-3"/>
             </Grid>
-            <TextBlock Text="ZAPRET" FontWeight="Bold" FontSize="14" VerticalAlignment="Center"/>
+            <TextBlock Text="ZAPRET" Style="{StaticResource PxText}" FontSize="22.22" VerticalAlignment="Center" Margin="0,0,0,2"/>
             <TextBlock x:Name="TitleVer" Text="" Foreground="{StaticResource Muted}" FontSize="12" Margin="10,1,0,0" VerticalAlignment="Center"/>
           </StackPanel>
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
             <Button x:Name="GearBtn" Style="{StaticResource TitleBtn}" Margin="0,0,4,0" ToolTip="Настройки">
-              <TextBlock Text="⚙" FontFamily="Segoe UI Symbol" FontSize="16" RenderTransformOrigin="0.5,0.55">
-                <TextBlock.RenderTransform><RotateTransform x:Name="GearRot"/></TextBlock.RenderTransform>
-              </TextBlock>
+              <Path Data="{StaticResource PxGear}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="16" Height="16" Stretch="None" RenderTransformOrigin="0.5,0.5" SnapsToDevicePixels="True">
+                <Path.RenderTransform><RotateTransform x:Name="GearRot"/></Path.RenderTransform>
+              </Path>
             </Button>
-            <Button x:Name="MinBtn" Style="{StaticResource TitleBtn}" ToolTip="Свернуть"><TextBlock Text="—" FontSize="12"/></Button>
-            <Button x:Name="CloseBtn" Style="{StaticResource TitleBtn}" Margin="4,0,0,0"><TextBlock Text="✕" FontSize="13"/></Button>
+            <Button x:Name="MinBtn" Style="{StaticResource TitleBtn}" ToolTip="Свернуть"><Path Data="{StaticResource PxMin}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
+            <Button x:Name="CloseBtn" Style="{StaticResource TitleBtn}" Margin="4,0,0,0"><Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
           </StackPanel>
         </Grid>
 
@@ -421,44 +486,37 @@
                 <Button.Template>
                   <ControlTemplate TargetType="Button"><ContentPresenter/></ControlTemplate>
                 </Button.Template>
-                <Grid x:Name="PowerGrid" Width="200" Height="200" RenderTransformOrigin="0.5,0.5">
-                  <Grid.RenderTransform><ScaleTransform x:Name="PowerScale"/></Grid.RenderTransform>
-                  <Ellipse x:Name="Glow1" Width="160" Height="160" StrokeThickness="3" Stroke="#3DDC97" Opacity="0" RenderTransformOrigin="0.5,0.5">
-                    <Ellipse.RenderTransform><ScaleTransform x:Name="Glow1S"/></Ellipse.RenderTransform>
-                  </Ellipse>
-                  <Ellipse x:Name="Glow2" Width="160" Height="160" StrokeThickness="3" Stroke="#3DDC97" Opacity="0" RenderTransformOrigin="0.5,0.5">
-                    <Ellipse.RenderTransform><ScaleTransform x:Name="Glow2S"/></Ellipse.RenderTransform>
-                  </Ellipse>
-                  <Ellipse Width="176" Height="176" Fill="#171A20" Stroke="#252933" StrokeThickness="1"/>
-                  <Ellipse x:Name="Spinner" Width="176" Height="176" StrokeThickness="3" Stroke="#3DDC97"
-                           StrokeDashArray="18 40" StrokeDashCap="Round" Opacity="0" RenderTransformOrigin="0.5,0.5">
-                    <Ellipse.RenderTransform><RotateTransform x:Name="SpinRot"/></Ellipse.RenderTransform>
-                  </Ellipse>
-                  <Ellipse Width="150" Height="150">
-                    <Ellipse.Fill><SolidColorBrush x:Name="PowerFill" Color="#262A33"/></Ellipse.Fill>
-                    <Ellipse.Effect><DropShadowEffect x:Name="PowerShadow" BlurRadius="0" ShadowDepth="0" Color="#3DDC97" Opacity="0.8"/></Ellipse.Effect>
-                  </Ellipse>
-                  <Grid x:Name="IconWrap" Width="64" Height="64" RenderTransformOrigin="0.5,0.5">
+                <Grid x:Name="PowerGrid" Width="200" Height="200" RenderOptions.EdgeMode="Aliased" SnapsToDevicePixels="True">
+                  <Grid.RenderTransform><TranslateTransform x:Name="PowerLift"/></Grid.RenderTransform>
+                  <!-- по прозрачным щелям между «пикселями» тоже можно нажать -->
+                  <Ellipse Width="196" Height="196" Fill="Transparent"/>
+                  <!-- пиксельные волны вокруг кнопки, кадры задаются в коде -->
+                  <Grid Margin="-30" IsHitTestVisible="False">
+                    <Path x:Name="Glow1" Fill="#3DDC97" Opacity="0"/>
+                    <Path x:Name="Glow2" Fill="#3DDC97" Opacity="0"/>
+                  </Grid>
+                  <Path x:Name="PxOut"><Path.Fill><SolidColorBrush x:Name="PxOutB" Color="#2E3340"/></Path.Fill></Path>
+                  <Path x:Name="PxDark"><Path.Fill><SolidColorBrush x:Name="PxDarkB" Color="#1E2129"/></Path.Fill></Path>
+                  <Path x:Name="PxDisc"><Path.Fill><SolidColorBrush x:Name="PowerFill" Color="#262A33"/></Path.Fill></Path>
+                  <Path x:Name="PxRim"><Path.Fill><SolidColorBrush x:Name="PxRimB" Color="#2E3340"/></Path.Fill></Path>
+                  <Path x:Name="Spinner" Fill="#3DDC97" Opacity="0"/>
+                  <Grid x:Name="IconWrap" Width="66" Height="60" RenderTransformOrigin="0.5,0.5">
                     <Grid.RenderTransform>
                       <TransformGroup>
                         <ScaleTransform x:Name="PowerIconScale"/>
                         <RotateTransform x:Name="PowerIconRot"/>
                       </TransformGroup>
                     </Grid.RenderTransform>
-                    <Viewbox Width="64" Height="64">
-                      <Canvas Width="80" Height="80">
-                        <Path Data="M 54.1,23.15 A 22,22 0 1 1 25.86,23.15" StrokeThickness="6" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
-                          <Path.Stroke><SolidColorBrush x:Name="IconBrush" Color="#8A90A0"/></Path.Stroke>
-                        </Path>
-                        <Path Data="M 40,12 L 40,38" StrokeThickness="6" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
-                          <Path.Stroke><SolidColorBrush x:Name="IconBrush2" Color="#8A90A0"/></Path.Stroke>
-                        </Path>
-                      </Canvas>
-                    </Viewbox>
+                    <Path Data="M12,6h6v6h-6z M48,6h6v6h-6z M6,12h6v6h-6z M54,12h6v6h-6z M0,18h6v6h-6z M60,18h6v6h-6z M0,24h6v6h-6z M60,24h6v6h-6z M0,30h6v6h-6z M60,30h6v6h-6z M0,36h6v6h-6z M60,36h6v6h-6z M6,42h6v6h-6z M54,42h6v6h-6z M12,48h6v6h-6z M48,48h6v6h-6z M18,54h30v6h-30z">
+                      <Path.Fill><SolidColorBrush x:Name="IconBrush" Color="#8A90A0"/></Path.Fill>
+                    </Path>
+                    <Path Data="M30,0h6v6h-6z M30,6h6v6h-6z M30,12h6v6h-6z M30,18h6v6h-6z M30,24h6v6h-6z">
+                      <Path.Fill><SolidColorBrush x:Name="IconBrush2" Color="#8A90A0"/></Path.Fill>
+                    </Path>
                   </Grid>
-                  <!-- слой эффектов анимаций включения (частицы, молнии, кольца) -->
+                  <!-- слой эффектов анимаций включения (пиксели, молнии, волны) -->
                   <Canvas x:Name="FxLayer" Margin="-30" IsHitTestVisible="False" Panel.ZIndex="10"/>
-                  <Grid x:Name="ZWrap" Width="78" Height="78" Opacity="0" RenderTransformOrigin="0.5,0.5" IsHitTestVisible="False">
+                  <Grid x:Name="ZWrap" Width="88" Height="88" Opacity="0" RenderTransformOrigin="0.5,0.5" IsHitTestVisible="False">
                     <Grid.RenderTransform>
                       <TransformGroup>
                         <ScaleTransform x:Name="ZScale" ScaleX="0.3" ScaleY="0.3"/>
@@ -467,69 +525,54 @@
                         <TranslateTransform x:Name="ZMove"/>
                       </TransformGroup>
                     </Grid.RenderTransform>
-                    <Viewbox>
-                      <Canvas Width="80" Height="80">
-                        <Path x:Name="ZFill" Data="M 16,14 L 64,14 L 64,26 L 34,54 L 64,54 L 64,66 L 16,66 L 16,54 L 46,26 L 16,26 Z" StrokeLineJoin="Round" StrokeThickness="2">
-                          <Path.Fill><SolidColorBrush x:Name="ZBrush" Color="#3DDC97"/></Path.Fill>
-                          <Path.Stroke><SolidColorBrush x:Name="ZStroke" Color="#3DDC97"/></Path.Stroke>
+                    <Canvas Width="88" Height="88">
+                      <Path x:Name="ZFill" Data="M0,0h88v8h-88z M0,8h88v8h-88z M56,16h24v8h-24z M48,24h24v8h-24z M40,32h24v8h-24z M32,40h24v8h-24z M24,48h24v8h-24z M16,56h24v8h-24z M8,64h24v8h-24z M0,72h88v8h-88z M0,80h88v8h-88z">
+                        <Path.Fill><SolidColorBrush x:Name="ZBrush" Color="#3DDC97"/></Path.Fill>
+                      </Path>
+                      <!-- «змейка» из пикселей по букве Z при запуске (кадры задаются в коде) -->
+                      <Path x:Name="ZDraw" Opacity="0">
+                        <Path.Fill><SolidColorBrush x:Name="ZStroke" Color="#E6E8EE"/></Path.Fill>
+                      </Path>
+                      <!-- пиксельный блик, ступеньками пробегающий по букве -->
+                      <Canvas Width="88" Height="88" IsHitTestVisible="False">
+                        <Canvas.Clip><PathGeometry Figures="M0,0h88v8h-88z M0,8h88v8h-88z M56,16h24v8h-24z M48,24h24v8h-24z M40,32h24v8h-24z M32,40h24v8h-24z M24,48h24v8h-24z M16,56h24v8h-24z M8,64h24v8h-24z M0,72h88v8h-88z M0,80h88v8h-88z"/></Canvas.Clip>
+                        <Path x:Name="ZShine" Fill="#FFFFFF" Opacity="0.5">
+                          <Path.RenderTransform><TranslateTransform x:Name="ZShineT" X="-104"/></Path.RenderTransform>
                         </Path>
-                        <!-- контур Z: «рисуется» при включении и бегает змейкой при запуске -->
-                        <Path x:Name="ZDraw" Data="M 16,14 L 64,14 L 64,26 L 34,54 L 64,54 L 64,66 L 16,66 L 16,54 L 46,26 L 16,26 Z" StrokeLineJoin="Round" StrokeThickness="3" StrokeDashCap="Round" Opacity="0"/>
-                        <!-- блик, пробегающий по букве -->
-                        <Canvas Width="80" Height="80" IsHitTestVisible="False">
-                          <Canvas.Clip><PathGeometry Figures="M 16,14 L 64,14 L 64,26 L 34,54 L 64,54 L 64,66 L 16,66 L 16,54 L 46,26 L 16,26 Z"/></Canvas.Clip>
-                          <Rectangle Width="16" Height="120" Canvas.Top="-20" Opacity="0.55">
-                            <Rectangle.Fill>
-                              <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
-                                <GradientStop Color="#00FFFFFF" Offset="0"/>
-                                <GradientStop Color="#FFFFFFFF" Offset="0.5"/>
-                                <GradientStop Color="#00FFFFFF" Offset="1"/>
-                              </LinearGradientBrush>
-                            </Rectangle.Fill>
-                            <Rectangle.RenderTransform>
-                              <TransformGroup>
-                                <RotateTransform Angle="22"/>
-                                <TranslateTransform x:Name="ZShineT" X="-60"/>
-                              </TransformGroup>
-                            </Rectangle.RenderTransform>
-                          </Rectangle>
-                        </Canvas>
                       </Canvas>
-                    </Viewbox>
+                    </Canvas>
                   </Grid>
                 </Grid>
               </Button>
 
-              <TextBlock x:Name="StatusText" Text="Выключен" FontSize="26" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,14,0,0"/>
+              <TextBlock x:Name="StatusText" Text="Выключен" Style="{StaticResource PxText}" FontSize="33.33" HorizontalAlignment="Center" Margin="0,10,0,0"/>
               <TextBlock x:Name="SubText" Text="Нажми, чтобы включить" Foreground="{StaticResource Muted}" FontSize="13" HorizontalAlignment="Center" Margin="0,4,0,0" TextAlignment="Center" TextWrapping="Wrap"/>
 
               <TextBlock Text="Стратегия" Foreground="{StaticResource Muted}" FontSize="12" Margin="2,26,0,6"/>
               <ComboBox x:Name="StrategyBox"/>
 
               <!-- Telegram (tg-ws-proxy): второй модуль Zapret, со своей кнопкой включения -->
-              <Border x:Name="TgCard" Background="#1A1D24" CornerRadius="18" Padding="14,12" Margin="0,16,0,0" BorderBrush="#232731" BorderThickness="1" SnapsToDevicePixels="True" UseLayoutRounding="True">
+              <Border x:Name="TgCard" Background="#1A1D24" Padding="14,12" Margin="0,16,0,0" BorderBrush="#232731" BorderThickness="2" SnapsToDevicePixels="True" UseLayoutRounding="True">
                 <StackPanel>
                   <Grid>
                     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                     <Button x:Name="TgPower" Width="56" Height="56" Cursor="Hand" Focusable="False" Margin="0,0,14,0" ToolTip="Включить или выключить Telegram-прокси">
                       <Button.Template><ControlTemplate TargetType="Button"><ContentPresenter/></ControlTemplate></Button.Template>
-                      <Grid Width="56" Height="56" RenderTransformOrigin="0.5,0.5">
-                        <Grid.RenderTransform><ScaleTransform x:Name="TgPowerS"/></Grid.RenderTransform>
-                        <Ellipse x:Name="TgGlow" Stroke="#5ED3F3" StrokeThickness="2" Opacity="0" RenderTransformOrigin="0.5,0.5">
-                          <Ellipse.RenderTransform><ScaleTransform x:Name="TgGlowS"/></Ellipse.RenderTransform>
-                        </Ellipse>
-                        <Ellipse x:Name="TgDot" Margin="3" Stroke="#2E3340" StrokeThickness="1"/>
+                      <Grid Width="56" Height="56" RenderOptions.EdgeMode="Aliased" SnapsToDevicePixels="True">
+                        <Grid.RenderTransform><TranslateTransform x:Name="TgLift"/></Grid.RenderTransform>
+                        <Rectangle Fill="Transparent"/>
+                        <Grid Margin="-12" IsHitTestVisible="False">
+                          <Path x:Name="TgGlow" Fill="#5ED3F3" Opacity="0"/>
+                        </Grid>
+                        <Path x:Name="TgDot"/>
                         <TextBlock x:Name="TgPlane" Visibility="Collapsed"/>
-                        <Grid ClipToBounds="True" Margin="3">
-                          <!-- самолётик в стиле буквы Z: такие же жирные прямые грани -->
-                          <Viewbox Width="28" Height="28" Margin="-2,2,0,0">
-                            <Viewbox.RenderTransform><TranslateTransform x:Name="TgPlaneT"/></Viewbox.RenderTransform>
-                            <Canvas Width="80" Height="80">
-                              <Path x:Name="TgPlaneFill" Data="M 66,14 L 12,37 L 30,45 L 37,64 L 45,50 L 60,58 Z" StrokeLineJoin="Round" StrokeThickness="2"/>
-                              <Path x:Name="TgPlaneFold" Data="M 66,14 L 31,45 L 34,54" StrokeThickness="3.5" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
-                              <Path x:Name="TgPlaneDraw" Data="M 66,14 L 12,37 L 30,45 L 37,64 L 45,50 L 60,58 Z" StrokeLineJoin="Round" StrokeThickness="3" StrokeDashCap="Round" Opacity="0"/>
-                            </Canvas>
-                          </Viewbox>
+                        <Grid ClipToBounds="True" Margin="4">
+                          <Canvas Width="33" Height="27" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="-2,2,0,0">
+                            <Canvas.RenderTransform><TranslateTransform x:Name="TgPlaneT"/></Canvas.RenderTransform>
+                            <Path x:Name="TgPlaneFill" Data="M27,0h6v3h-6z M21,3h12v3h-12z M15,6h15v3h-15z M9,9h21v3h-21z M3,12h21v3h-21z M9,15h18v3h-18z M15,18h9v3h-9z M15,21h3v3h-3z M21,21h3v3h-3z M15,24h3v3h-3z"/>
+                            <Path x:Name="TgPlaneFold" Data="M30,0h3v3h-3z M24,3h6v3h-6z M18,6h6v3h-6z M12,9h6v3h-6z"/>
+                            <Path x:Name="TgPlaneDraw" Opacity="0"/>
+                          </Canvas>
                         </Grid>
                       </Grid>
                     </Button>
@@ -539,16 +582,16 @@
                         <TextBlock Text="Telegram" FontSize="17" FontWeight="SemiBold"/>
                       </DockPanel>
                       <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
-                        <Ellipse x:Name="TgLed" Width="7" Height="7" Margin="0,1,7,0" VerticalAlignment="Center" Fill="#8A90A0"/>
+                        <Rectangle x:Name="TgLed" Width="6" Height="6" Margin="0,1,7,0" VerticalAlignment="Center" Fill="#8A90A0"/>
                         <TextBlock x:Name="TgStatus" Text="Выключен · нажми на самолётик" Foreground="{StaticResource Muted}" FontSize="12.5" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                       </StackPanel>
                     </StackPanel>
                   </Grid>
                   <UniformGrid x:Name="TgActions" Rows="1" Margin="0,12,0,0" Visibility="Collapsed">
-                    <Button x:Name="TgConnect" Style="{StaticResource Btn}" Height="34" Padding="10,0" FontSize="12" Margin="0,0,3,0" Visibility="Collapsed" ToolTip="Настроить прокси в Telegram Desktop">
+                    <Button x:Name="TgConnect" Style="{StaticResource Btn}" Height="36" Padding="4,0" FontSize="12" Margin="0,0,3,0" Visibility="Collapsed" ToolTip="Настроить прокси в Telegram Desktop">
                       <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE7F8;" FontFamily="Segoe MDL2 Assets" FontSize="13" Margin="0,1,7,0"/><TextBlock Text="Подключить на ПК"/></StackPanel>
                     </Button>
-                    <Button x:Name="TgPhone" Style="{StaticResource Btn}" Height="34" Padding="10,0" FontSize="12" Margin="3,0,0,0" Visibility="Collapsed" ToolTip="Подключить Telegram на телефоне по QR-коду">
+                    <Button x:Name="TgPhone" Style="{StaticResource Btn}" Height="36" Padding="4,0" FontSize="12" Margin="3,0,0,0" Visibility="Collapsed" ToolTip="Подключить Telegram на телефоне по QR-коду">
                       <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE8EA;" FontFamily="Segoe MDL2 Assets" FontSize="13" Margin="0,1,7,0"/><TextBlock Text="На телефоне"/></StackPanel>
                     </Button>
                   </UniformGrid>
@@ -557,24 +600,26 @@
             </StackPanel>
 
             <StackPanel Grid.Row="1">
-              <UniformGrid Columns="2">
-                <Button x:Name="TestBtn" Style="{StaticResource Btn}" Margin="0,0,4,0" Content="Тест стратегий"/>
-                <Button x:Name="UpdateBtn" Style="{StaticResource Btn}" Margin="4,0,0,0">
+              <!-- кнопка обновления zapret появляется только когда вышла новая версия -->
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <Button x:Name="TestBtn" Style="{StaticResource Btn}" Content="Тест стратегий"/>
+                <Button x:Name="UpdateBtn" Grid.Column="1" Style="{StaticResource Btn}" Margin="8,0,0,0" MinWidth="150" Visibility="Collapsed">
                   <Grid>
                     <TextBlock x:Name="UpdText" Text="Обновления" HorizontalAlignment="Center"/>
-                    <Border x:Name="UpdTrack" Height="3" VerticalAlignment="Bottom" Margin="-6,0,-6,-6" CornerRadius="1.5" Background="#2A2E38" ClipToBounds="True" Opacity="0">
+                    <Border x:Name="UpdTrack" Height="3" VerticalAlignment="Bottom" Margin="-6,0,-6,-6" Background="#2A2E38" ClipToBounds="True" Opacity="0">
                       <Grid>
-                        <Rectangle x:Name="UpdBar" Width="40" HorizontalAlignment="Left" RadiusX="1.5" RadiusY="1.5" Fill="#3DDC97">
+                        <Rectangle x:Name="UpdBar" Width="40" HorizontalAlignment="Left" RadiusX="0" RadiusY="0" Fill="#3DDC97">
                           <Rectangle.RenderTransform><TranslateTransform x:Name="UpdBarT" X="-40"/></Rectangle.RenderTransform>
                         </Rectangle>
-                        <Rectangle x:Name="UpdFill" RadiusX="1.5" RadiusY="1.5" Fill="#3DDC97" RenderTransformOrigin="0,0.5">
+                        <Rectangle x:Name="UpdFill" RadiusX="0" RadiusY="0" Fill="#3DDC97" RenderTransformOrigin="0,0.5">
                           <Rectangle.RenderTransform><ScaleTransform x:Name="UpdFillS" ScaleX="0"/></Rectangle.RenderTransform>
                         </Rectangle>
                       </Grid>
                     </Border>
                   </Grid>
                 </Button>
-              </UniformGrid>
+              </Grid>
             </StackPanel>
           </Grid>
 
@@ -585,7 +630,7 @@
               <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <Border Grid.Row="0" Background="{StaticResource Card}" CornerRadius="16" Padding="18" BorderBrush="#232731" BorderThickness="1">
+            <Border x:Name="SitesCard" Grid.Row="0" Background="{StaticResource Card}" Padding="18" BorderBrush="#262A33" BorderThickness="2">
               <Grid>
                 <Grid.RowDefinitions>
                   <RowDefinition Height="Auto"/>
@@ -602,21 +647,24 @@
                       <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE8AC;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,1,6,0"/><TextBlock Text="Ввести код"/></StackPanel>
                     </Button>
                   </StackPanel>
-                  <TextBlock Text="Мои сайты" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                  <TextBlock Text="Мои сайты" Style="{StaticResource PxText}" FontSize="22.22" VerticalAlignment="Center" Margin="0,0,0,2"/>
                 </DockPanel>
                 <Grid Grid.Row="1" Margin="0,12,0,10">
                   <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                   </Grid.ColumnDefinitions>
-                  <Border Background="#22262F" CornerRadius="10" BorderBrush="#2E3340" BorderThickness="1" Height="38">
-                    <Grid>
-                      <TextBlock x:Name="DomainHint" Text="например: google.com" Foreground="#5A6070" Margin="14,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
-                      <TextBox x:Name="DomainBox" Background="Transparent" BorderThickness="0" Foreground="#E6E8EE" CaretBrush="#3DDC97"
-                               Margin="10,0" VerticalAlignment="Center" FontSize="13"/>
-                    </Grid>
+                  <Border Background="#121419" BorderBrush="#2E3340" BorderThickness="2" Height="40" Margin="0,0,0,0">
+                    <DockPanel>
+                      <Path DockPanel.Dock="Left" Data="{StaticResource PxRight}" Fill="#3DDC97" VerticalAlignment="Center" Margin="12,0,2,0" SnapsToDevicePixels="True"/>
+                      <Grid>
+                        <TextBlock x:Name="DomainHint" Text="например: google.com" Foreground="#5A6070" Margin="8,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        <TextBox x:Name="DomainBox" Background="Transparent" BorderThickness="0" Foreground="#E6E8EE" CaretBrush="#3DDC97"
+                                 Margin="4,0,10,0" VerticalAlignment="Center" FontSize="13"/>
+                      </Grid>
+                    </DockPanel>
                   </Border>
-                  <Button x:Name="AddBtn" Grid.Column="1" Style="{StaticResource AccentBtn}" Content="Добавить" Margin="8,0,0,0"/>
+                  <Button x:Name="AddBtn" Grid.Column="1" Style="{StaticResource AccentBtn}" Content="Добавить" Margin="8,0,0,0" Height="43" VerticalAlignment="Top"/>
                 </Grid>
                 <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                   <StackPanel x:Name="SitesPanel" Margin="0,0,6,0"/>
@@ -625,7 +673,7 @@
             </Border>
 
 
-            <Border x:Name="ApplyBar" Grid.Row="1" Background="#1E2B26" CornerRadius="12" Padding="14,8" Margin="0,10,0,0"
+            <Border x:Name="ApplyBar" Grid.Row="1" Background="#1E2B26" Padding="14,8" Margin="0,10,0,0"
                     BorderBrush="#2D5A47" BorderThickness="1" Visibility="Collapsed" Opacity="0">
               <DockPanel>
                 <Button x:Name="ApplyBtn" DockPanel.Dock="Right" Style="{StaticResource AccentBtn}" Padding="12,6" Content="Перезапустить"/>
@@ -637,18 +685,18 @@
 
         <!-- Плашка обновления приложения -->
         <Border x:Name="AppUpdBar" Grid.Row="1" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="0,-6,0,0"
-                Background="#1B2B25" CornerRadius="14" Padding="16,10" BorderBrush="#3DDC97" BorderThickness="1" Visibility="Collapsed" Opacity="0">
-          <Border.Effect><DropShadowEffect BlurRadius="22" ShadowDepth="0" Color="#3DDC97" Opacity="0.35"/></Border.Effect>
+                Background="#1B2B25" Padding="16,10" BorderBrush="#3DDC97" BorderThickness="1" Visibility="Collapsed" Opacity="0">
+          <Border.Effect><DropShadowEffect BlurRadius="0" ShadowDepth="5" Direction="315" Color="#000000" Opacity="0.6"/></Border.Effect>
           <Border.RenderTransform><TranslateTransform x:Name="AppUpdShift" Y="-30"/></Border.RenderTransform>
           <StackPanel>
             <StackPanel Orientation="Horizontal">
-              <Ellipse Width="8" Height="8" Fill="#3DDC97" VerticalAlignment="Center" Margin="0,0,10,0"/>
+              <Rectangle Width="8" Height="8" Fill="#3DDC97" VerticalAlignment="Center" Margin="0,0,10,0"/>
               <TextBlock x:Name="AppUpdText" FontSize="13" VerticalAlignment="Center" Margin="0,0,14,0"/>
               <Button x:Name="AppUpdBtn" Style="{StaticResource AccentBtn}" Content="Обновить" Padding="14,5"/>
-              <Button x:Name="AppUpdLater" Style="{StaticResource TitleBtn}" Margin="6,0,0,0" ToolTip="Позже"><TextBlock Text="✕" FontSize="12"/></Button>
+              <Button x:Name="AppUpdLater" Style="{StaticResource TitleBtn}" Margin="6,0,0,0" ToolTip="Позже"><Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
             </StackPanel>
-            <Border x:Name="AppUpdTrack" Height="4" CornerRadius="2" Background="#22262F" Margin="0,8,0,0" Visibility="Collapsed">
-              <Border x:Name="AppUpdFill" CornerRadius="2" Background="#3DDC97" RenderTransformOrigin="0,0.5">
+            <Border x:Name="AppUpdTrack" Height="4" Background="#22262F" Margin="0,8,0,0" Visibility="Collapsed">
+              <Border x:Name="AppUpdFill" Background="#3DDC97" RenderTransformOrigin="0,0.5">
                 <Border.RenderTransform><ScaleTransform x:Name="AppUpdFillS" ScaleX="0"/></Border.RenderTransform>
               </Border>
             </Border>
@@ -657,16 +705,15 @@
 
         <!-- Панель настроек -->
         <Grid x:Name="SettingsOverlay" Grid.RowSpan="2" Visibility="Collapsed">
-          <Border x:Name="Dim" Background="#B0090A0D" CornerRadius="20" Opacity="0"/>
-          <Border x:Name="SettingsPanel" HorizontalAlignment="Right" Width="600" Background="#171A21" CornerRadius="0,20,20,0"
-                  BorderBrush="#2A2E38" BorderThickness="1,0,0,0">
+          <Border x:Name="Dim" Background="#B0090A0D" Opacity="0"/>
+          <Border x:Name="SettingsPanel" HorizontalAlignment="Right" Width="600" Background="#171A21"
+                  BorderBrush="#2E3340" BorderThickness="2,0,0,0">
             <Border.RenderTransform><TranslateTransform x:Name="SettingsShift" X="620"/></Border.RenderTransform>
-            <Border.Effect><DropShadowEffect BlurRadius="30" ShadowDepth="0" Opacity="0.6"/></Border.Effect>
             <Grid Margin="22,18,22,20">
               <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
               <DockPanel Margin="0,0,0,18">
-                <Button x:Name="SettingsClose" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><TextBlock Text="✕" FontSize="13"/></Button>
-                <TextBlock Text="Настройки" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <Button x:Name="SettingsClose" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
+                <TextBlock Text="Настройки" Style="{StaticResource PxText}" FontSize="22.22" VerticalAlignment="Center"/>
               </DockPanel>
               <Grid Grid.Row="1">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="168"/><ColumnDefinition Width="20"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
@@ -694,7 +741,7 @@
                 <Grid x:Name="SetPages" Grid.Column="2">
                   <!-- 0: Обход -->
                   <StackPanel x:Name="SetPage0">
-                    <TextBlock Text="Обход" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <TextBlock Text="Обход" Style="{StaticResource PxText}" FontSize="22.22" Margin="0,0,0,4"/>
                     <TextBlock Text="как zapret обходит блокировки" Foreground="{StaticResource Muted}" FontSize="11.5" Margin="0,0,0,16"/>
                     <Border Style="{StaticResource SetCard}">
                       <StackPanel>
@@ -737,7 +784,7 @@
 
                   <!-- 1: Запуск -->
                   <StackPanel x:Name="SetPage1" Visibility="Collapsed">
-                    <TextBlock Text="Запуск" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <TextBlock Text="Запуск" Style="{StaticResource PxText}" FontSize="22.22" Margin="0,0,0,4"/>
                     <TextBlock Text="как открывается приложение" Foreground="{StaticResource Muted}" FontSize="11.5" Margin="0,0,0,16"/>
                     <Border Style="{StaticResource SetCard}">
                       <StackPanel>
@@ -779,7 +826,7 @@
 
                   <!-- 2: Вид -->
                   <StackPanel x:Name="SetPage2" Visibility="Collapsed">
-                    <TextBlock Text="Вид" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <TextBlock Text="Вид" Style="{StaticResource PxText}" FontSize="22.22" Margin="0,0,0,4"/>
                     <TextBlock Text="применяется сразу, окно перезапустится" Foreground="{StaticResource Muted}" FontSize="11.5" Margin="0,0,0,16"/>
                     <Border Style="{StaticResource SetCard}">
                       <StackPanel>
@@ -817,7 +864,7 @@
 
                   <!-- 3: Инструменты -->
                   <StackPanel x:Name="SetPage3" Visibility="Collapsed">
-                    <TextBlock Text="Инструменты" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <TextBlock Text="Инструменты" Style="{StaticResource PxText}" FontSize="22.22" Margin="0,0,0,4"/>
                     <TextBlock Text="обслуживание zapret и приложения" Foreground="{StaticResource Muted}" FontSize="11.5" Margin="0,0,0,16"/>
                     <Button x:Name="ServiceBtn" Style="{StaticResource RowBtn}">
                       <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE90F;" FontFamily="Segoe MDL2 Assets" FontSize="16" Width="30" VerticalAlignment="Center" Foreground="#3DDC97"/>
@@ -835,6 +882,10 @@
                       <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="16" Width="30" VerticalAlignment="Center" Foreground="#E0566A"/>
                         <StackPanel><TextBlock Text="Удалить Zapret" FontSize="13"/><TextBlock Text="полностью или оставить zapret от Flowseal" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel></StackPanel>
                     </Button>
+                    <Button x:Name="ZapretCheckBtn" Style="{StaticResource RowBtn}">
+                      <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE895;" FontFamily="Segoe MDL2 Assets" FontSize="16" Width="30" VerticalAlignment="Center" Foreground="#3DDC97"/>
+                        <StackPanel><TextBlock Text="Проверить обновления zapret" FontSize="13"/><TextBlock Text="новая версия zapret от Flowseal" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel></StackPanel>
+                    </Button>
                     <Button x:Name="AppCheckBtn" Style="{StaticResource RowBtn}">
                       <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE895;" FontFamily="Segoe MDL2 Assets" FontSize="16" Width="30" VerticalAlignment="Center" Foreground="#3DDC97"/>
                         <StackPanel><TextBlock Text="Проверить обновления приложения" FontSize="13"/><TextBlock Text="скачать новую версию с GitHub" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel></StackPanel>
@@ -843,10 +894,10 @@
 
                   <!-- 4: О программе -->
                   <StackPanel x:Name="SetPage4" Visibility="Collapsed">
-                    <TextBlock Text="О программе" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,16"/>
+                    <TextBlock Text="О программе" Style="{StaticResource PxText}" FontSize="22.22" Margin="0,0,0,16"/>
                     <Border Style="{StaticResource SetCard}" Margin="0,0,0,10">
                       <StackPanel>
-                        <TextBlock FontSize="18" FontWeight="SemiBold">
+                        <TextBlock Style="{StaticResource PxText}" FontSize="22.22">
                           <Run Text="Zapret GUI "/><Run Text="by " Foreground="#8A90A0" FontWeight="Normal" FontSize="14"/><Run Text="COFFIOK" Foreground="#3DDC97" FontWeight="Bold" FontSize="14"/>
                         </TextBlock>
                         <TextBlock x:Name="InfoApp" FontSize="12" Foreground="{StaticResource Muted}" Margin="0,4,0,12"/>
@@ -870,11 +921,11 @@
 
         <!-- Тест стратегий -->
         <Grid x:Name="TestOverlay" Grid.RowSpan="2" Visibility="Collapsed">
-          <Border x:Name="TestDim" Background="#C0090A0D" CornerRadius="20" Opacity="0"/>
-          <Border x:Name="TestPanel" Margin="26,22,26,22" Background="#171A21" CornerRadius="18" BorderBrush="#2A2E38" BorderThickness="1"
+          <Border x:Name="TestDim" Background="#C0090A0D" Opacity="0"/>
+          <Border x:Name="TestPanel" Margin="26,22,26,22" Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2"
                   Opacity="0" RenderTransformOrigin="0.5,0.5">
             <Border.RenderTransform><ScaleTransform x:Name="TestScale" ScaleX="0.94" ScaleY="0.94"/></Border.RenderTransform>
-            <Border.Effect><DropShadowEffect BlurRadius="30" ShadowDepth="0" Opacity="0.6"/></Border.Effect>
+            <Border.Effect><DropShadowEffect BlurRadius="0" ShadowDepth="7" Direction="315" Color="#000000" Opacity="0.6"/></Border.Effect>
             <Grid Margin="26,18,26,20">
               <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -883,9 +934,9 @@
                 <RowDefinition Height="*"/>
               </Grid.RowDefinitions>
               <DockPanel Margin="0,0,0,14">
-                <Button x:Name="TestClose" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><TextBlock Text="✕" FontSize="13"/></Button>
+                <Button x:Name="TestClose" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
                 <StackPanel>
-                  <TextBlock Text="Тест стратегий" FontSize="20" FontWeight="SemiBold"/>
+                  <TextBlock Text="Тест стратегий" Style="{StaticResource PxText}" FontSize="22.22"/>
                   <TextBlock Text="Проверяю, какая стратегия лучше открывает твои сайты" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0"/>
                 </StackPanel>
               </DockPanel>
@@ -916,9 +967,9 @@
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                 <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
                   <TextBlock x:Name="TestStatus" FontSize="12.5" Foreground="#B8BDC9" TextTrimming="CharacterEllipsis"/>
-                  <Border Height="8" CornerRadius="4" Background="#22262F" Margin="0,8,0,0" ClipToBounds="True">
+                  <Border Height="8" Background="#22262F" Margin="0,8,0,0" ClipToBounds="True">
                     <Grid>
-                      <Border x:Name="TestBar" CornerRadius="4" RenderTransformOrigin="0,0.5">
+                      <Border x:Name="TestBar" RenderTransformOrigin="0,0.5">
                         <Border.Background>
                           <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
                             <GradientStop Color="#2BB57A" Offset="0"/>
@@ -956,26 +1007,26 @@
 
         <!-- Перенос настроек -->
         <Grid x:Name="MigOverlay" Grid.RowSpan="2" Visibility="Collapsed">
-          <Border x:Name="MigDim" Background="#C0090A0D" CornerRadius="20" Opacity="0"/>
-          <Border x:Name="MigPanel" Width="600" Margin="0,22" Background="#171A21" CornerRadius="18" BorderBrush="#2A2E38" BorderThickness="1"
+          <Border x:Name="MigDim" Background="#C0090A0D" Opacity="0"/>
+          <Border x:Name="MigPanel" Width="600" Margin="0,22" Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2"
                   Opacity="0" RenderTransformOrigin="0.5,0.5">
             <Border.RenderTransform><ScaleTransform x:Name="MigScale" ScaleX="0.94" ScaleY="0.94"/></Border.RenderTransform>
-            <Border.Effect><DropShadowEffect BlurRadius="30" ShadowDepth="0" Opacity="0.6"/></Border.Effect>
+            <Border.Effect><DropShadowEffect BlurRadius="0" ShadowDepth="7" Direction="315" Color="#000000" Opacity="0.6"/></Border.Effect>
             <Grid Margin="26,18,26,20">
               <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/>
               </Grid.RowDefinitions>
               <DockPanel Margin="0,0,0,16">
-                <Button x:Name="MigClose" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><TextBlock Text="✕" FontSize="13"/></Button>
+                <Button x:Name="MigClose" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
                 <StackPanel>
-                  <TextBlock Text="Перенос настроек" FontSize="20" FontWeight="SemiBold"/>
+                  <TextBlock Text="Перенос настроек" Style="{StaticResource PxText}" FontSize="22.22"/>
                   <TextBlock Text="Твои сайты, группы и настройки переедут в новую версию zapret" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0"/>
                 </StackPanel>
               </DockPanel>
 
               <Grid x:Name="MigCards" Grid.Row="1" Margin="0,0,0,14">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="90"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                <Border Background="#1E2129" CornerRadius="14" Padding="14,12" BorderBrush="#2A2E38" BorderThickness="1">
+                <Border Background="#1E2129" Padding="14,12" BorderBrush="#2A2E38" BorderThickness="2">
                   <StackPanel>
                     <TextBlock Text="ОТКУДА · старая" FontSize="10.5" FontWeight="SemiBold" Foreground="#5A6070" Margin="2,0,0,8"/>
                     <ComboBox x:Name="MigFromBox"/>
@@ -984,15 +1035,15 @@
                 <Canvas Grid.Column="1" Height="10" Width="60" ClipToBounds="True" VerticalAlignment="Center" HorizontalAlignment="Center">
                   <StackPanel Orientation="Horizontal">
                     <StackPanel.RenderTransform><TranslateTransform x:Name="MigDotsT" X="-40"/></StackPanel.RenderTransform>
-                    <Ellipse Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="0.35"/>
-                    <Ellipse Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="0.6"/>
-                    <Ellipse Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="1"/>
-                    <Ellipse Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="0.35"/>
-                    <Ellipse Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="0.6"/>
-                    <Ellipse Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="1"/>
+                    <Rectangle Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="0.35"/>
+                    <Rectangle Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="0.6"/>
+                    <Rectangle Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="1"/>
+                    <Rectangle Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="0.35"/>
+                    <Rectangle Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="0.6"/>
+                    <Rectangle Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="1"/>
                   </StackPanel>
                 </Canvas>
-                <Border Grid.Column="2" Background="#1A2621" CornerRadius="14" Padding="14,12" BorderBrush="#2D5A47" BorderThickness="1">
+                <Border Grid.Column="2" Background="#1A2621" Padding="14,12" BorderBrush="#2D5A47" BorderThickness="1">
                   <Border.Effect><DropShadowEffect x:Name="MigToGlow" Color="#3DDC97" BlurRadius="0" ShadowDepth="0" Opacity="0.7"/></Border.Effect>
                   <StackPanel>
                     <TextBlock Text="КУДА · новая" FontSize="10.5" FontWeight="SemiBold" Foreground="#5A9C80" Margin="2,0,0,8"/>
@@ -1027,17 +1078,17 @@
 
         <!-- Поделиться / Вставить -->
         <Grid x:Name="ShareOverlay" Grid.RowSpan="2" Visibility="Collapsed">
-          <Border x:Name="ShareDim" Background="#C0090A0D" CornerRadius="20" Opacity="0"/>
-          <Border x:Name="SharePanel" Width="560" Margin="0,22" Background="#171A21" CornerRadius="18" BorderBrush="#2A2E38" BorderThickness="1"
+          <Border x:Name="ShareDim" Background="#C0090A0D" Opacity="0"/>
+          <Border x:Name="SharePanel" Width="560" Margin="0,22" Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2"
                   Opacity="0" RenderTransformOrigin="0.5,0.5">
             <Border.RenderTransform><ScaleTransform x:Name="ShareScale" ScaleX="0.94" ScaleY="0.94"/></Border.RenderTransform>
-            <Border.Effect><DropShadowEffect BlurRadius="30" ShadowDepth="0" Opacity="0.6"/></Border.Effect>
+            <Border.Effect><DropShadowEffect BlurRadius="0" ShadowDepth="7" Direction="315" Color="#000000" Opacity="0.6"/></Border.Effect>
             <Grid Margin="26,18,26,20">
               <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
               <DockPanel Margin="0,0,0,12">
-                <Button x:Name="ShareClose" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><TextBlock Text="✕" FontSize="13"/></Button>
+                <Button x:Name="ShareClose" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
                 <StackPanel>
-                  <TextBlock x:Name="ShareTitle" FontSize="20" FontWeight="SemiBold"/>
+                  <TextBlock x:Name="ShareTitle" Style="{StaticResource PxText}" FontSize="22.22"/>
                   <TextBlock x:Name="ShareSub" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap"/>
                 </StackPanel>
               </DockPanel>
@@ -1045,7 +1096,7 @@
                 <TextBlock x:Name="ShareAll" DockPanel.Dock="Right" Text="Снять все" Foreground="#7FE8B8" FontSize="12" Cursor="Hand"/>
                 <TextBlock x:Name="ShareCount" Foreground="{StaticResource Muted}" FontSize="12"/>
               </DockPanel>
-              <Border x:Name="ShareListBox" Grid.Row="2" Background="#1E2129" CornerRadius="14" BorderBrush="#262A33" BorderThickness="1" Padding="6">
+              <Border x:Name="ShareListBox" Grid.Row="2" Background="#1E2129" BorderBrush="#262A33" BorderThickness="1" Padding="6">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                   <StackPanel x:Name="ShareList" Margin="8,6,10,6"/>
                 </ScrollViewer>
@@ -1053,7 +1104,7 @@
               <!-- готовый код -->
               <StackPanel x:Name="ShareCodeView" Grid.Row="2" Visibility="Collapsed" VerticalAlignment="Center" Margin="0,0,0,10">
                 <TextBlock Text="Код для друга" Foreground="{StaticResource Muted}" FontSize="13" HorizontalAlignment="Center"/>
-                <Border x:Name="ShareCodeCard" Background="#1B3329" CornerRadius="18" BorderBrush="#2D5A47" BorderThickness="1" Padding="34,14,34,16"
+                <Border x:Name="ShareCodeCard" Background="#1B3329" BorderBrush="#2D5A47" BorderThickness="1" Padding="34,14,34,16"
                         HorizontalAlignment="Center" Margin="0,12,0,12" Cursor="Hand" ToolTip="Нажми, чтобы скопировать" RenderTransformOrigin="0.5,0.5">
                   <Border.RenderTransform><ScaleTransform x:Name="ShareCodeScale"/></Border.RenderTransform>
                   <TextBlock x:Name="ShareCodeText" FontFamily="Consolas" FontSize="44" FontWeight="Bold" Foreground="#3DDC97"/>
@@ -1063,7 +1114,7 @@
               <!-- ввод кода -->
               <StackPanel x:Name="ShareEnterView" Grid.Row="2" Visibility="Collapsed" VerticalAlignment="Center" Margin="0,0,0,10">
                 <TextBlock Text="Введи код, который прислал друг" FontSize="14" HorizontalAlignment="Center"/>
-                <Border x:Name="ShareCodeBoxWrap" Width="300" Height="66" Background="#22262F" CornerRadius="16" BorderBrush="#2E3340" BorderThickness="1" Margin="0,14,0,10">
+                <Border x:Name="ShareCodeBoxWrap" Width="300" Height="66" Background="#22262F" BorderBrush="#2E3340" BorderThickness="1" Margin="0,14,0,10">
                   <TextBox x:Name="ShareCodeBox" Background="Transparent" BorderThickness="0" Foreground="#E6E8EE" CaretBrush="#3DDC97"
                            FontFamily="Consolas" FontSize="32" FontWeight="Bold" HorizontalContentAlignment="Center" VerticalAlignment="Center"
                            CharacterCasing="Upper" MaxLength="9"/>
@@ -1083,21 +1134,21 @@
 
         <!-- Удаление Zapret -->
         <Grid x:Name="UninstOverlay" Grid.RowSpan="2" Visibility="Collapsed" Panel.ZIndex="45">
-          <Border x:Name="UninstDim" Background="#C0090A0D" CornerRadius="20" Opacity="0"/>
-          <Border x:Name="UninstPanel" Width="520" VerticalAlignment="Center" Background="#171A21" CornerRadius="18" BorderBrush="#2A2E38" BorderThickness="1"
+          <Border x:Name="UninstDim" Background="#C0090A0D" Opacity="0"/>
+          <Border x:Name="UninstPanel" Width="520" VerticalAlignment="Center" Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2"
                   Opacity="0" RenderTransformOrigin="0.5,0.5">
             <Border.RenderTransform><ScaleTransform x:Name="UninstScale" ScaleX="0.94" ScaleY="0.94"/></Border.RenderTransform>
-            <Border.Effect><DropShadowEffect BlurRadius="30" ShadowDepth="0" Opacity="0.6"/></Border.Effect>
+            <Border.Effect><DropShadowEffect BlurRadius="0" ShadowDepth="7" Direction="315" Color="#000000" Opacity="0.6"/></Border.Effect>
             <StackPanel Margin="26,20,26,22">
               <DockPanel Margin="0,0,0,14">
-                <Button x:Name="UninstClose" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><TextBlock Text="✕" FontSize="13"/></Button>
+                <Button x:Name="UninstClose" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
                 <StackPanel>
-                  <TextBlock Text="Удалить Zapret" FontSize="20" FontWeight="SemiBold"/>
+                  <TextBlock Text="Удалить Zapret" Style="{StaticResource PxText}" FontSize="22.22"/>
                   <TextBlock Text="Выбери, что сделать с zapret от Flowseal" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0"/>
                 </StackPanel>
               </DockPanel>
               <StackPanel x:Name="UninstChoice">
-                <Border x:Name="UnKeep" Background="#1E2129" CornerRadius="14" BorderBrush="#2E3340" BorderThickness="1.5" Padding="16,14" Margin="0,0,0,10" Cursor="Hand">
+                <Border x:Name="UnKeep" Background="#1E2129" BorderBrush="#2E3340" BorderThickness="2" Padding="16,14" Margin="0,0,0,10" Cursor="Hand">
                   <Grid>
                     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                     <TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" FontSize="20" Width="38" VerticalAlignment="Center" Foreground="#3DDC97"/>
@@ -1106,12 +1157,12 @@
                       <TextBlock x:Name="UnKeepSub" Text="Удалится только приложение. Папка zapret со всеми твоими сайтами и настройками переедет на рабочий стол." Foreground="{StaticResource Muted}" FontSize="11.5" TextWrapping="Wrap" Margin="0,3,0,0"/>
                     </StackPanel>
                     <Grid Grid.Column="2" Width="20" Height="20" Margin="12,0,0,0" VerticalAlignment="Center">
-                      <Ellipse Stroke="#3A3F4B" StrokeThickness="2"/>
-                      <Ellipse x:Name="UnKeepDot" Width="10" Height="10" Fill="#3DDC97" Opacity="0"/>
+                      <Rectangle Stroke="#3A3F4B" StrokeThickness="2"/>
+                      <Rectangle x:Name="UnKeepDot" Width="10" Height="10" Fill="#3DDC97" Opacity="0"/>
                     </Grid>
                   </Grid>
                 </Border>
-                <Border x:Name="UnAll" Background="#1E2129" CornerRadius="14" BorderBrush="#2E3340" BorderThickness="1.5" Padding="16,14" Margin="0,0,0,10" Cursor="Hand">
+                <Border x:Name="UnAll" Background="#1E2129" BorderBrush="#2E3340" BorderThickness="2" Padding="16,14" Margin="0,0,0,10" Cursor="Hand">
                   <Grid>
                     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                     <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="20" Width="38" VerticalAlignment="Center" Foreground="#E0566A"/>
@@ -1120,8 +1171,8 @@
                       <TextBlock x:Name="UnAllSub" Text="Приложение, zapret, Telegram-прокси и твои списки сайтов — ничего не останется." Foreground="{StaticResource Muted}" FontSize="11.5" TextWrapping="Wrap" Margin="0,3,0,0"/>
                     </StackPanel>
                     <Grid Grid.Column="2" Width="20" Height="20" Margin="12,0,0,0" VerticalAlignment="Center">
-                      <Ellipse Stroke="#3A3F4B" StrokeThickness="2"/>
-                      <Ellipse x:Name="UnAllDot" Width="10" Height="10" Fill="#3DDC97" Opacity="0"/>
+                      <Rectangle Stroke="#3A3F4B" StrokeThickness="2"/>
+                      <Rectangle x:Name="UnAllDot" Width="10" Height="10" Fill="#3DDC97" Opacity="0"/>
                     </Grid>
                   </Grid>
                 </Border>
@@ -1139,40 +1190,38 @@
         <!-- QR для телефона -->
         <!-- Обновление приложения -->
         <Grid x:Name="AuOverlay" Grid.RowSpan="2" Visibility="Collapsed" Panel.ZIndex="60">
-          <Border x:Name="AuDim" Background="#C0090A0D" CornerRadius="20" Opacity="0"/>
-          <Border x:Name="AuPanel" Width="380" VerticalAlignment="Center" Background="#171A21" CornerRadius="20" BorderBrush="#2A2E38" BorderThickness="1"
+          <Border x:Name="AuDim" Background="#C0090A0D" Opacity="0"/>
+          <Border x:Name="AuPanel" Width="380" VerticalAlignment="Center" Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2"
                   Opacity="0" RenderTransformOrigin="0.5,0.5">
             <Border.RenderTransform><ScaleTransform x:Name="AuScale" ScaleX="0.94" ScaleY="0.94"/></Border.RenderTransform>
-            <Border.Effect><DropShadowEffect BlurRadius="30" ShadowDepth="0" Opacity="0.6"/></Border.Effect>
+            <Border.Effect><DropShadowEffect BlurRadius="0" ShadowDepth="7" Direction="315" Color="#000000" Opacity="0.6"/></Border.Effect>
             <StackPanel Margin="28,30,28,26">
-              <Grid Width="96" Height="96" HorizontalAlignment="Center">
-                <Ellipse x:Name="AuRing" Stroke="#22262F" StrokeThickness="4"/>
-                <Ellipse x:Name="AuArc" Stroke="#3DDC97" StrokeThickness="4" StrokeDashArray="16 56" StrokeDashCap="Round" RenderTransformOrigin="0.5,0.5">
-                  <Ellipse.RenderTransform><RotateTransform x:Name="AuArcRot"/></Ellipse.RenderTransform>
-                </Ellipse>
+              <Grid Width="96" Height="96" HorizontalAlignment="Center" RenderOptions.EdgeMode="Aliased" SnapsToDevicePixels="True">
+                <Path x:Name="AuRing" Fill="#22262F"/>
+                <Path x:Name="AuArc" Fill="#3DDC97"/>
                 <Image x:Name="AuLogo" Width="46" Height="46" RenderOptions.BitmapScalingMode="HighQuality" RenderTransformOrigin="0.5,0.5">
                   <Image.RenderTransform><ScaleTransform x:Name="AuLogoS"/></Image.RenderTransform>
                 </Image>
                 <Grid x:Name="AuOk" Opacity="0" RenderTransformOrigin="0.5,0.5">
                   <Grid.RenderTransform><ScaleTransform x:Name="AuOkS" ScaleX="0.4" ScaleY="0.4"/></Grid.RenderTransform>
-                  <Ellipse Fill="#3DDC97"/>
-                  <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="40" Foreground="#0F1115" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  <Path x:Name="AuOkDisc" Fill="#3DDC97"/>
+                  <Path Data="M0,16h6v6h-6z M6,22h6v6h-6z M12,28h6v6h-6z M18,22h6v6h-6z M24,16h6v6h-6z M30,10h6v6h-6z M36,4h6v6h-6z" Fill="#0F1115" Width="42" Height="34" Stretch="None" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Grid>
-                <Ellipse x:Name="AuBurst" Stroke="#3DDC97" StrokeThickness="3" Opacity="0" RenderTransformOrigin="0.5,0.5">
-                  <Ellipse.RenderTransform><ScaleTransform x:Name="AuBurstS"/></Ellipse.RenderTransform>
-                </Ellipse>
+                <Path x:Name="AuBurst" Fill="#3DDC97" Opacity="0" RenderTransformOrigin="0.5,0.5">
+                  <Path.RenderTransform><ScaleTransform x:Name="AuBurstS"/></Path.RenderTransform>
+                </Path>
               </Grid>
-              <TextBlock x:Name="AuTitle" FontSize="19" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,18,0,4"/>
+              <TextBlock x:Name="AuTitle" Style="{StaticResource PxText}" FontSize="22.22" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,18,0,4"/>
               <TextBlock x:Name="AuSub" Foreground="#8A90A0" FontSize="12.5" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
               <StackPanel x:Name="AuProgress">
-                <Border Height="6" CornerRadius="3" Background="#22262F" Margin="0,18,0,0" ClipToBounds="True">
-                  <Border CornerRadius="3" Background="#3DDC97" RenderTransformOrigin="0,0.5">
+                <Border Height="6" Background="#22262F" Margin="0,18,0,0" ClipToBounds="True">
+                  <Border Background="#3DDC97" RenderTransformOrigin="0,0.5">
                     <Border.RenderTransform><ScaleTransform x:Name="AuFillS" ScaleX="0"/></Border.RenderTransform>
                   </Border>
                 </Border>
                 <TextBlock x:Name="AuPct" FontSize="11.5" Foreground="#8A90A0" HorizontalAlignment="Center" Margin="0,8,0,0"/>
               </StackPanel>
-              <Border x:Name="AuNews" Visibility="Collapsed" Background="#1E2129" CornerRadius="12" Padding="14,12" Margin="0,16,0,0" BorderBrush="#262A33" BorderThickness="1">
+              <Border x:Name="AuNews" Visibility="Collapsed" Background="#1E2129" Padding="14,12" Margin="0,16,0,0" BorderBrush="#262A33" BorderThickness="1">
                 <StackPanel x:Name="AuNewsList"/>
               </Border>
               <StackPanel x:Name="AuBtns" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,18,0,0" Visibility="Collapsed">
@@ -1185,15 +1234,15 @@
 
         <!-- Что делать по ✕ -->
         <Grid x:Name="CloseOverlay" Grid.RowSpan="2" Visibility="Collapsed" Panel.ZIndex="50">
-          <Border x:Name="CloseDim" Background="#C0090A0D" CornerRadius="20" Opacity="0"/>
-          <Border x:Name="ClosePanel" Width="420" VerticalAlignment="Center" Background="#171A21" CornerRadius="18" BorderBrush="#2A2E38" BorderThickness="1"
+          <Border x:Name="CloseDim" Background="#C0090A0D" Opacity="0"/>
+          <Border x:Name="ClosePanel" Width="420" VerticalAlignment="Center" Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2"
                   Opacity="0" RenderTransformOrigin="0.5,0.5">
             <Border.RenderTransform><ScaleTransform x:Name="CloseScale" ScaleX="0.94" ScaleY="0.94"/></Border.RenderTransform>
-            <Border.Effect><DropShadowEffect BlurRadius="30" ShadowDepth="0" Opacity="0.6"/></Border.Effect>
+            <Border.Effect><DropShadowEffect BlurRadius="0" ShadowDepth="7" Direction="315" Color="#000000" Opacity="0.6"/></Border.Effect>
             <StackPanel Margin="24,18,24,22">
               <DockPanel Margin="0,0,0,6">
-                <Button x:Name="CloseAskX" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><TextBlock Text="✕" FontSize="13"/></Button>
-                <TextBlock Text="Закрыть Zapret?" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <Button x:Name="CloseAskX" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
+                <TextBlock Text="Закрыть Zapret?" Style="{StaticResource PxText}" FontSize="22.22" VerticalAlignment="Center"/>
               </DockPanel>
               <TextBlock Text="Выбор запомнится. Поменять можно в настройках → Запуск." Foreground="#8A90A0" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,16"/>
               <Button x:Name="CloseToTray" Style="{StaticResource Btn}" Padding="14,12" Margin="0,0,0,8">
@@ -1221,20 +1270,20 @@
         </Grid>
 
         <Grid x:Name="QrOverlay" Grid.RowSpan="2" Visibility="Collapsed">
-          <Border x:Name="QrDim" Background="#C0090A0D" CornerRadius="20" Opacity="0"/>
-          <Border x:Name="QrPanel" Width="440" VerticalAlignment="Center" Background="#171A21" CornerRadius="18" BorderBrush="#2A2E38" BorderThickness="1"
+          <Border x:Name="QrDim" Background="#C0090A0D" Opacity="0"/>
+          <Border x:Name="QrPanel" Width="440" VerticalAlignment="Center" Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2"
                   Opacity="0" RenderTransformOrigin="0.5,0.5">
             <Border.RenderTransform><ScaleTransform x:Name="QrScale" ScaleX="0.94" ScaleY="0.94"/></Border.RenderTransform>
-            <Border.Effect><DropShadowEffect BlurRadius="30" ShadowDepth="0" Opacity="0.6"/></Border.Effect>
+            <Border.Effect><DropShadowEffect BlurRadius="0" ShadowDepth="7" Direction="315" Color="#000000" Opacity="0.6"/></Border.Effect>
             <StackPanel Margin="26,18,26,22">
               <DockPanel Margin="0,0,0,10">
-                <Button x:Name="QrClose" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><TextBlock Text="✕" FontSize="13"/></Button>
-                <TextBlock Text="Telegram на телефоне" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <Button x:Name="QrClose" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
+                <TextBlock Text="Telegram на телефоне" Style="{StaticResource PxText}" FontSize="22.22" VerticalAlignment="Center"/>
               </DockPanel>
               <TextBlock Text="1. Телефон должен быть в той же Wi-Fi сети, что и компьютер" Foreground="#B8BDC9" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,3"/>
               <TextBlock Text="2. Наведи камеру телефона на код" Foreground="#B8BDC9" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,3"/>
               <TextBlock Text="3. В Telegram нажми «Подключить прокси»" Foreground="#B8BDC9" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,14"/>
-              <Border x:Name="QrBox" Background="#FFFFFF" CornerRadius="14" Padding="14" Width="250" Height="250" HorizontalAlignment="Center" RenderTransformOrigin="0.5,0.5">
+              <Border x:Name="QrBox" Background="#FFFFFF" Padding="14" Width="250" Height="250" HorizontalAlignment="Center" RenderTransformOrigin="0.5,0.5">
                 <Border.RenderTransform><ScaleTransform x:Name="QrBoxS"/></Border.RenderTransform>
                 <Grid>
                   <Viewbox Stretch="Uniform"><Path x:Name="QrPath" Fill="#000000"/></Viewbox>
@@ -1249,8 +1298,8 @@
 
         <!-- Уведомление -->
         <Border x:Name="Toast" Grid.Row="1" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,18"
-                Background="#2A2E38" CornerRadius="12" Padding="18,10" Opacity="0" IsHitTestVisible="False" MaxWidth="560">
-          <Border.Effect><DropShadowEffect BlurRadius="16" ShadowDepth="0" Opacity="0.5"/></Border.Effect>
+                Background="#2A2E38" Padding="18,10" Opacity="0" IsHitTestVisible="False" MaxWidth="560">
+          <Border.Effect><DropShadowEffect BlurRadius="0" ShadowDepth="5" Direction="315" Color="#000000" Opacity="0.6"/></Border.Effect>
           <Border.RenderTransform><TranslateTransform x:Name="ToastShift" Y="30"/></Border.RenderTransform>
           <TextBlock x:Name="ToastText" FontSize="13" TextWrapping="Wrap"/>
         </Border>

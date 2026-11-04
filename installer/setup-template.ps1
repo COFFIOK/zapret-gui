@@ -1,8 +1,8 @@
-param([string]$SelfPath, [switch]$Auto)
+﻿param([string]$SelfPath, [switch]$Auto)
 # ====== Установщик Zapret GUI ======
 $ErrorActionPreference = 'Stop'
 $AppName = 'Zapret'
-$AppVersion = '2.0.3'
+$AppVersion = '2.1.0'
 
 # --- права администратора (один запрос) ---
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -77,30 +77,44 @@ if (-not $DetectedStrategy) { try { $s = (Get-ItemProperty 'HKLM:\SYSTEM\Current
 
 $DefaultDir = if ($Existing -and (Test-Path -LiteralPath $Existing)) { $Existing } else { 'C:\Zapret' }
 
-[xml]$xaml = @'
+# пиксельный шрифт заголовков (ZPixel / Pixelify Sans, OFL)
+$FontDir = Join-Path $TempDir 'font'; New-Item -ItemType Directory -Path $FontDir | Out-Null
+$PxFont = 'Segoe UI'
+try { Save-Payload 'ZPixel.ttf' (Join-Path $FontDir 'ZPixel.ttf'); $PxFont = ([Uri]($FontDir + '\')).AbsoluteUri + '#ZPixel' } catch {}
+[xml]$xaml = (@'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Установка Zapret" Width="580" Height="620" WindowStyle="None" AllowsTransparency="True"
         Background="Transparent" ResizeMode="NoResize" WindowStartupLocation="CenterScreen"
-        FontFamily="Segoe UI" Foreground="#E6E8EE">
+        FontFamily="Segoe UI" Foreground="#E6E8EE" UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
   <Window.Resources>
+    <FontFamily x:Key="Px">PXFONT</FontFamily>
+    <Style x:Key="PxText" TargetType="TextBlock">
+      <Setter Property="FontFamily" Value="{StaticResource Px}"/>
+      <Setter Property="FontWeight" Value="Normal"/>
+      <Setter Property="TextOptions.TextRenderingMode" Value="Aliased"/>
+    </Style>
+    <Geometry x:Key="PxX">M0,0h2v2h-2z M2,2h2v2h-2z M4,4h2v2h-2z M6,6h2v2h-2z M8,8h2v2h-2z M8,0h2v2h-2z M6,2h2v2h-2z M2,6h2v2h-2z M0,8h2v2h-2z</Geometry>
+    <Geometry x:Key="PxDown">M0,0h10v2h-2v2h-2v2h-2v-2h-2v-2h-2z</Geometry>
+    <Geometry x:Key="PxRight">M0,0h2v2h2v2h2v2h-2v2h-2v2h-2z</Geometry>
     <Style x:Key="Btn" TargetType="Button">
       <Setter Property="Background" Value="#22262F"/>
       <Setter Property="Foreground" Value="#E6E8EE"/>
       <Setter Property="FontSize" Value="13"/>
       <Setter Property="Padding" Value="16,9"/>
       <Setter Property="Cursor" Value="Hand"/>
-      <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
-      <Setter Property="RenderTransform"><Setter.Value><ScaleTransform/></Setter.Value></Setter>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="10" Padding="{TemplateBinding Padding}" BorderBrush="#2E3340" BorderThickness="1">
-              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-            </Border>
+            <Grid>
+              <Border Background="#08090B" Margin="3,3,0,0"/>
+              <Border x:Name="Bd" Background="{TemplateBinding Background}" Margin="0,0,3,3" Padding="{TemplateBinding Padding}" BorderBrush="#2E3340" BorderThickness="2">
+                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              </Border>
+            </Grid>
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="BorderBrush" Value="#3DDC97"/></Trigger>
-              <Trigger Property="IsPressed" Value="True"><Setter Property="RenderTransform"><Setter.Value><ScaleTransform ScaleX="0.96" ScaleY="0.96"/></Setter.Value></Setter></Trigger>
+              <Trigger Property="IsPressed" Value="True"><Setter TargetName="Bd" Property="Margin" Value="3,3,0,0"/></Trigger>
               <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4"/></Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
@@ -110,7 +124,24 @@ $DefaultDir = if ($Existing -and (Test-Path -LiteralPath $Existing)) { $Existing
     <Style x:Key="AccentBtn" TargetType="Button" BasedOn="{StaticResource Btn}">
       <Setter Property="Background" Value="#3DDC97"/>
       <Setter Property="Foreground" Value="#0F1115"/>
-      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Grid>
+              <Border Background="#1B5E42" Margin="3,3,0,0"/>
+              <Border x:Name="Bd" Background="{TemplateBinding Background}" Margin="0,0,3,3" Padding="{TemplateBinding Padding}" BorderBrush="{TemplateBinding Background}" BorderThickness="2">
+                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              </Border>
+            </Grid>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="BorderBrush" Value="#B6F3D6"/></Trigger>
+              <Trigger Property="IsPressed" Value="True"><Setter TargetName="Bd" Property="Margin" Value="3,3,0,0"/></Trigger>
+              <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
     </Style>
     <Style x:Key="TitleBtn" TargetType="Button">
       <Setter Property="Foreground" Value="#8A90A0"/>
@@ -118,7 +149,7 @@ $DefaultDir = if ($Existing -and (Test-Path -LiteralPath $Existing)) { $Existing
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="Bd" Background="Transparent" CornerRadius="8" Width="34" Height="28"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+            <Border x:Name="Bd" Background="Transparent" Width="34" Height="28"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#2A2E38"/><Setter Property="Foreground" Value="#FFFFFF"/></Trigger>
             </ControlTemplate.Triggers>
@@ -132,81 +163,84 @@ $DefaultDir = if ($Existing -and (Test-Path -LiteralPath $Existing)) { $Existing
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="ComboBoxItem">
-            <Border x:Name="Bd" Background="Transparent" CornerRadius="7" Padding="12,7" Margin="4,1">
-              <ContentPresenter/>
+            <Border x:Name="Bd" Background="Transparent" Padding="10,7" Margin="2,0">
+              <DockPanel>
+                <Path x:Name="Mk" Data="{StaticResource PxRight}" Fill="#3DDC97" Width="6" Height="10" Stretch="None" VerticalAlignment="Center" Margin="0,0,8,0" Visibility="Hidden"/>
+                <ContentPresenter/>
+              </DockPanel>
             </Border>
             <ControlTemplate.Triggers>
-              <Trigger Property="IsHighlighted" Value="True">
-                <Setter TargetName="Bd" Property="Background" Value="#2A2E38"/>
-              </Trigger>
-              <Trigger Property="IsSelected" Value="True">
-                <Setter Property="Foreground" Value="#3DDC97"/>
-              </Trigger>
+              <Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Bd" Property="Background" Value="#2A2E38"/><Setter TargetName="Mk" Property="Visibility" Value="Visible"/></Trigger>
+              <Trigger Property="IsSelected" Value="True"><Setter Property="Foreground" Value="#3DDC97"/></Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
         </Setter.Value>
       </Setter>
     </Style>
-
     <Style TargetType="ComboBox">
       <Setter Property="Foreground" Value="#E6E8EE"/>
-      <Setter Property="Height" Value="38"/>
+      <Setter Property="Height" Value="41"/>
       <Setter Property="FontSize" Value="13"/>
       <Setter Property="Cursor" Value="Hand"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="ComboBox">
             <Grid>
-              <ToggleButton Focusable="False" ClickMode="Press"
+              <Border Background="#08090B" Margin="3,3,0,0"/>
+              <ToggleButton Focusable="False" ClickMode="Press" Margin="0,0,3,3"
                             IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
                 <ToggleButton.Template>
                   <ControlTemplate TargetType="ToggleButton">
-                    <Border x:Name="Bd" Background="#22262F" CornerRadius="10" BorderBrush="#2E3340" BorderThickness="1">
-                      <Path HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,14,0"
-                            Data="M0,0 L5,5 L10,0" Stroke="#8A90A0" StrokeThickness="1.6"/>
+                    <Border x:Name="Bd" Background="#1A1D24" BorderBrush="#2E3340" BorderThickness="2">
+                      <Path x:Name="Arr" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,14,0" Data="{StaticResource PxDown}" Fill="#8A90A0"/>
                     </Border>
                     <ControlTemplate.Triggers>
-                      <Trigger Property="IsMouseOver" Value="True">
-                        <Setter TargetName="Bd" Property="BorderBrush" Value="#3DDC97"/>
-                      </Trigger>
+                      <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="BorderBrush" Value="#3DDC97"/><Setter TargetName="Arr" Property="Fill" Value="#3DDC97"/></Trigger>
                     </ControlTemplate.Triggers>
                   </ControlTemplate>
                 </ToggleButton.Template>
               </ToggleButton>
-              <ContentPresenter IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}"
-                                Margin="14,0,34,0" VerticalAlignment="Center" HorizontalAlignment="Left"/>
-              <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True"
-                     Focusable="False" PopupAnimation="Fade">
-                <Border Background="#22262F" CornerRadius="10" BorderBrush="#2E3340" BorderThickness="1"
-                        Margin="0,4,0,0" MinWidth="{TemplateBinding ActualWidth}" MaxHeight="320" Padding="0,4">
-                  <ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsPresenter/></ScrollViewer>
-                </Border>
+              <ContentPresenter IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}" Margin="14,0,38,3" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+              <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True" Focusable="False" PopupAnimation="None">
+                <Grid Margin="0,2,6,6" MinWidth="{TemplateBinding ActualWidth}">
+                  <Border Background="#08090B" Margin="4,4,-4,-4"/>
+                  <Border Background="#1A1D24" BorderBrush="#3DDC97" BorderThickness="2" MaxHeight="320" Padding="0,4">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsPresenter/></ScrollViewer>
+                  </Border>
+                </Grid>
               </Popup>
             </Grid>
           </ControlTemplate>
         </Setter.Value>
       </Setter>
     </Style>
-
     <Style x:Key="Toggle" TargetType="CheckBox">
       <Setter Property="Cursor" Value="Hand"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="CheckBox">
-            <Border x:Name="Track" Width="44" Height="24" CornerRadius="12" Background="#2E3340">
-              <Ellipse Width="18" Height="18" Fill="#E6E8EE" HorizontalAlignment="Left" Margin="3,0,0,0">
-                <Ellipse.RenderTransform><TranslateTransform x:Name="KnobT" X="0"/></Ellipse.RenderTransform>
-              </Ellipse>
+            <Border x:Name="Track" Width="44" Height="24" Background="#2E3340" BorderBrush="#08090B" BorderThickness="0,0,2,2">
+              <Rectangle Width="14" Height="14" Fill="#E6E8EE" HorizontalAlignment="Left" Margin="4,0,0,0">
+                <Rectangle.RenderTransform><TranslateTransform x:Name="KnobT" X="0"/></Rectangle.RenderTransform>
+              </Rectangle>
             </Border>
             <ControlTemplate.Triggers>
               <Trigger Property="IsChecked" Value="True">
                 <Trigger.EnterActions><BeginStoryboard><Storyboard>
-                  <DoubleAnimation Storyboard.TargetName="KnobT" Storyboard.TargetProperty="X" To="20" Duration="0:0:0.18"/>
-                  <ColorAnimation Storyboard.TargetName="Track" Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" To="#3DDC97" Duration="0:0:0.18"/>
+                  <DoubleAnimationUsingKeyFrames Storyboard.TargetName="KnobT" Storyboard.TargetProperty="X">
+                    <DiscreteDoubleKeyFrame KeyTime="0:0:0.04" Value="8"/><DiscreteDoubleKeyFrame KeyTime="0:0:0.08" Value="16"/><DiscreteDoubleKeyFrame KeyTime="0:0:0.12" Value="22"/>
+                  </DoubleAnimationUsingKeyFrames>
+                  <ColorAnimationUsingKeyFrames Storyboard.TargetName="Track" Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)">
+                    <DiscreteColorKeyFrame KeyTime="0:0:0.08" Value="#3DDC97"/>
+                  </ColorAnimationUsingKeyFrames>
                 </Storyboard></BeginStoryboard></Trigger.EnterActions>
                 <Trigger.ExitActions><BeginStoryboard><Storyboard>
-                  <DoubleAnimation Storyboard.TargetName="KnobT" Storyboard.TargetProperty="X" To="0" Duration="0:0:0.18"/>
-                  <ColorAnimation Storyboard.TargetName="Track" Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" To="#2E3340" Duration="0:0:0.18"/>
+                  <DoubleAnimationUsingKeyFrames Storyboard.TargetName="KnobT" Storyboard.TargetProperty="X">
+                    <DiscreteDoubleKeyFrame KeyTime="0:0:0.04" Value="14"/><DiscreteDoubleKeyFrame KeyTime="0:0:0.08" Value="6"/><DiscreteDoubleKeyFrame KeyTime="0:0:0.12" Value="0"/>
+                  </DoubleAnimationUsingKeyFrames>
+                  <ColorAnimationUsingKeyFrames Storyboard.TargetName="Track" Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)">
+                    <DiscreteColorKeyFrame KeyTime="0:0:0.08" Value="#2E3340"/>
+                  </ColorAnimationUsingKeyFrames>
                 </Storyboard></BeginStoryboard></Trigger.ExitActions>
               </Trigger>
             </ControlTemplate.Triggers>
@@ -217,48 +251,70 @@ $DefaultDir = if ($Existing -and (Test-Path -LiteralPath $Existing)) { $Existing
   </Window.Resources>
 
   <Grid Margin="14">
-    <Border x:Name="Shell" CornerRadius="20" Background="#121419" BorderBrush="#252933" BorderThickness="1" Opacity="0">
-      <Border.Effect><DropShadowEffect BlurRadius="24" ShadowDepth="0" Opacity="0.55"/></Border.Effect>
-      <Border.RenderTransform><TranslateTransform x:Name="ShellShift" Y="18"/></Border.RenderTransform>
+    <Grid x:Name="Shell" Opacity="0">
+      <Grid.RenderTransform><TranslateTransform x:Name="ShellShift" Y="18"/></Grid.RenderTransform>
+      <!-- жёсткая пиксельная тень и ступенчатые углы -->
+      <Border Background="#000000" Opacity="0.5" Margin="6,6,-6,-6" IsHitTestVisible="False">
+        <Border.Clip><PathGeometry Figures="M0,8 L4,8 L4,4 L8,4 L8,0 L544,0 L544,4 L548,4 L548,8 L552,8 L552,584 L548,584 L548,588 L544,588 L544,592 L8,592 L8,588 L4,588 L4,584 L0,584 Z"/></Border.Clip>
+      </Border>
+      <Border BorderBrush="#252933" BorderThickness="2">
+        <Border.Clip><PathGeometry Figures="M0,8 L4,8 L4,4 L8,4 L8,0 L544,0 L544,4 L548,4 L548,8 L552,8 L552,584 L548,584 L548,588 L544,588 L544,592 L8,592 L8,588 L4,588 L4,584 L0,584 Z"/></Border.Clip>
+        <Border.Background>
+          <DrawingBrush TileMode="Tile" Viewport="0,0,4,4" ViewportUnits="Absolute" Stretch="None" RenderOptions.CachingHint="Cache">
+            <DrawingBrush.Drawing>
+              <DrawingGroup>
+                <GeometryDrawing Brush="#121419" Geometry="M0,0 H4 V4 H0 Z"/>
+                <GeometryDrawing Brush="#15171D" Geometry="M0,3 H4 V4 H0 Z"/>
+              </DrawingGroup>
+            </DrawingBrush.Drawing>
+          </DrawingBrush>
+        </Border.Background>
       <Grid>
         <Grid.RowDefinitions><RowDefinition Height="44"/><RowDefinition Height="*"/></Grid.RowDefinitions>
         <Grid x:Name="TitleBar" Background="Transparent" Margin="20,0,10,0">
           <TextBlock FontSize="12" VerticalAlignment="Center">
             <Run Text="УСТАНОВКА ZAPRET" FontWeight="Bold" Foreground="#8A90A0"/><Run Text="   by " Foreground="#5A6070"/><Run Text="COFFIOK" FontWeight="Bold" Foreground="#3DDC97"/>
           </TextBlock>
-          <Button x:Name="CloseBtn" Style="{StaticResource TitleBtn}" HorizontalAlignment="Right"><TextBlock Text="✕" FontSize="13"/></Button>
+          <Button x:Name="CloseBtn" Style="{StaticResource TitleBtn}" HorizontalAlignment="Right">
+            <Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None"/>
+          </Button>
         </Grid>
 
         <Grid Grid.Row="1" Margin="32,0,32,24">
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-          <!-- Логотип -->
-          <Grid Grid.Row="0" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="0,4,0,0" Width="96" Height="96" RenderTransformOrigin="0.5,0.5">
+          <!-- Логотип: пиксельная монета с буквой Z, как кнопка в приложении -->
+          <Grid Grid.Row="0" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="0,4,0,0" Width="96" Height="96" RenderTransformOrigin="0.5,0.5" RenderOptions.EdgeMode="Aliased">
             <Grid.RenderTransform><ScaleTransform x:Name="LogoScale" ScaleX="0.6" ScaleY="0.6"/></Grid.RenderTransform>
-            <Ellipse x:Name="LogoRing" Width="96" Height="96" Stroke="#3DDC97" StrokeThickness="3" Opacity="0" RenderTransformOrigin="0.5,0.5">
-              <Ellipse.RenderTransform><ScaleTransform x:Name="LogoRingS"/></Ellipse.RenderTransform>
-            </Ellipse>
+            <Path x:Name="LogoRing" Data="M36,0h24v4h-24z M24,4h12v4h-12z M60,4h12v4h-12z M20,8h4v4h-4z M72,8h4v4h-4z M16,12h4v4h-4z M76,12h4v4h-4z M12,16h4v4h-4z M80,16h4v4h-4z M8,20h4v4h-4z M84,20h4v4h-4z M4,24h4v4h-4z M88,24h4v4h-4z M4,28h4v4h-4z M88,28h4v4h-4z M4,32h4v4h-4z M88,32h4v4h-4z M0,36h4v4h-4z M92,36h4v4h-4z M0,40h4v4h-4z M92,40h4v4h-4z M0,44h4v4h-4z M92,44h4v4h-4z M0,48h4v4h-4z M92,48h4v4h-4z M0,52h4v4h-4z M92,52h4v4h-4z M0,56h4v4h-4z M92,56h4v4h-4z M4,60h4v4h-4z M88,60h4v4h-4z M4,64h4v4h-4z M88,64h4v4h-4z M4,68h4v4h-4z M88,68h4v4h-4z M8,72h4v4h-4z M84,72h4v4h-4z M12,76h4v4h-4z M80,76h4v4h-4z M16,80h4v4h-4z M76,80h4v4h-4z M20,84h4v4h-4z M72,84h4v4h-4z M24,88h12v4h-12z M60,88h12v4h-12z M36,92h24v4h-24z" Fill="#3DDC97" Opacity="0" RenderTransformOrigin="0.5,0.5">
+              <Path.RenderTransform><ScaleTransform x:Name="LogoRingS"/></Path.RenderTransform>
+            </Path>
             <Grid x:Name="Logo" Width="96" Height="96" RenderTransformOrigin="0.5,0.5">
               <Grid.RenderTransform><ScaleTransform x:Name="LogoFlip"/></Grid.RenderTransform>
-              <!-- логотип приложения (тот же значок, что у Zapret) -->
-              <Image x:Name="LogoImg" Width="96" Height="96" RenderOptions.BitmapScalingMode="HighQuality">
-                <Image.Effect><DropShadowEffect Color="#3DDC97" BlurRadius="28" ShadowDepth="0" Opacity="0.45"/></Image.Effect>
-              </Image>
+              <Image x:Name="LogoImg" Visibility="Collapsed"/>
+              <Path Data="M40,0h16v4h-16z M28,4h12v4h-12z M56,4h12v4h-12z M20,8h8v4h-8z M68,8h8v4h-8z M16,12h4v4h-4z M76,12h4v4h-4z M12,16h4v4h-4z M80,16h4v4h-4z M8,20h4v4h-4z M84,20h4v4h-4z M8,24h4v4h-4z M84,24h4v4h-4z M4,28h4v4h-4z M88,28h4v4h-4z M4,32h4v4h-4z M88,32h4v4h-4z M4,36h4v4h-4z M88,36h4v4h-4z M0,40h4v4h-4z M92,40h4v4h-4z M0,44h4v4h-4z M92,44h4v4h-4z M0,48h4v4h-4z M92,48h4v4h-4z M0,52h4v4h-4z M92,52h4v4h-4z M4,56h4v4h-4z M88,56h4v4h-4z M4,60h4v4h-4z M88,60h4v4h-4z M4,64h4v4h-4z M88,64h4v4h-4z M8,68h4v4h-4z M84,68h4v4h-4z M8,72h4v4h-4z M84,72h4v4h-4z M12,76h4v4h-4z M80,76h4v4h-4z M16,80h4v4h-4z M76,80h4v4h-4z M20,84h8v4h-8z M68,84h8v4h-8z M28,88h12v4h-12z M56,88h12v4h-12z M40,92h16v4h-16z" Fill="#3DDC97"/>
+              <Path Data="M32,8h8v4h-8z M56,8h8v4h-8z M24,12h4v4h-4z M68,12h4v4h-4z M20,16h4v4h-4z M72,16h4v4h-4z M16,20h4v4h-4z M76,20h4v4h-4z M12,24h4v4h-4z M80,24h4v4h-4z M8,32h4v4h-4z M84,32h4v4h-4z M8,36h4v4h-4z M84,36h4v4h-4z M8,56h4v4h-4z M84,56h4v4h-4z M8,60h4v4h-4z M84,60h4v4h-4z M12,68h4v4h-4z M80,68h4v4h-4z M16,72h4v4h-4z M76,72h4v4h-4z M20,76h4v4h-4z M72,76h4v4h-4z M24,80h4v4h-4z M68,80h4v4h-4z M32,84h8v4h-8z M56,84h8v4h-8z" Fill="#1B3329"/>
+              <Path Data="M32,12h32v4h-32z M24,16h48v4h-48z M20,20h56v4h-56z M16,24h64v4h-64z M16,28h64v4h-64z M12,32h72v4h-72z M12,36h72v4h-72z M12,40h72v4h-72z M12,44h72v4h-72z M12,48h72v4h-72z M12,52h72v4h-72z M12,56h72v4h-72z M12,60h72v4h-72z M16,64h64v4h-64z M16,68h64v4h-64z M20,72h56v4h-56z M24,76h48v4h-48z M32,80h32v4h-32z" Fill="#3DDC97"/>
+              <Path Data="M32,12h32v4h-32z M24,16h8v4h-8z M64,16h8v4h-8z M20,20h8v4h-8z M68,20h8v4h-8z M16,24h8v4h-8z M72,24h8v4h-8z M16,28h4v4h-4z M76,28h4v4h-4z M12,32h4v4h-4z M80,32h4v4h-4z M12,36h4v4h-4z M80,36h4v4h-4z M12,40h4v4h-4z M80,40h4v4h-4z M12,44h4v4h-4z M80,44h4v4h-4z M12,48h4v4h-4z M80,48h4v4h-4z M12,52h4v4h-4z M80,52h4v4h-4z M12,56h4v4h-4z M80,56h4v4h-4z M12,60h4v4h-4z M80,60h4v4h-4z M16,64h4v4h-4z M76,64h4v4h-4z M16,68h8v4h-8z M72,68h8v4h-8z M20,72h8v4h-8z M68,72h8v4h-8z M24,76h8v4h-8z M64,76h8v4h-8z M32,80h32v4h-32z" Fill="#7FE8B8"/>
+              <Path Data="M26,26h44v4h-44z M26,30h44v4h-44z M54,34h12v4h-12z M50,38h12v4h-12z M46,42h12v4h-12z M42,46h12v4h-12z M38,50h12v4h-12z M34,54h12v4h-12z M30,58h12v4h-12z M26,62h44v4h-44z M26,66h44v4h-44z" Fill="#0F1115"/>
             </Grid>
           </Grid>
 
           <!-- Экран 1: настройки -->
           <ScrollViewer x:Name="PageSetup" Grid.Row="1" Margin="0,14,-10,0" VerticalScrollBarVisibility="Auto">
           <StackPanel Margin="0,0,10,0">
-            <TextBlock x:Name="Headline" Text="Установка Zapret" FontSize="24" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+            <TextBlock x:Name="Headline" Text="Установка Zapret" Style="{StaticResource PxText}" FontSize="33.33" HorizontalAlignment="Center"/>
             <TextBlock x:Name="Subline" Text="Удобное окно для zapret-discord-youtube. Сам zapret скачается с GitHub автора." Foreground="#8A90A0" FontSize="12.5"
                        HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Margin="0,6,0,18" MaxWidth="400"/>
             <TextBlock Text="ПАПКА УСТАНОВКИ" FontSize="11" FontWeight="SemiBold" Foreground="#5A6070" Margin="2,0,0,6"/>
             <Grid Margin="0,0,0,18">
               <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-              <Border Background="#22262F" CornerRadius="10" BorderBrush="#2E3340" BorderThickness="1" Height="38">
-                <TextBox x:Name="DirBox" Background="Transparent" BorderThickness="0" Foreground="#E6E8EE" CaretBrush="#3DDC97" Margin="10,0" VerticalAlignment="Center" FontSize="13"/>
+              <Border Background="#121419" BorderBrush="#2E3340" BorderThickness="2" Height="40" VerticalAlignment="Top">
+                <DockPanel>
+                  <Path DockPanel.Dock="Left" Data="{StaticResource PxRight}" Fill="#3DDC97" VerticalAlignment="Center" Margin="12,0,2,0"/>
+                  <TextBox x:Name="DirBox" Background="Transparent" BorderThickness="0" Foreground="#E6E8EE" CaretBrush="#3DDC97" Margin="6,0,10,0" VerticalAlignment="Center" FontSize="13"/>
+                </DockPanel>
               </Border>
-              <Button x:Name="BrowseBtn" Grid.Column="1" Style="{StaticResource Btn}" Content="Изменить" Margin="8,0,0,0"/>
+              <Button x:Name="BrowseBtn" Grid.Column="1" Style="{StaticResource Btn}" Content="Изменить" Margin="8,0,0,0" Height="43" VerticalAlignment="Top" Padding="16,0"/>
             </Grid>
             <TextBlock Text="ZAPRET" FontSize="11" FontWeight="SemiBold" Foreground="#5A6070" Margin="2,0,0,6"/>
             <ComboBox x:Name="SrcBox" Margin="0,0,0,4"/>
@@ -275,12 +331,27 @@ $DefaultDir = if ($Existing -and (Test-Path -LiteralPath $Existing)) { $Existing
           <Grid x:Name="PageProgress" Grid.Row="1" Margin="0,14,0,0" Visibility="Collapsed">
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
             <StackPanel>
-              <TextBlock x:Name="ProgTitle" Text="Устанавливаю…" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+              <TextBlock x:Name="ProgTitle" Text="Устанавливаю…" Style="{StaticResource PxText}" FontSize="22.22" HorizontalAlignment="Center"/>
               <TextBlock x:Name="ProgText" Text="" Foreground="#8A90A0" FontSize="12" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,4,0,10" TextWrapping="Wrap"/>
-              <Border Height="6" CornerRadius="3" Background="#22262F" ClipToBounds="True" Margin="0,0,0,14">
-                <Border x:Name="Bar" CornerRadius="3" Background="#3DDC97" RenderTransformOrigin="0,0.5">
-                  <Border.RenderTransform><ScaleTransform x:Name="BarS" ScaleX="0"/></Border.RenderTransform>
-                </Border>
+              <!-- пиксельная полоса прогресса из делений -->
+              <Border Height="14" Background="#08090B" BorderBrush="#2E3340" BorderThickness="2" Margin="0,0,0,14">
+                <Grid Margin="2" ClipToBounds="True">
+                  <Border x:Name="Bar" Background="#3DDC97" RenderTransformOrigin="0,0.5">
+                    <Border.RenderTransform><ScaleTransform x:Name="BarS" ScaleX="0"/></Border.RenderTransform>
+                  </Border>
+                  <Rectangle IsHitTestVisible="False">
+                    <Rectangle.Fill>
+                      <DrawingBrush TileMode="Tile" Viewport="0,0,8,6" ViewportUnits="Absolute" Stretch="None">
+                        <DrawingBrush.Drawing>
+                          <DrawingGroup>
+                            <GeometryDrawing Brush="#00000000" Geometry="M0,0 H8 V6 H0 Z"/>
+                            <GeometryDrawing Brush="#08090B" Geometry="M6,0 H8 V6 H6 Z"/>
+                          </DrawingGroup>
+                        </DrawingBrush.Drawing>
+                      </DrawingBrush>
+                    </Rectangle.Fill>
+                  </Rectangle>
+                </Grid>
               </Border>
             </StackPanel>
             <StackPanel x:Name="Steps" Grid.Row="1"/>
@@ -294,10 +365,11 @@ $DefaultDir = if ($Existing -and (Test-Path -LiteralPath $Existing)) { $Existing
           </DockPanel>
         </Grid>
       </Grid>
-    </Border>
+      </Border>
+    </Grid>
   </Grid>
 </Window>
-'@
+'@).Replace('PXFONT', [Security.SecurityElement]::Escape($PxFont))
 $win = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $xaml))
 $ui = @{}
 $xaml.SelectNodes('//*[@*[local-name()="Name"]]') | ForEach-Object { $n = $_.GetAttribute('Name', 'http://schemas.microsoft.com/winfx/2006/xaml'); if ($n) { $ui[$n] = $win.FindName($n) } }
@@ -371,18 +443,21 @@ $StepDefs = @(
     @{ Title = 'Ярлыки и меню «Пуск»'; Sub = '' },
     @{ Title = 'Запуск без запроса прав'; Sub = '' }
 )
+$GeoTick = [System.Windows.Media.Geometry]::Parse('M0,4h2v2h-2z M2,6h2v2h-2z M4,4h2v2h-2z M6,2h2v2h-2z M8,0h2v2h-2z')
+$GeoX = [System.Windows.Media.Geometry]::Parse('M0,0h2v2h-2z M2,2h2v2h-2z M4,4h2v2h-2z M6,6h2v2h-2z M8,8h2v2h-2z M8,0h2v2h-2z M6,2h2v2h-2z M2,6h2v2h-2z M0,8h2v2h-2z')
+$GeoDash = [System.Windows.Media.Geometry]::Parse('M0,4h10v2h-10z')
 function New-Step($def, $i) {
     $b = New-Object System.Windows.Controls.Border
-    $b.CornerRadius = 10; $b.Padding = '12,7'; $b.Margin = '0,0,0,5'; $b.Background = Brush '#1A1D24'
+    $b.Padding = '12,7'; $b.Margin = '0,0,0,5'; $b.Background = Brush '#1A1D24'; $b.BorderBrush = Brush '#22262F'; $b.BorderThickness = 2
     $g = New-Object System.Windows.Controls.DockPanel
-    $ic = New-Object System.Windows.Controls.Grid; $ic.Width = 22; $ic.Height = 22; $ic.Margin = '0,0,12,0'
-    $ring = New-Object System.Windows.Shapes.Ellipse; $ring.Stroke = Brush '#3A3F4D'; $ring.StrokeThickness = 2
-    $spin = New-Object System.Windows.Shapes.Ellipse; $spin.Stroke = Brush '#3DDC97'; $spin.StrokeThickness = 2.5; $spin.Opacity = 0
-    $spin.StrokeDashArray = New-Object System.Windows.Media.DoubleCollection (, [double[]]@(5, 5)); $spin.StrokeDashCap = 'Round'
-    $spin.RenderTransformOrigin = '0.5,0.5'; $spin.RenderTransform = New-Object System.Windows.Media.RotateTransform
-    $done = New-Object System.Windows.Controls.Grid; $done.Opacity = 0; $done.RenderTransformOrigin = '0.5,0.5'; $done.RenderTransform = New-Object System.Windows.Media.ScaleTransform(0.3, 0.3)
-    $dc = New-Object System.Windows.Shapes.Ellipse; $dc.Fill = Brush '#3DDC97'
-    $mk = New-Object System.Windows.Controls.TextBlock; $mk.Text = '✓'; $mk.FontSize = 12; $mk.FontWeight = 'Bold'; $mk.Foreground = Brush '#0F1115'; $mk.HorizontalAlignment = 'Center'; $mk.VerticalAlignment = 'Center'
+    $ic = New-Object System.Windows.Controls.Grid; $ic.Width = 20; $ic.Height = 20; $ic.Margin = '0,0,12,0'
+    $ring = New-Object System.Windows.Shapes.Rectangle; $ring.Stroke = Brush '#3A3F4D'; $ring.StrokeThickness = 2
+    # «загрузка»: квадратик мигает рывками
+    $spin = New-Object System.Windows.Shapes.Rectangle; $spin.Fill = Brush '#3DDC97'; $spin.Width = 8; $spin.Height = 8; $spin.Opacity = 0
+    $done = New-Object System.Windows.Controls.Grid; $done.Opacity = 0
+    $dc = New-Object System.Windows.Shapes.Rectangle; $dc.Fill = Brush '#3DDC97'
+    $mk = New-Object System.Windows.Shapes.Path; $mk.Data = $GeoTick; $mk.Fill = Brush '#0F1115'; $mk.Width = 10; $mk.Height = 10; $mk.Stretch = 'None'
+    $mk.HorizontalAlignment = 'Center'; $mk.VerticalAlignment = 'Center'; $mk.Margin = '0,2,0,0'
     [void]$done.Children.Add($dc); [void]$done.Children.Add($mk)
     foreach ($x in @($ring, $spin, $done)) { [void]$ic.Children.Add($x) }
     [void]$g.Children.Add($ic)
@@ -392,27 +467,39 @@ function New-Step($def, $i) {
     if (-not $def.Sub) { $t2.Visibility = 'Collapsed' }
     [void]$sp.Children.Add($t1); [void]$sp.Children.Add($t2); [void]$g.Children.Add($sp)
     $b.Child = $g
-    $b.Tag = @{ Spin = $spin; Done = $done; Circle = $dc; Mark = $mk; T1 = $t1; T2 = $t2 }
+    $b.Tag = @{ Spin = $spin; Done = $done; Circle = $dc; Mark = $mk; T1 = $t1; T2 = $t2; Box = $b }
     $b.Opacity = 0; $b.RenderTransform = New-Object System.Windows.Media.TranslateTransform
     Anim $b $OP 1 300 0 -beginMs ($i * 60)
     Anim $b.RenderTransform ([System.Windows.Media.TranslateTransform]::XProperty) 0 360 -16 -beginMs ($i * 60)
     return $b
 }
+# мигание рывками: 1 → 0.25 → 1 …
+function Blink($el) {
+    $k = New-Object System.Windows.Media.Animation.DoubleAnimationUsingKeyFrames
+    $k.RepeatBehavior = [System.Windows.Media.Animation.RepeatBehavior]::Forever
+    $k.Duration = New-Object System.Windows.Duration ([TimeSpan]::FromMilliseconds(500))
+    [void]$k.KeyFrames.Add((New-Object System.Windows.Media.Animation.DiscreteDoubleKeyFrame 1, ([System.Windows.Media.Animation.KeyTime]::FromTimeSpan([TimeSpan]::Zero))))
+    [void]$k.KeyFrames.Add((New-Object System.Windows.Media.Animation.DiscreteDoubleKeyFrame 0.25, ([System.Windows.Media.Animation.KeyTime]::FromTimeSpan([TimeSpan]::FromMilliseconds(250)))))
+    $el.BeginAnimation($OP, $k)
+}
 function Step-Run($i) {
     $t = $ui.Steps.Children[$i].Tag
-    Anim $t.Spin $OP 1 150; Anim $t.Spin.RenderTransform $AngP 360 800 0 -Forever -NoEase
-    $t.T1.Foreground = Brush '#E6E8EE'
+    Blink $t.Spin
+    $t.T1.Foreground = Brush '#E6E8EE'; $t.Box.BorderBrush = Brush '#2E3340'
 }
 function Step-Note($i, $text) { $t = $ui.Steps.Children[$i].Tag; $t.T2.Text = $text; $t.T2.Visibility = 'Visible' }
 function Step-Done($i, $state = 'ok', $text = $null) {
     $t = $ui.Steps.Children[$i].Tag
-    $t.Spin.RenderTransform.BeginAnimation($AngP, $null); Anim $t.Spin $OP 0 120
+    $t.Spin.BeginAnimation($OP, $null); $t.Spin.Opacity = 0
     $col = switch ($state) { 'ok' { '#3DDC97' } 'skip' { '#5A6070' } default { '#FF5E62' } }
     $t.Circle.Fill = Brush $col
-    $t.Mark.Text = switch ($state) { 'ok' { '✓' } 'skip' { '–' } default { '✕' } }
-    if ($state -ne 'ok') { $t.Mark.Foreground = Brush '#FFFFFF' }
-    Anim $t.Done $OP 1 200
-    Anim $t.Done.RenderTransform $SX 1 420 0.3 -Easing (BackOut); Anim $t.Done.RenderTransform $SY 1 420 0.3 -Easing (BackOut)
+    $t.Mark.Data = switch ($state) { 'ok' { $GeoTick } 'skip' { $GeoDash } default { $GeoX } }
+    if ($state -ne 'ok') { $t.Mark.Fill = Brush '#FFFFFF'; $t.Mark.Margin = '0' }
+    $t.Box.BorderBrush = Brush '#22262F'
+    # появление рывками: мигнёт и встанет
+    $k = New-Object System.Windows.Media.Animation.DoubleAnimationUsingKeyFrames
+    foreach ($p in @(@(0, 1), @(60, 0.3), @(120, 1))) { [void]$k.KeyFrames.Add((New-Object System.Windows.Media.Animation.DiscreteDoubleKeyFrame $p[1], ([System.Windows.Media.Animation.KeyTime]::FromTimeSpan([TimeSpan]::FromMilliseconds($p[0]))))) }
+    $t.Done.BeginAnimation($OP, $k)
     if ($text) { Step-Note $i $text }
     if ($state -eq 'err') { $t.T2.Foreground = Brush '#FF8C99' }
 }

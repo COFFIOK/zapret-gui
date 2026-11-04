@@ -14,7 +14,9 @@ using System.Web.Script.Serialization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Shapes;
+using Path = System.Windows.Shapes.Path;
 using System.Windows.Threading;
 
 namespace ZapretCS
@@ -23,7 +25,6 @@ namespace ZapretCS
     {
         string TgDir, TgExe, TgData, TgCfg;
         const string TgUrl = "https://github.com/Flowseal/tg-ws-proxy/releases/latest/download/TgWsProxy_windows.exe";
-        const double TgLen = 58.7;   // длина контура самолётика в толщинах линии
         string tgState = "off", tgPrevState;
         long tgVisAt;
         bool? tgConnShown; long tgConnShownAt; bool tgIsConnected;
@@ -50,9 +51,9 @@ namespace ZapretCS
             E<TextBlock>("TgPlane").Foreground = Theme.B("#8A90A0");
             E<Shape>("TgLed").Fill = Theme.B("#8A90A0");
             var card = E<Border>("TgCard"); card.Background = Theme.B("#1A1D24"); card.BorderBrush = Theme.B("#232731");
-            E<Shape>("TgPlaneFill").Fill = TgPlaneBrush; E<Shape>("TgPlaneFill").Stroke = TgPlaneBrush;
-            E<Shape>("TgPlaneDraw").Stroke = TgPlaneBrush;
-            E<Shape>("TgPlaneFold").Stroke = TgDotFill;
+            E<Shape>("TgPlaneFill").Fill = TgPlaneBrush;
+            E<Shape>("TgPlaneDraw").Fill = TgPlaneBrush;
+            E<Shape>("TgPlaneFold").Fill = TgDotFill;
 
             var power = Btn("TgPower");
             power.Click += (s, e) => Safe(() =>
@@ -61,10 +62,10 @@ namespace ZapretCS
                 TgToggle.IsChecked = TgToggle.IsChecked != true;
                 if (TgToggle.IsChecked == true) StartTg(); else StopTg();
             });
-            power.MouseEnter += (s, e) => Scale("TgPowerS", 1.07, 200);
-            power.MouseLeave += (s, e) => Scale("TgPowerS", 1, 200);
-            power.PreviewMouseLeftButtonDown += (s, e) => Scale("TgPowerS", 0.92, 90);
-            power.PreviewMouseLeftButtonUp += (s, e) => Scale("TgPowerS", 1.07, 160);
+            power.MouseEnter += (s, e) => Px.Steps(A("TgLift"), Anim.TY, 0, 0, -2);
+            power.MouseLeave += (s, e) => Px.Steps(A("TgLift"), Anim.TY, 0, 0, 0);
+            power.PreviewMouseLeftButtonDown += (s, e) => Px.Steps(A("TgLift"), Anim.TY, 0, 0, 2);
+            power.PreviewMouseLeftButtonUp += (s, e) => Px.Steps(A("TgLift"), Anim.TY, 0, 0, -2);
 
             Btn("TgConnect").Click += (s, e) => Safe(() =>
             {
@@ -261,37 +262,38 @@ namespace ZapretCS
         {
             var t = A("TgPlaneT"); Anim.Stop(t, Anim.TX); Anim.Stop(t, Anim.TY);
             var tt = (TranslateTransform)t; tt.X = 0; tt.Y = 0;
-            Anim.Stop(A("TgGlow"), Anim.OP); El("TgGlow").Opacity = 0; Anim.Stop(A("TgGlowS"), Anim.SX); Anim.Stop(A("TgGlowS"), Anim.SY);
-            Anim.Stop(A("TgPlaneDraw"), Anim.OP); El("TgPlaneDraw").Opacity = 0;
+            var gl = E<Path>("TgGlow"); gl.BeginAnimation(Path.DataProperty, null); gl.Data = Px.Ring(80, 4, 40, 36);
+            Anim.Stop(gl, Anim.OP); gl.Opacity = 0;
             Anim.Stop(A("TgPlaneFill"), Anim.OP); El("TgPlaneFill").Opacity = 1;
+            Anim.Stop(A("TgPlaneFold"), Anim.OP); El("TgPlaneFold").Opacity = 1;
         }
         void PlaneTakeoff()
         {
-            // один раз: улетает вправо-вверх, возвращается слева-снизу и «дорисовывается» как буква Z
+            // пиксельный взлёт: рывками улетает вправо-вверх, влетает слева-снизу, мигает и расходится квадратная волна
             PlaneStop();
             var t = A("TgPlaneT");
-            Anim.D(t, Anim.TX, 34, 240, 0); Anim.D(t, Anim.TY, -34, 240, 0);
-            After(250, () =>
-            {
-                El("TgPlaneFill").Opacity = 0;
-                var draw = E<Shape>("TgPlaneDraw");
-                draw.StrokeDashArray = new DoubleCollection(new[] { TgLen, TgLen });
-                draw.Opacity = 1;
-                Anim.D(t, Anim.TX, 0, 520, -34, ease: Anim.Back()); Anim.D(t, Anim.TY, 0, 520, 34, ease: Anim.Back());
-                Anim.D(draw, Shape.StrokeDashOffsetProperty, 0, 480, TgLen, begin: 120);
-                Anim.D(A("TgPlaneFill"), Anim.OP, 1, 260, 0, begin: 480);
-                Anim.D(draw, Anim.OP, 0, 280, null, begin: 700);
-                // одно мягкое кольцо вокруг кнопки
-                Anim.D(A("TgGlow"), Anim.OP, 0, 900, 0.7, begin: 450, noEase: true);
-                Anim.D(A("TgGlowS"), Anim.SX, 1.35, 900, 1, begin: 450); Anim.D(A("TgGlowS"), Anim.SY, 1.35, 900, 1, begin: 450);
-            });
+            Px.Steps(t, Anim.TX, 0, 0, 6, 60, 15, 120, 27, 180, 40, 240, -40, 300, -27, 360, -15, 420, -6, 480, 0);
+            Px.Steps(t, Anim.TY, 0, 0, -6, 60, -15, 120, -27, 180, -40, 240, 40, 300, 27, 360, 15, 420, 6, 480, 0);
+            foreach (var n in new[] { "TgPlaneFill", "TgPlaneFold" })
+                Px.Steps(A(n), Anim.OP, 480, 0, 0, 80, 1, 160, 0, 240, 1, 320, 0.4, 400, 1);
+            var gl = E<Path>("TgGlow");
+            var frames = new List<Geometry>();
+            for (int k = 0; k < 5; k++) frames.Add(Px.Ring(80, 4, 30 + k * 2.5, 26 + k * 2.5));
+            Px.PlayFrames(gl, frames, 80, false, 480);
+            Px.Steps(gl, Anim.OP, 480, 0, 0.9, 80, 0.75, 160, 0.6, 240, 0.4, 320, 0.2, 400, 0);
         }
         void PlaneBusy()
         {
-            // только пока скачивается прокси — самолётик пролетает через кнопку
+            // только пока скачивается прокси — самолётик пролетает через кнопку рывками
             PlaneStop();
-            Anim.D(A("TgPlaneT"), Anim.TX, 34, 900, -34, forever: true, noEase: true);
-            Anim.D(A("TgPlaneT"), Anim.TY, -34, 900, 34, forever: true, noEase: true);
+            if (Anim.Eco) return;
+            foreach (var p in new[] { Anim.TX, Anim.TY })
+            {
+                double sg = p == Anim.TX ? 1 : -1;
+                var a = new DoubleAnimationUsingKeyFrames { RepeatBehavior = RepeatBehavior.Forever, Duration = new Duration(TimeSpan.FromMilliseconds(900)) };
+                for (int k = 0; k < 9; k++) a.KeyFrames.Add(new DiscreteDoubleKeyFrame(sg * (-36 + k * 9), KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(k * 100))));
+                A("TgPlaneT").BeginAnimation(p, a);
+            }
         }
 
         // ================= QR для телефона =================

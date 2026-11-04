@@ -66,7 +66,7 @@ namespace ZapretCS
                 b.BorderBrush = Theme.B(on ? (k == "UnAll" ? "#E0566A" : "#3DDC97") : "#2E3340");
                 b.Background = Theme.B(on ? (k == "UnAll" ? "#2A1E22" : "#1B3329") : "#1E2129");
                 var dot = El(k + "Dot");
-                ((System.Windows.Shapes.Ellipse)dot).Fill = Theme.B(k == "UnAll" ? "#E0566A" : "#3DDC97");
+                ((System.Windows.Shapes.Shape)dot).Fill = Theme.B(k == "UnAll" ? "#E0566A" : "#3DDC97");
                 Anim.D(dot, Anim.OP, on ? 1 : 0, 200);
             }
             Tb("UninstStatus").Text = keep ? "" : Translate.T("Твои списки сайтов тоже удалятся. Если хочешь их сохранить — сначала поделись ими кодом.");
