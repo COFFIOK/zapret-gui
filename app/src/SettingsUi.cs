@@ -121,6 +121,7 @@ namespace ZapretCS
                 if (nv == null) continue;
                 nv.Checked += (s, e) => Safe(() => { if (El("SettingsOverlay").Visibility == Visibility.Visible) ShowSetPage(int.Parse((string)((FrameworkElement)s).Tag), false); });
             }
+            WireFeedback();
             Btn("RepoBtn").Click += (s, e) => Safe(() => Process.Start("https://github.com/" + UpdateRepo));
             Btn("ServiceBtn").Click += (s, e) => Safe(() => Process.Start(new ProcessStartInfo(System.IO.Path.Combine(ZapretCore.Root, "service.bat")) { WorkingDirectory = ZapretCore.Root, UseShellExecute = true }));
             Btn("FolderBtn").Click += (s, e) => Safe(() => Process.Start("explorer.exe", "\"" + (InHome ? HomeDir : ZapretCore.Root) + "\""));

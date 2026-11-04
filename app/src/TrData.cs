@@ -4,6 +4,21 @@ namespace ZapretCS
     static partial class Translate
     {
         static readonly string[,] Pairs = {
+            { @"Написать разработчику", @"Message the developer" },
+            { @"ошибка, идея или пожелание", @"a bug, an idea or a wish" },
+            { @"Сообщение увидит только автор Zapret. Оставь контакт, если ждёшь ответа.", @"Only the author of Zapret will see it. Leave a contact if you want a reply." },
+            { @"Ошибка", @"Bug" },
+            { @"Идея", @"Idea" },
+            { @"Что случилось или что хочется видеть в Zapret?", @"What happened, or what would you like to see in Zapret?" },
+            { @"Как связаться (необязательно): @telegram или почта", @"How to reach you (optional): @telegram or email" },
+            { @"Приложить журнал работы", @"Attach the app log" },
+            { @"последние записи, без имени пользователя и путей — помогает найти ошибку", @"latest entries, without your user name or paths — helps find the bug" },
+            { @"Отправить", @"Send" },
+            { @"Напиши хотя бы пару слов", @"Write at least a few words" },
+            { @"Отправляю…", @"Sending…" },
+            { @"Слишком много сообщений — попробуй позже", @"Too many messages — try again later" },
+            { @"Не получилось отправить — проверь интернет", @"Couldn't send — check your internet" },
+            { @"Спасибо! Сообщение отправлено автору", @"Thanks! Your message was sent to the author" },
             { @"Подключить Telegram на телефоне по QR-коду", @"Connect Telegram on your phone via QR code" },
             { @"Telegram на телефоне", @"Telegram on your phone" },
             { @"1. Телефон должен быть в той же Wi-Fi сети, что и компьютер", @"1. Your phone must be on the same Wi-Fi as the computer" },

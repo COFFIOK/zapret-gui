@@ -907,6 +907,10 @@
                         <TextBlock x:Name="InfoPath" FontSize="12.5" TextWrapping="Wrap" Margin="0,2,0,0"/>
                       </StackPanel>
                     </Border>
+                    <Button x:Name="FbBtn" Style="{StaticResource RowBtn}">
+                      <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE8BD;" FontFamily="Segoe MDL2 Assets" FontSize="16" Width="30" VerticalAlignment="Center" Foreground="#3DDC97"/>
+                        <StackPanel><TextBlock Text="Написать разработчику" FontSize="13"/><TextBlock Text="ошибка, идея или пожелание" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel></StackPanel>
+                    </Button>
                     <Button x:Name="RepoBtn" Style="{StaticResource RowBtn}">
                       <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE774;" FontFamily="Segoe MDL2 Assets" FontSize="16" Width="30" VerticalAlignment="Center" Foreground="#3DDC97"/>
                         <StackPanel><TextBlock Text="Страница на GitHub" FontSize="13"/><TextBlock Text="описание, релизы и обновления" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel></StackPanel>
@@ -1129,6 +1133,56 @@
                 <TextBlock/>
               </DockPanel>
             </Grid>
+          </Border>
+        </Grid>
+
+        <!-- Написать разработчику -->
+        <Grid x:Name="FbOverlay" Grid.RowSpan="2" Visibility="Collapsed" Panel.ZIndex="40">
+          <Border x:Name="FbDim" Background="#C0090A0D" Opacity="0"/>
+          <Border x:Name="FbPanel" Width="540" VerticalAlignment="Center" Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2"
+                  Opacity="0" RenderTransformOrigin="0.5,0.5">
+            <Border.RenderTransform><ScaleTransform x:Name="FbScale" ScaleX="0.94" ScaleY="0.94"/></Border.RenderTransform>
+            <Border.Effect><DropShadowEffect BlurRadius="0" ShadowDepth="7" Direction="315" Color="#000000" Opacity="0.6"/></Border.Effect>
+            <StackPanel Margin="26,18,26,20">
+              <DockPanel Margin="0,0,0,14">
+                <Button x:Name="FbClose" DockPanel.Dock="Right" VerticalAlignment="Top" Style="{StaticResource TitleBtn}"><Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
+                <StackPanel>
+                  <TextBlock Text="Написать разработчику" Style="{StaticResource PxText}" FontSize="22.22"/>
+                  <TextBlock Text="Сообщение увидит только автор Zapret. Оставь контакт, если ждёшь ответа." Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                </StackPanel>
+              </DockPanel>
+              <WrapPanel Margin="0,0,0,6">
+                <RadioButton x:Name="FbKindBug" GroupName="FbKind" Style="{StaticResource Chip}" Content="Ошибка" IsChecked="True"/>
+                <RadioButton x:Name="FbKindIdea" GroupName="FbKind" Style="{StaticResource Chip}" Content="Идея"/>
+                <RadioButton x:Name="FbKindOther" GroupName="FbKind" Style="{StaticResource Chip}" Content="Другое"/>
+              </WrapPanel>
+              <Border Background="#22262F" BorderBrush="#2E3340" BorderThickness="2" Height="150">
+                <Grid>
+                  <TextBlock x:Name="FbHint" Text="Что случилось или что хочется видеть в Zapret?" Foreground="#5A6070" FontSize="13" Margin="12,10" TextWrapping="Wrap" IsHitTestVisible="False"/>
+                  <TextBox x:Name="FbText" Background="Transparent" BorderThickness="0" Foreground="#E6E8EE" CaretBrush="#3DDC97" FontSize="13"
+                           Padding="8,8" AcceptsReturn="True" TextWrapping="Wrap" MaxLength="2000" VerticalScrollBarVisibility="Auto"/>
+                </Grid>
+              </Border>
+              <TextBlock x:Name="FbCount" Text="0 / 2000" Foreground="#5A6070" FontSize="11" HorizontalAlignment="Right" Margin="0,4,0,0"/>
+              <Border Background="#22262F" BorderBrush="#2E3340" BorderThickness="2" Height="38" Margin="0,4,0,0">
+                <Grid>
+                  <TextBlock x:Name="FbContactHint" Text="Как связаться (необязательно): @telegram или почта" Foreground="#5A6070" FontSize="13" Margin="12,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                  <TextBox x:Name="FbContact" Background="Transparent" BorderThickness="0" Foreground="#E6E8EE" CaretBrush="#3DDC97" FontSize="13"
+                           Padding="8,0" VerticalContentAlignment="Center" MaxLength="100"/>
+                </Grid>
+              </Border>
+              <DockPanel Margin="0,14,0,0">
+                <CheckBox x:Name="FbLog" DockPanel.Dock="Right" Style="{StaticResource Toggle}" VerticalAlignment="Center" IsChecked="True"/>
+                <StackPanel>
+                  <TextBlock Text="Приложить журнал работы" FontSize="13"/>
+                  <TextBlock Text="последние записи, без имени пользователя и путей — помогает найти ошибку" Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap"/>
+                </StackPanel>
+              </DockPanel>
+              <DockPanel Margin="0,18,0,0">
+                <Button x:Name="FbSend" DockPanel.Dock="Right" Style="{StaticResource AccentBtn}" Content="Отправить" Padding="22,10" MinWidth="150"/>
+                <TextBlock x:Name="FbMsg" Foreground="{StaticResource Muted}" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,12,0"/>
+              </DockPanel>
+            </StackPanel>
           </Border>
         </Grid>
 
