@@ -7,7 +7,6 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Windows;
@@ -187,7 +186,8 @@ namespace ZapretCS
         // окно ровно под левую колонку: всё, что шире неё, убираем
         double CompactWidth()
         {
-            double extra = E<Grid>("MainArea").ActualWidth - 330;
+            var sm = E<Grid>("Shell").Margin;
+            double extra = E<Grid>("MainArea").ActualWidth + sm.Left + sm.Right - 330;
             return extra <= 0 ? Win.Width : Math.Round(Win.Width - extra);
         }
 
@@ -331,40 +331,66 @@ namespace ZapretCS
             catch { return null; }
         }
 
-        // окно меняет ширину вокруг своего центра — содержимое по центру стоит на месте
-        [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
-        EventHandler winTick;
+        // окно меняет ширину вокруг своего центра — содержимое по центру стоит на месте.
+        // Само окно (прозрачное) менять каждый кадр дорого и рывками, поэтому анимируется только
+        // «оболочка» внутри него, а размер окна меняется один раз: в конце при сужении, в начале при расширении.
+        int winMoveId;
         void MoveWindow(double toW, int ms)
         {
-            if (winTick != null) { CompositionTarget.Rendering -= winTick; winTick = null; }
+            var shell = E<Grid>("Shell");
+            int id = ++winMoveId;
+            shell.BeginAnimation(FrameworkElement.MarginProperty, null);
+            shell.Margin = new Thickness(0);
             double fromW = Win.Width, fromL = Win.Left;
             if (double.IsNaN(fromL)) { Win.Width = toW; return; }
-            double toL = Math.Round(fromL + (fromW - toW) / 2);
+            double half = (fromW - toW) / 2;
+            double toL = Math.Round(fromL + half);
+            if (Math.Abs(half) < 0.5) return;
             if (ms <= 0 || Anim.Eco || !Win.IsVisible) { Win.Width = toW; Win.Left = toL; return; }
+            var ease = new CubicEase { EasingMode = EasingMode.EaseInOut };
+            if (half > 0)
+            {
+                // сужение: оболочка сжимается к центру, потом окно один раз подгоняется под неё
+                var a = new ThicknessAnimation(new Thickness(0), new Thickness(half, 0, half, 0), new Duration(TimeSpan.FromMilliseconds(ms))) { EasingFunction = ease };
+                a.Completed += (s, e) =>
+                {
+                    if (id != winMoveId) return;
+                    shell.BeginAnimation(FrameworkElement.MarginProperty, null);
+                    shell.Margin = new Thickness(0);
+                    SetBounds(toL, toW);
+                };
+                shell.BeginAnimation(FrameworkElement.MarginProperty, a);
+            }
+            else
+            {
+                // расширение: окно сразу становится широким, а оболочка в нём раскрывается от центра
+                double h = -half;
+                shell.Margin = new Thickness(h, 0, h, 0);
+                SetBounds(toL, toW);
+                var a = new ThicknessAnimation(new Thickness(h, 0, h, 0), new Thickness(0), new Duration(TimeSpan.FromMilliseconds(ms))) { EasingFunction = ease };
+                a.Completed += (s, e) =>
+                {
+                    if (id != winMoveId) return;
+                    shell.BeginAnimation(FrameworkElement.MarginProperty, null);
+                    shell.Margin = new Thickness(0);
+                };
+                shell.BeginAnimation(FrameworkElement.MarginProperty, a);
+            }
+        }
+
+        // положение и ширина окна — одним вызовом, без промежуточного кадра
+        [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
+        void SetBounds(double left, double width)
+        {
             var hwnd = new WindowInteropHelper(Win).Handle;
             var src = PresentationSource.FromVisual(Win);
-            double mx = 1, my = 1;
-            if (src != null && src.CompositionTarget != null) { mx = src.CompositionTarget.TransformToDevice.M11; my = src.CompositionTarget.TransformToDevice.M22; }
-            double top = Win.Top, h = Win.ActualHeight;
-            var sw = Stopwatch.StartNew();
-            var ease = new CubicEase { EasingMode = EasingMode.EaseInOut };
-            EventHandler tick = null;
-            tick = (s, e) =>
+            if (hwnd != IntPtr.Zero && src != null && src.CompositionTarget != null)
             {
-                double t = Math.Min(1, sw.ElapsedMilliseconds / (double)ms);
-                double p = ease.Ease(t);
-                double w = fromW + (toW - fromW) * p, l = fromL + (toL - fromL) * p;
-                if (hwnd != IntPtr.Zero)
-                    SetWindowPos(hwnd, IntPtr.Zero, (int)Math.Round(l * mx), (int)Math.Round(top * my), (int)Math.Round(w * mx), (int)Math.Round(h * my), 0x0014);
-                else { Win.Left = l; Win.Width = w; }
-                if (t >= 1)
-                {
-                    CompositionTarget.Rendering -= tick; if (winTick == tick) winTick = null;
-                    Win.Width = toW; Win.Left = toL;
-                }
-            };
-            winTick = tick;
-            CompositionTarget.Rendering += tick;
+                var m = src.CompositionTarget.TransformToDevice;
+                SetWindowPos(hwnd, IntPtr.Zero, (int)Math.Round(left * m.M11), (int)Math.Round(Win.Top * m.M22),
+                    (int)Math.Round(width * m.M11), (int)Math.Round(Win.ActualHeight * m.M22), 0x0014);
+            }
+            Win.Width = width; Win.Left = left;
         }
 
         // окна-панели шире компактного окна: на время открытия окно расширяется, потом снова сужается
