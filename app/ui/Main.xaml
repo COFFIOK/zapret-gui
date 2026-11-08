@@ -561,7 +561,17 @@
               <RowDefinition Height="*"/>
               <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
-            <StackPanel VerticalAlignment="Center">
+            <!-- когда «Мои сайты» свёрнуты, стратегия, Telegram и тест встают справа от кнопки (колонка 2) -->
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition x:Name="LcA" Width="*"/>
+              <ColumnDefinition x:Name="LcGap" Width="0"/>
+              <ColumnDefinition x:Name="LcB" Width="0"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel x:Name="SideStack" Grid.Column="2" Grid.RowSpan="2" VerticalAlignment="Center">
+              <StackPanel.RenderTransform><TranslateTransform x:Name="SideStackT"/></StackPanel.RenderTransform>
+            </StackPanel>
+            <StackPanel x:Name="CenterStack" VerticalAlignment="Center">
+              <StackPanel.RenderTransform><TranslateTransform x:Name="CenterStackT"/></StackPanel.RenderTransform>
               <Button x:Name="PowerBtn" Width="200" Height="200" Cursor="Hand" HorizontalAlignment="Center" Focusable="False">
                 <Button.Template>
                   <ControlTemplate TargetType="Button"><ContentPresenter/></ControlTemplate>
@@ -628,6 +638,7 @@
               <TextBlock x:Name="StatusText" Text="Выключен" Style="{StaticResource PxText}" FontSize="33.33" HorizontalAlignment="Center" Margin="0,10,0,0"/>
               <TextBlock x:Name="SubText" Text="Нажми, чтобы включить" Foreground="{StaticResource Muted}" FontSize="13" HorizontalAlignment="Center" Margin="0,4,0,0" TextAlignment="Center" TextWrapping="Wrap"/>
 
+              <StackPanel x:Name="ControlsBlock">
               <TextBlock Text="Стратегия" Foreground="{StaticResource Muted}" FontSize="12" Margin="2,26,0,6"/>
               <ComboBox x:Name="StrategyBox"/>
 
@@ -677,9 +688,10 @@
                   </UniformGrid>
                 </StackPanel>
               </Border>
+              </StackPanel>
             </StackPanel>
 
-            <StackPanel Grid.Row="1">
+            <StackPanel x:Name="TestHost" Grid.Row="1">
               <!-- кнопка обновления zapret появляется только когда вышла новая версия -->
               <Grid>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>

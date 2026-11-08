@@ -49,6 +49,57 @@ namespace ZapretCS
             El("StripApplyDot").Visibility = El("ApplyBar").Visibility == Visibility.Visible ? Visibility.Visible : Visibility.Collapsed;
         }
 
+        // широкая раскладка (сайты свёрнуты): кнопка включения слева, стратегия, Telegram и тест — справа от неё
+        bool wideLayout;
+        void SetWideLayout(bool wide, bool animate)
+        {
+            if (wide == wideLayout) return;
+            wideLayout = wide;
+            var left = E<Grid>("LeftCol");
+            var center = E<StackPanel>("CenterStack");
+            var side = E<StackPanel>("SideStack");
+            var controls = E<StackPanel>("ControlsBlock");
+            var test = E<StackPanel>("TestHost");
+            var label = controls.Children[0] as FrameworkElement;
+            Action move = () =>
+            {
+                if (wide)
+                {
+                    center.Children.Remove(controls); left.Children.Remove(test);
+                    side.Children.Add(controls); side.Children.Add(test);
+                    if (label != null) label.Margin = new Thickness(2, 0, 0, 6);
+                    test.Margin = new Thickness(0, 18, 0, 0);
+                    ((ColumnDefinition)Win.FindName("LcA")).Width = new GridLength(330);
+                    ((ColumnDefinition)Win.FindName("LcGap")).Width = new GridLength(56);
+                    ((ColumnDefinition)Win.FindName("LcB")).Width = new GridLength(330);
+                    left.Width = 330 + 56 + 330;
+                }
+                else
+                {
+                    side.Children.Remove(controls); side.Children.Remove(test);
+                    center.Children.Add(controls); left.Children.Add(test);
+                    Grid.SetRow(test, 1); Grid.SetColumn(test, 0);
+                    if (label != null) label.Margin = new Thickness(2, 26, 0, 6);
+                    test.Margin = new Thickness(0);
+                    ((ColumnDefinition)Win.FindName("LcA")).Width = new GridLength(1, GridUnitType.Star);
+                    ((ColumnDefinition)Win.FindName("LcGap")).Width = new GridLength(0);
+                    ((ColumnDefinition)Win.FindName("LcB")).Width = new GridLength(0);
+                    left.Width = 330;
+                }
+            };
+            if (!animate || Anim.Eco) { move(); left.Opacity = 1; return; }
+            // пиксельная смена раскладки: гаснет в 2 кадра, перестраивается, проявляется со сдвигом
+            Px.Steps(left, UIElement.OpacityProperty, 0, 0, 0.5, 40, 0);
+            After(85, () =>
+            {
+                move();
+                Px.Steps(left, UIElement.OpacityProperty, 0, 0, 0.45, 45, 0.8, 90, 1);
+                double dx = wide ? 14 : -14;
+                Px.Steps(A("CenterStackT"), TranslateTransform.XProperty, 0, 0, dx, 45, dx / 2, 90, 0);
+                Px.Steps(A("SideStackT"), TranslateTransform.XProperty, 0, 0, -dx, 45, -dx / 2, 90, 0);
+            });
+        }
+
         void SetSitesCollapsed(bool collapse, bool animate)
         {
             if (sitesAnimating || collapse == sitesCollapsed) return;
@@ -77,6 +128,7 @@ namespace ZapretCS
                     right.BeginAnimation(FrameworkElement.WidthProperty, null); right.Width = StripWidth;
                     card.Visibility = Visibility.Collapsed;
                     strip.Visibility = Visibility.Visible; Anim.Stop(strip, Anim.OP); strip.Opacity = 1;
+                    SetWideLayout(true, false);
                     return;
                 }
                 sitesAnimating = true;
@@ -91,6 +143,7 @@ namespace ZapretCS
                     strip.Visibility = Visibility.Visible;
                     Px.Steps(strip, UIElement.OpacityProperty, 0, 0, 0.4, 50, 0.75, 100, 1);
                     Px.Steps(A("SitesStripT"), TranslateTransform.XProperty, 0, 0, 10, 50, 5, 100, 0);
+                    SetWideLayout(true, true);
                     sitesAnimating = false;
                 });
             }
@@ -107,6 +160,7 @@ namespace ZapretCS
                 };
                 if (!anim)
                 {
+                    SetWideLayout(false, false);
                     finish();
                     strip.Visibility = Visibility.Collapsed;
                     card.Visibility = Visibility.Visible; Anim.Stop(card, Anim.OP); card.Opacity = 1;
@@ -114,9 +168,10 @@ namespace ZapretCS
                     return;
                 }
                 sitesAnimating = true;
-                // вкладка гаснет, колонка раскрывается, карточка приезжает справа
+                // кнопка и настройки собираются обратно в одну колонку, вкладка гаснет, колонка раскрывается, карточка приезжает справа
+                SetWideLayout(false, true);
                 Px.Steps(strip, UIElement.OpacityProperty, 0, 0, 0.5, 40, 0);
-                After(80, () =>
+                After(140, () =>
                 {
                     strip.Visibility = Visibility.Collapsed;
                     card.Visibility = Visibility.Visible; card.Opacity = 0;
@@ -124,7 +179,7 @@ namespace ZapretCS
                     Anim.D(A("SitesCardT"), Anim.TX, 0, 360, 24, begin: 120, ease: Anim.Ease());
                     Anim.D(card, Anim.OP, 1, 260, 0, begin: 140);
                 });
-                After(440, () => { finish(); sitesAnimating = false; });
+                After(500, () => { finish(); sitesAnimating = false; });
             }
         }
     }
