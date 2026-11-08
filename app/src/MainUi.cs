@@ -89,6 +89,7 @@ namespace ZapretCS
             Step("tray", BuildTray);
             Step("translate", () => Translate.Init(this));
             Step("telemetry", StartTelemetry);
+            Step("polish", WirePolish);
             // безопасность: права на папку Zapret и уборка старых временных файлов — в фоне, один раз при запуске
             Step("security", () => new System.Threading.Thread(() => { Sec.CleanTemp(); if (InHome) Sec.HardenFolder(HomeDir); }) { IsBackground = true, Priority = System.Threading.ThreadPriority.BelowNormal }.Start());
 
@@ -242,6 +243,9 @@ namespace ZapretCS
         {
             Anim.D(A(p + "Dim"), Anim.OP, 0, 180);
             Anim.D(A(p + "Panel"), Anim.OP, 0, 180);
+            // панель чуть «отъезжает» при закрытии — так же, как появлялась
+            Anim.D(A(p + "Scale"), Anim.SX, 0.96, 180);
+            Anim.D(A(p + "Scale"), Anim.SY, 0.96, 180);
             After(190, () => El(p + "Overlay").Visibility = Visibility.Collapsed);
         }
         public static void After(int ms, Action a)

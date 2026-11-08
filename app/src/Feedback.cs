@@ -181,7 +181,8 @@ namespace ZapretCS
                     object m, ban; d.TryGetValue("msgs", out m);
                     d.TryGetValue("ban", out ban); SetChatBan(ban);
                     var list = m as IEnumerable;
-                    if (list != null) foreach (var x in list) { var msg = x as Dictionary<string, object>; if (msg != null) AddBubble(msg); }
+                    bool anim = E<StackPanel>("FbList").Children.Count > 0;   // первая загрузка — без анимации, новые сообщения — «впрыгивают»
+                    if (list != null) foreach (var x in list) { var msg = x as Dictionary<string, object>; if (msg != null) AddBubble(msg, anim); }
                     ShowChatEmpty();
                 }));
             });
@@ -272,7 +273,7 @@ namespace ZapretCS
         }
 
         // ---- пузыри сообщений ----
-        void AddBubble(Dictionary<string, object> m)
+        void AddBubble(Dictionary<string, object> m, bool animate = false)
         {
             object o;
             long n = m.TryGetValue("n", out o) ? Convert.ToInt64(o) : 0;
@@ -315,6 +316,15 @@ namespace ZapretCS
             sp.Children.Add(new TextBlock { Text = ChatTime(at), FontSize = 10.5, Foreground = muted, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 4, 0, 0) });
             bubble.Child = sp;
             E<StackPanel>("FbList").Children.Add(bubble);
+            if (animate && !Anim.Eco)
+            {
+                // пиксельное появление: тремя кадрами снизу вверх
+                var tt = new TranslateTransform(0, 9);
+                bubble.RenderTransform = tt;
+                bubble.Opacity = 0;
+                Px.Steps(bubble, UIElement.OpacityProperty, 0, 0, 0.5, 45, 0.85, 90, 1);
+                Px.Steps(tt, TranslateTransform.YProperty, 0, 0, 9, 45, 4, 90, 0);
+            }
             var sv = E<ScrollViewer>("FbScroll");
             sv.Dispatcher.BeginInvoke(new Action(sv.ScrollToEnd), DispatcherPriority.Loaded);
         }

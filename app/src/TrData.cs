@@ -4,18 +4,13 @@ namespace ZapretCS
     static partial class Translate
     {
         static readonly string[,] Pairs = {
+            { @"Отправить данные анонимно?", @"Send data anonymously?" },
+            { @"Спасибо!", @"Thank you!" },
+            { @"Нет", @"No" },
             { @"Чат с разработчиком: облачко рядом с шестерёнкой", @"Chat with the developer: the bubble next to the gear" },
             { @"В чат можно отправлять фото и скриншоты (Ctrl+V)", @"You can send photos and screenshots in the chat (Ctrl+V)" },
             { @"Анонимная статистика — только по согласию и один раз", @"Anonymous statistics — only with your consent and only once" },
-            { @"Помочь Zapret?", @"Help Zapret?" },
-            { @"Можно один раз отправить автору анонимные данные об этой установке — так он поймёт, что чаще всего используют и что улучшать. Отправка происходит только один раз, больше ничего и никогда не отправляется.", @"You can send the author anonymous data about this installation once — it shows what people use most and what to improve. It is sent only once; nothing else is ever sent." },
-            { @"Что отправится", @"What will be sent" },
-            { @"версии Zapret, zapret и Windows · язык и тема · выбранная стратегия · включены ли Telegram-прокси, игровой фильтр, экономия и автообновление · сколько своих сайтов (только число)", @"versions of Zapret, zapret and Windows · language and theme · selected strategy · whether the Telegram proxy, game filter, eco mode and auto-update are on · how many custom sites (just the number)" },
-            { @"Не отправится", @"What will not be sent" },
-            { @"имя, IP-адрес, списки сайтов, файлы и всё остальное", @"your name, IP address, site lists, files and anything else" },
             { @"Разрешить", @"Allow" },
-            { @"Нет, спасибо", @"No, thanks" },
-            { @"Спасибо! Данные отправлены один раз", @"Thanks! The data is sent once" },
             { @"ты пишешь как", @"you write as" },
             { @"изменить", @"change" },
             { @"Как к тебе обращаться?", @"What should we call you?" },

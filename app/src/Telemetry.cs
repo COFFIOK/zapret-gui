@@ -17,7 +17,7 @@ namespace ZapretCS
     {
         void StartTelemetry()
         {
-            Btn("CsYes").Click += (s, e) => Safe(() => { S.Set("statsConsent", "yes"); S.Save(); CloseOverlay("Cs"); SendStatsOnce(); Toast("Спасибо! Данные отправлены один раз"); });
+            Btn("CsYes").Click += (s, e) => Safe(() => { S.Set("statsConsent", "yes"); S.Save(); CloseOverlay("Cs"); SendStatsOnce(true); });
             Btn("CsNo").Click += (s, e) => Safe(() => { S.Set("statsConsent", "no"); S.Save(); CloseOverlay("Cs"); });
             string c = S.Str("statsConsent", "");
             if (c == "yes") { SendStatsOnce(); return; }          // согласился, но в прошлый раз не получилось отправить
@@ -42,7 +42,7 @@ namespace ZapretCS
             });
         }
 
-        void SendStatsOnce()
+        void SendStatsOnce(bool thank = false)
         {
             if (S.Str("statsConsent", "") != "yes" || S.Bool("statsSent")) return;
             int sites = 0, groups = 0;
@@ -80,7 +80,11 @@ namespace ZapretCS
                     ok = true;
                 }
                 catch { }   // нет сети — попробуем при следующем запуске
-                if (ok) Win.Dispatcher.BeginInvoke(new Action(() => { S.Set("statsSent", true); S.Save(); Log.Write("statistics sent once"); }));
+                if (ok) Win.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    S.Set("statsSent", true); S.Save(); Log.Write("statistics sent once");
+                    if (thank) Toast("Спасибо!");
+                }));
             });
         }
 

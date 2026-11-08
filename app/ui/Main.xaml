@@ -28,6 +28,7 @@
 
     <!-- кнопка: квадратная, рамка 2 px, жёсткая тень; при нажатии «вдавливается» в тень -->
     <Style x:Key="Btn" TargetType="Button">
+      <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
       <Setter Property="Background" Value="#22262F"/>
       <Setter Property="Foreground" Value="#E6E8EE"/>
       <Setter Property="FontSize" Value="13"/>
@@ -45,9 +46,28 @@
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True">
                 <Setter TargetName="Bd" Property="BorderBrush" Value="#3DDC97"/>
+                <Setter TargetName="Bd" Property="Background" Value="#2A2E38"/>
+              </Trigger>
+              <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter TargetName="Bd" Property="BorderBrush" Value="#3DDC97"/>
               </Trigger>
               <Trigger Property="IsPressed" Value="True">
-                <Setter TargetName="Bd" Property="Margin" Value="3,3,0,0"/>
+                <Trigger.EnterActions>
+                  <BeginStoryboard><Storyboard>
+                    <ThicknessAnimationUsingKeyFrames Storyboard.TargetName="Bd" Storyboard.TargetProperty="Margin">
+                      <DiscreteThicknessKeyFrame KeyTime="0:0:0" Value="1,1,2,2"/>
+                      <DiscreteThicknessKeyFrame KeyTime="0:0:0.03" Value="3,3,0,0"/>
+                    </ThicknessAnimationUsingKeyFrames>
+                  </Storyboard></BeginStoryboard>
+                </Trigger.EnterActions>
+                <Trigger.ExitActions>
+                  <BeginStoryboard><Storyboard>
+                    <ThicknessAnimationUsingKeyFrames Storyboard.TargetName="Bd" Storyboard.TargetProperty="Margin">
+                      <DiscreteThicknessKeyFrame KeyTime="0:0:0" Value="1,1,2,2"/>
+                      <DiscreteThicknessKeyFrame KeyTime="0:0:0.04" Value="0,0,3,3"/>
+                    </ThicknessAnimationUsingKeyFrames>
+                  </Storyboard></BeginStoryboard>
+                </Trigger.ExitActions>
               </Trigger>
               <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Opacity" Value="0.4"/>
@@ -75,8 +95,26 @@
               <Trigger Property="IsMouseOver" Value="True">
                 <Setter TargetName="Bd" Property="BorderBrush" Value="#7FE8B8"/>
               </Trigger>
+              <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter TargetName="Bd" Property="BorderBrush" Value="#E6E8EE"/>
+              </Trigger>
               <Trigger Property="IsPressed" Value="True">
-                <Setter TargetName="Bd" Property="Margin" Value="3,3,0,0"/>
+                <Trigger.EnterActions>
+                  <BeginStoryboard><Storyboard>
+                    <ThicknessAnimationUsingKeyFrames Storyboard.TargetName="Bd" Storyboard.TargetProperty="Margin">
+                      <DiscreteThicknessKeyFrame KeyTime="0:0:0" Value="1,1,2,2"/>
+                      <DiscreteThicknessKeyFrame KeyTime="0:0:0.03" Value="3,3,0,0"/>
+                    </ThicknessAnimationUsingKeyFrames>
+                  </Storyboard></BeginStoryboard>
+                </Trigger.EnterActions>
+                <Trigger.ExitActions>
+                  <BeginStoryboard><Storyboard>
+                    <ThicknessAnimationUsingKeyFrames Storyboard.TargetName="Bd" Storyboard.TargetProperty="Margin">
+                      <DiscreteThicknessKeyFrame KeyTime="0:0:0" Value="1,1,2,2"/>
+                      <DiscreteThicknessKeyFrame KeyTime="0:0:0.04" Value="0,0,3,3"/>
+                    </ThicknessAnimationUsingKeyFrames>
+                  </Storyboard></BeginStoryboard>
+                </Trigger.ExitActions>
               </Trigger>
               <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Opacity" Value="0.4"/>
@@ -88,6 +126,7 @@
     </Style>
 
     <Style x:Key="TitleBtn" TargetType="Button">
+      <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
       <Setter Property="Foreground" Value="#8A90A0"/>
       <Setter Property="Cursor" Value="Hand"/>
       <Setter Property="Template">
@@ -100,6 +139,10 @@
               <Trigger Property="IsMouseOver" Value="True">
                 <Setter TargetName="Bd" Property="Background" Value="#2A2E38"/>
                 <Setter Property="Foreground" Value="#FFFFFF"/>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="#1E2129"/>
+                <Setter Property="Foreground" Value="#3DDC97"/>
               </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
@@ -164,7 +207,8 @@
                                 Margin="14,0,38,3" VerticalAlignment="Center" HorizontalAlignment="Left"/>
               <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True"
                      Focusable="False" PopupAnimation="None">
-                <Grid Margin="0,2,6,6" MinWidth="{TemplateBinding ActualWidth}">
+                <Grid x:Name="DropBox" Margin="0,2,6,6" MinWidth="{TemplateBinding ActualWidth}" RenderTransformOrigin="0.5,0">
+                  <Grid.RenderTransform><ScaleTransform x:Name="DropScale" ScaleY="1"/></Grid.RenderTransform>
                   <Border Background="#08090B" Margin="4,4,-4,-4"/>
                   <Border Background="#1A1D24" BorderBrush="#3DDC97" BorderThickness="2" MaxHeight="320" Padding="0,4">
                     <ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsPresenter/></ScrollViewer>
@@ -172,6 +216,23 @@
                 </Grid>
               </Popup>
             </Grid>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsDropDownOpen" Value="True">
+                <Trigger.EnterActions>
+                  <BeginStoryboard><Storyboard>
+                    <DoubleAnimationUsingKeyFrames Storyboard.TargetName="DropScale" Storyboard.TargetProperty="ScaleY">
+                      <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="0.4"/>
+                      <DiscreteDoubleKeyFrame KeyTime="0:0:0.035" Value="0.75"/>
+                      <DiscreteDoubleKeyFrame KeyTime="0:0:0.07" Value="1"/>
+                    </DoubleAnimationUsingKeyFrames>
+                    <DoubleAnimationUsingKeyFrames Storyboard.TargetName="DropBox" Storyboard.TargetProperty="Opacity">
+                      <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="0.5"/>
+                      <DiscreteDoubleKeyFrame KeyTime="0:0:0.07" Value="1"/>
+                    </DoubleAnimationUsingKeyFrames>
+                  </Storyboard></BeginStoryboard>
+                </Trigger.EnterActions>
+              </Trigger>
+            </ControlTemplate.Triggers>
           </ControlTemplate>
         </Setter.Value>
       </Setter>
@@ -254,6 +315,7 @@
       </Setter>
     </Style>
     <Style x:Key="Chip" TargetType="ToggleButton">
+      <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
       <Setter Property="Foreground" Value="#9AA3B5"/>
       <Setter Property="FontSize" Value="12.5"/>
       <Setter Property="Cursor" Value="Hand"/>
@@ -265,13 +327,14 @@
               <ContentPresenter VerticalAlignment="Center"/>
             </Border>
             <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="BorderBrush" Value="#5A6070"/>
+                <Setter Property="Foreground" Value="#E6E8EE"/>
+              </Trigger>
               <Trigger Property="IsChecked" Value="True">
                 <Setter TargetName="Bd" Property="BorderBrush" Value="#3DDC97"/>
                 <Setter TargetName="Bd" Property="Background" Value="#1B3329"/>
                 <Setter Property="Foreground" Value="#E6E8EE"/>
-              </Trigger>
-              <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="Opacity" Value="0.85"/>
               </Trigger>
               <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Opacity" Value="0.4"/>
@@ -288,6 +351,7 @@
       <Setter Property="Cursor" Value="Hand"/>
       <Setter Property="Margin" Value="0,0,0,4"/>
       <Setter Property="GroupName" Value="SetNav"/>
+      <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="RadioButton">
@@ -300,6 +364,8 @@
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True">
                 <Setter TargetName="Bd" Property="Background" Value="#1E2129"/>
+                <Setter TargetName="Ind" Property="Opacity" Value="0.35"/>
+                <Setter Property="Foreground" Value="#C9CED8"/>
               </Trigger>
               <Trigger Property="IsChecked" Value="True">
                 <Setter TargetName="Bd" Property="Background" Value="#22262F"/>
@@ -320,6 +386,7 @@
     </Style>
 
     <Style x:Key="RowBtn" TargetType="Button">
+      <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
       <Setter Property="Foreground" Value="#E6E8EE"/>
       <Setter Property="Cursor" Value="Hand"/>
       <Setter Property="Margin" Value="0,0,0,8"/>
@@ -340,6 +407,7 @@
                 <Setter TargetName="Bd" Property="BorderBrush" Value="#3DDC97"/>
                 <Setter TargetName="Bd" Property="Background" Value="#22262F"/>
                 <Setter TargetName="Chev" Property="Fill" Value="#3DDC97"/>
+                <Setter TargetName="Chev" Property="RenderTransform"><Setter.Value><TranslateTransform X="2"/></Setter.Value></Setter>
               </Trigger>
               <Trigger Property="IsPressed" Value="True">
                 <Setter TargetName="Bd" Property="Margin" Value="3,3,0,0"/>
@@ -413,7 +481,11 @@
                 <Thumb>
                   <Thumb.Template>
                     <ControlTemplate TargetType="Thumb">
-                      <Border Background="#3A3F4D"/>
+                      <Border x:Name="Th" Background="#3A3F4D"/>
+                      <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Th" Property="Background" Value="#5A6070"/></Trigger>
+                        <Trigger Property="IsDragging" Value="True"><Setter TargetName="Th" Property="Background" Value="#3DDC97"/></Trigger>
+                      </ControlTemplate.Triggers>
                     </ControlTemplate>
                   </Thumb.Template>
                 </Thumb>
@@ -1244,26 +1316,15 @@
         <!-- Согласие на анонимную статистику (один раз) -->
         <Grid x:Name="CsOverlay" Grid.RowSpan="2" Visibility="Collapsed" Panel.ZIndex="45">
           <Border x:Name="CsDim" Background="#C0090A0D" Opacity="0"/>
-          <Border x:Name="CsPanel" Width="500" VerticalAlignment="Center" Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2"
+          <Border x:Name="CsPanel" Width="440" VerticalAlignment="Center" Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2"
                   Opacity="0" RenderTransformOrigin="0.5,0.5">
             <Border.RenderTransform><ScaleTransform x:Name="CsScale" ScaleX="0.94" ScaleY="0.94"/></Border.RenderTransform>
             <Border.Effect><DropShadowEffect BlurRadius="0" ShadowDepth="7" Direction="315" Color="#000000" Opacity="0.6"/></Border.Effect>
-            <StackPanel Margin="28,22,28,22">
-              <TextBlock Text="Помочь Zapret?" Style="{StaticResource PxText}" FontSize="22.22"/>
-              <TextBlock Text="Можно один раз отправить автору анонимные данные об этой установке — так он поймёт, что чаще всего используют и что улучшать. Отправка происходит только один раз, больше ничего и никогда не отправляется."
-                         Foreground="{StaticResource Muted}" FontSize="12.5" Margin="0,8,0,14" TextWrapping="Wrap"/>
-              <Border Background="#1D2028" BorderBrush="#2E3340" BorderThickness="2" Padding="14,10">
-                <StackPanel>
-                  <TextBlock Text="Что отправится" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                  <TextBlock Text="версии Zapret, zapret и Windows · язык и тема · выбранная стратегия · включены ли Telegram-прокси, игровой фильтр, экономия и автообновление · сколько своих сайтов (только число)"
-                             Foreground="{StaticResource Muted}" FontSize="11.5" TextWrapping="Wrap"/>
-                  <TextBlock Text="Не отправится" FontSize="12" FontWeight="SemiBold" Margin="0,10,0,4"/>
-                  <TextBlock Text="имя, IP-адрес, списки сайтов, файлы и всё остальное" Foreground="{StaticResource Muted}" FontSize="11.5" TextWrapping="Wrap"/>
-                </StackPanel>
-              </Border>
-              <DockPanel Margin="0,18,0,0">
-                <Button x:Name="CsYes" DockPanel.Dock="Right" Style="{StaticResource AccentBtn}" Content="Разрешить" Padding="22,10" MinWidth="140"/>
-                <Button x:Name="CsNo" DockPanel.Dock="Right" Style="{StaticResource Btn}" Content="Нет, спасибо" Padding="18,10" Margin="0,0,10,0"/>
+            <StackPanel Margin="28,24,28,22">
+              <TextBlock Text="Отправить данные анонимно?" Style="{StaticResource PxText}" FontSize="20" TextWrapping="Wrap"/>
+              <DockPanel Margin="0,22,0,0">
+                <Button x:Name="CsYes" DockPanel.Dock="Right" Style="{StaticResource AccentBtn}" Content="Отправить" Padding="22,10" MinWidth="140"/>
+                <Button x:Name="CsNo" DockPanel.Dock="Right" Style="{StaticResource Btn}" Content="Нет" Padding="22,10" Margin="0,0,10,0"/>
                 <TextBlock/>
               </DockPanel>
             </StackPanel>
