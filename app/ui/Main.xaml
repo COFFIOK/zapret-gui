@@ -1327,7 +1327,7 @@
                       <Button x:Name="LanCreate" Style="{StaticResource AccentBtn}" Content="Создать комнату" Padding="22,12" Margin="0,16,0,0"/>
                       <TextBlock Text="Или войти по коду друга" FontSize="13" Margin="0,22,0,6"/>
                       <DockPanel>
-                        <Button x:Name="LanJoin" DockPanel.Dock="Right" Style="{StaticResource AccentBtn}" Content="Войти" Padding="22,0" Margin="8,0,0,0"/>
+                        <Button x:Name="LanJoin" DockPanel.Dock="Right" Style="{StaticResource Btn}" Content="Войти" Padding="22,0" Margin="8,0,0,0"/>
                         <Border Background="#22262F" BorderBrush="#2E3340" BorderThickness="2" Height="44">
                           <Grid>
                             <TextBlock x:Name="LanCodeHint" Text="например K7M4-QX2D-P9WA" Foreground="#5A6070" FontSize="13" Margin="12,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
@@ -1345,6 +1345,7 @@
                         </Border>
                         <DockPanel Margin="0,10,0,0">
                           <TextBlock x:Name="LanLog" DockPanel.Dock="Right" Text="Журнал" Foreground="#7FE8B8" FontSize="12" Cursor="Hand" VerticalAlignment="Center"/>
+                          <TextBlock x:Name="LanEtVer" DockPanel.Dock="Right" Foreground="{StaticResource Muted}" FontSize="11.5" VerticalAlignment="Center" Margin="0,0,14,0"/>
                           <Button x:Name="LanReinstall" Style="{StaticResource Btn}" Content="Перекачать EasyTier" Padding="14,8" HorizontalAlignment="Left"/>
                         </DockPanel>
                       </StackPanel>
@@ -1355,15 +1356,17 @@
                       <Border Background="#1B3329" BorderBrush="#2D5A47" BorderThickness="2" Padding="16,10,10,10">
                         <DockPanel>
                           <Button x:Name="LanCopy" DockPanel.Dock="Right" Style="{StaticResource Btn}" Content="Копировать" Padding="14,8"/>
-                          <TextBlock x:Name="LanRoomCode" FontFamily="Consolas" FontSize="24" FontWeight="Bold" Foreground="#3DDC97" VerticalAlignment="Center"/>
+                          <TextBlock x:Name="LanRoomCode" FontFamily="Consolas" FontSize="24" FontWeight="Bold" Foreground="#3DDC97" VerticalAlignment="Center" Cursor="Hand" ToolTip="Нажми, чтобы скопировать"/>
                         </DockPanel>
                       </Border>
                       <TextBlock Text="Твой адрес в сети" FontSize="13" Margin="0,18,0,2"/>
                       <TextBlock x:Name="LanMyIp" FontFamily="Consolas" FontSize="26" FontWeight="Bold" Foreground="#3DDC97" Cursor="Hand" ToolTip="Нажми, чтобы скопировать" HorizontalAlignment="Left"/>
                       <TextBlock Text="Если ты хост игры — друзья подключаются к этому адресу." Foreground="{StaticResource Muted}" FontSize="12" TextWrapping="Wrap" Margin="0,2,0,0"/>
-                      <TextBlock Text="В комнате" FontSize="13" Margin="0,18,0,8"/>
+                      <TextBlock x:Name="LanPeersTitle" Text="В комнате" FontSize="13" Margin="0,18,0,8"/>
                       <StackPanel x:Name="LanPeers"/>
                       <Button x:Name="LanLeave" Style="{StaticResource Btn}" Content="Выйти из комнаты" Padding="22,12" Margin="0,12,0,0"/>
+                      <TextBlock Text="Сеть работает, пока Zapret открыт — можно закрыть это окно или свернуть Zapret в трей." Foreground="{StaticResource Muted}" FontSize="11.5" TextWrapping="Wrap" Margin="0,12,0,0"/>
+                      <TextBlock x:Name="LanLog2" Text="Журнал" Foreground="#7FE8B8" FontSize="12" Cursor="Hand" Margin="0,8,0,0" HorizontalAlignment="Left"/>
                     </StackPanel>
                   </StackPanel>
                 </ScrollViewer>

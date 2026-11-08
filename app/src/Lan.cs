@@ -58,6 +58,36 @@ namespace ZapretCS
         public static string NetSecret(string code) { return Hash("secret:" + code); }
     }
 
+    // задание Windows: дочерние процессы закрываются вместе с Zapret, даже если он упал
+    static class Job
+    {
+        [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)] static extern IntPtr CreateJobObject(IntPtr a, string name);
+        [System.Runtime.InteropServices.DllImport("kernel32.dll")] static extern bool SetInformationJobObject(IntPtr job, int cls, ref ExtLimit info, int len);
+        [System.Runtime.InteropServices.DllImport("kernel32.dll")] static extern bool AssignProcessToJobObject(IntPtr job, IntPtr proc);
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        struct BasicLimit { public long PerProcessUserTimeLimit, PerJobUserTimeLimit; public uint LimitFlags; public UIntPtr MinimumWorkingSetSize, MaximumWorkingSetSize; public uint ActiveProcessLimit; public UIntPtr Affinity; public uint PriorityClass, SchedulingClass; }
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        struct IoCounters { public ulong a, b, c, d, e, f; }
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        struct ExtLimit { public BasicLimit Basic; public IoCounters Io; public UIntPtr ProcessMemoryLimit, JobMemoryLimit, PeakProcessMemoryUsed, PeakJobMemoryUsed; }
+        static IntPtr handle;
+        public static void Add(Process p)
+        {
+            try
+            {
+                if (handle == IntPtr.Zero)
+                {
+                    handle = CreateJobObject(IntPtr.Zero, null);
+                    var info = new ExtLimit();
+                    info.Basic.LimitFlags = 0x2000;   // JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+                    SetInformationJobObject(handle, 9, ref info, System.Runtime.InteropServices.Marshal.SizeOf(typeof(ExtLimit)));
+                }
+                AssignProcessToJobObject(handle, p.Handle);
+            }
+            catch { }
+        }
+    }
+
     class LanPeer { public string Nick, Ip, Cost, Lat; public bool Local; }
 
     // ---------- EasyTier: скачать, запустить, спросить список ----------
@@ -128,6 +158,7 @@ namespace ZapretCS
         static Process proc;
         static StreamWriter log;
         static readonly object logLock = new object();
+        static long logBytes;
         public static bool Running { get { try { return proc != null && !proc.HasExited; } catch { return false; } } }
 
         public static void Start(string code, string nick, string nodes)
@@ -143,6 +174,8 @@ namespace ZapretCS
             args.Append(" --hostname ").Append(Q(nick));
             args.Append(" --rpc-portal ").Append(Rpc);
             args.Append(" --dev-name ZapretLAN");
+            // слушаем только TCP и UDP: этого хватает для прямой связи, а лишние протоколы (faketcp) ставят драйвер и занимают порты
+            args.Append(" -l tcp://0.0.0.0:11010,udp://0.0.0.0:11010");
             var psi = new ProcessStartInfo(Core, args.ToString())
             {
                 WorkingDirectory = Dir, UseShellExecute = false, CreateNoWindow = true,
@@ -150,9 +183,24 @@ namespace ZapretCS
                 StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8
             };
             proc = new Process { StartInfo = psi };
-            DataReceivedEventHandler w = (s, e) => { if (e.Data != null && log != null) lock (logLock) { try { log.WriteLine(e.Data); } catch { } } };
+            logBytes = 0;
+            DataReceivedEventHandler w = (s, e) =>
+            {
+                if (e.Data == null || log == null) return;
+                lock (logLock)
+                {
+                    try
+                    {
+                        // журнал не больше ~2 МБ: при обрывах EasyTier пишет одно и то же сотнями строк
+                        if (logBytes > 2000000) { if (logBytes < 2000100) { log.WriteLine("… журнал обрезан"); logBytes = 2000200; } return; }
+                        log.WriteLine(e.Data); logBytes += e.Data.Length + 2;
+                    }
+                    catch { }
+                }
+            };
             proc.OutputDataReceived += w; proc.ErrorDataReceived += w;
             proc.Start();
+            Job.Add(proc);                      // если Zapret упадёт, Windows сама закроет и EasyTier
             proc.BeginOutputReadLine(); proc.BeginErrorReadLine();
             AllowFirewall();
         }
@@ -167,6 +215,15 @@ namespace ZapretCS
             lock (logLock) { try { if (log != null) log.Dispose(); } catch { } log = null; }
         }
 
+        // «tcp://1.2.3.4:11010» и т.п.; null — всё верно, иначе — что не так
+        public static string CheckNodes(string nodes)
+        {
+            if (string.IsNullOrWhiteSpace(nodes)) return null;
+            foreach (var n in nodes.Split(new[] { ',', ';', ' ', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries))
+                if (!Regex.IsMatch(n.Trim(), @"^(tcp|udp|ws|wss|quic|wg)://[^\s/:]+:\d{1,5}/?$", RegexOptions.IgnoreCase)) return n.Trim();
+            return null;
+        }
+
         static string Q(string s) { return "\"" + (s ?? "").Replace("\"", "") + "\""; }
 
         // Windows считает новую сеть «общественной» и закрывает порты игр — разрешаем входящие из адресов игровой сети
@@ -178,10 +235,13 @@ namespace ZapretCS
                 {
                     Run("netsh", "advfirewall firewall delete rule name=\"Zapret LAN\"", 8000);
                     Run("netsh", "advfirewall firewall add rule name=\"Zapret LAN\" dir=in action=allow remoteip=10.126.126.0/24 enable=yes profile=any", 8000);
+                    Run("netsh", "advfirewall firewall add rule name=\"Zapret LAN\" dir=in action=allow program=\"" + Core + "\" enable=yes profile=any", 8000);
                 }
                 catch { }
             });
         }
+
+        public static void RemoveFirewall() { try { Run("netsh", "advfirewall firewall delete rule name=\"Zapret LAN\"", 8000); } catch { } }
 
         static string Run(string exe, string args, int ms)
         {
@@ -195,6 +255,7 @@ namespace ZapretCS
         }
 
         // список участников; null — EasyTier ещё не отвечает
+        public static int NodesSeen;   // сколько узлов поиска видно (при последнем опросе)
         public static List<LanPeer> Peers()
         {
             string o = Run(Cli, "-p " + Rpc + " -o json peer list", 4000);
@@ -205,6 +266,7 @@ namespace ZapretCS
             var d0 = root as Dictionary<string, object>;
             if (d0 != null && d0.ContainsKey("result")) root = d0["result"];
             var list = new List<LanPeer>();
+            int nodes = 0;
             var e = root as IEnumerable;
             if (e == null) return list;
             foreach (var x in e)
@@ -214,9 +276,10 @@ namespace ZapretCS
                 var p = new LanPeer { Ip = S(d, "ipv4"), Nick = S(d, "hostname"), Cost = S(d, "cost"), Lat = S(d, "lat_ms") };
                 if (p.Ip == "") { string cidr = S(d, "cidr"); int k = cidr.IndexOf('/'); p.Ip = k > 0 ? cidr.Substring(0, k) : cidr; }
                 p.Local = p.Cost == "Local";
-                if (!p.Local && p.Ip == "") continue;   // общий узел, не игрок
+                if (!p.Local && p.Ip == "") { nodes++; continue; }   // узел поиска, не игрок
                 list.Add(p);
             }
+            NodesSeen = nodes;
             return list;
         }
         static string S(Dictionary<string, object> d, string k) { object v; return d.TryGetValue(k, out v) && v != null ? Convert.ToString(v, CultureInfo.InvariantCulture) : ""; }
@@ -232,7 +295,7 @@ namespace ZapretCS
         void WireLan()
         {
             LanEt.Dir = System.IO.Path.Combine(InHome ? HomeDir : GuiDir, "easytier");
-            lanTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+            lanTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
             lanTimer.Tick += (s, e) => LanPoll();
 
             Btn("LanBtn").Click += (s, e) => Safe(OpenLan);
@@ -243,6 +306,7 @@ namespace ZapretCS
             Btn("LanLeave").Click += (s, e) => Safe(LanLeave);
             Btn("LanCopy").Click += (s, e) => Safe(() => { LanCopyText(lanCode); LanStatus("Код скопирован — отправь его друзьям", "#3DDC97"); });
             Btn("LanReinstall").Click += (s, e) => Safe(LanReinstall);
+            E<TextBlock>("LanRoomCode").MouseLeftButtonUp += (s, e) => { LanCopyText(lanCode); LanStatus("Код скопирован — отправь его друзьям", "#3DDC97"); };
 
             var nick = E<TextBox>("LanNick"); var code = E<TextBox>("LanCode"); var nodes = E<TextBox>("LanNodes");
             nick.Text = S.Str("lanNick", S.Str("fbNick", Environment.UserName));
@@ -261,7 +325,9 @@ namespace ZapretCS
                 more.Text = Translate.T(open ? "Дополнительно ▴" : "Дополнительно ▾");
                 if (open) { p.Opacity = 0; Anim.D(p, Anim.OP, 1, 200, 0); }
             };
-            E<TextBlock>("LanLog").MouseLeftButtonUp += (s, e) => { try { Process.Start("notepad.exe", "\"" + LanEt.LogFile + "\""); } catch { } };
+            MouseButtonEventHandler openLog = (s, e) => { try { if (File.Exists(LanEt.LogFile)) Process.Start("notepad.exe", "\"" + LanEt.LogFile + "\""); else Toast("Журнала пока нет — он появится после первого подключения"); } catch { } };
+            E<TextBlock>("LanLog").MouseLeftButtonUp += openLog;
+            E<TextBlock>("LanLog2").MouseLeftButtonUp += openLog;
             E<TextBlock>("LanMyIp").MouseLeftButtonUp += (s, e) =>
             {
                 string ip = E<TextBlock>("LanMyIp").Text;
@@ -270,7 +336,7 @@ namespace ZapretCS
 
             // выход из Zapret — сеть выключается (закрытие в трей сеть не трогает)
             Win.Closed += (s, e) => { try { LanEt.Stop(); } catch { } };
-            LanStatus(LanEt.Installed ? "Готово к подключению" : "EasyTier скачается при первом подключении (≈15 МБ)", "#8A90A0");
+            LanStatus(LanEt.Installed ? "Готово к подключению" : "EasyTier скачается при первом подключении (≈30 МБ)", "#8A90A0");
             LanShowRoom(false, false);
         }
 
@@ -279,8 +345,11 @@ namespace ZapretCS
             // тексты ставим при открытии: перевод интерфейса при запуске сбрасывает пустые поля
             var nick = E<TextBox>("LanNick");
             if (nick.Text.Trim() == "") nick.Text = S.Str("lanNick", S.Str("fbNick", Environment.UserName));
-            if (lanCode == null && !lanBusy) LanStatus(LanEt.Installed ? "Готово к подключению" : "EasyTier скачается при первом подключении (≈15 МБ)", "#8A90A0");
+            if (lanCode == null && !lanBusy) LanStatus(LanEt.Installed ? "Готово к подключению" : "EasyTier скачается при первом подключении (≈30 МБ)", "#8A90A0");
             OpenOverlay("Lan");
+            if (lanCode != null) LanPoll();
+            var ver = S.Str("lanEtVer", "");
+            E<TextBlock>("LanEtVer").Text = ver == "" ? "" : "EasyTier " + ver;
         }
 
         void LanJoinTyped()
@@ -296,6 +365,8 @@ namespace ZapretCS
             string nick = Regex.Replace(E<TextBox>("LanNick").Text.Trim(), @"[^\p{L}\p{Nd}_\-\. ]", "");
             if (nick == "") { LanStatus("Впиши ник", "#FF5E62"); E<TextBox>("LanNick").Focus(); return; }
             string nodes = E<TextBox>("LanNodes").Text.Trim();
+            string bad = LanEt.CheckNodes(nodes);
+            if (bad != null) { LanStatus("Узел записан неверно: " + bad + " — нужно как tcp://1.2.3.4:11010", "#FF5E62"); return; }
             S.Set("lanNick", nick); S.Set("lanNodes", nodes); S.Save();
             lanBusy = true;
             LanStatus("Подготовка…", "#FFB547");
@@ -303,7 +374,7 @@ namespace ZapretCS
             {
                 try
                 {
-                    if (!LanEt.Installed) LanEt.Install(m => Win.Dispatcher.BeginInvoke(new Action(() => LanStatus(m, "#FFB547"))));
+                    if (!LanEt.Installed) { string v = LanEt.Install(m => Win.Dispatcher.BeginInvoke(new Action(() => LanStatus(m, "#FFB547")))); S.Set("lanEtVer", v); }
                     LanEt.Start(c, nick, nodes);
                     Win.Dispatcher.BeginInvoke(new Action(() =>
                     {
@@ -318,6 +389,7 @@ namespace ZapretCS
                         lanStarted = DateTime.Now;
                         LanStatus("Подключаюсь…", "#FFB547");
                         lanTimer.Start();
+                        LanPoll();
                     }));
                 }
                 catch (Exception ex)
@@ -347,6 +419,7 @@ namespace ZapretCS
                 try
                 {
                     string v = LanEt.Install(m => Win.Dispatcher.BeginInvoke(new Action(() => LanStatus(m, "#FFB547"))));
+                    S.Set("lanEtVer", v); S.Save();
                     Win.Dispatcher.BeginInvoke(new Action(() => { lanBusy = false; LanStatus("EasyTier " + v + " готов", "#3DDC97"); }));
                 }
                 catch (Exception ex) { Win.Dispatcher.BeginInvoke(new Action(() => { lanBusy = false; LanStatus("Не получилось: " + ex.Message, "#FF5E62"); })); }
@@ -359,7 +432,7 @@ namespace ZapretCS
             if (!LanEt.Running)
             {
                 lanTimer.Stop();
-                LanStatus("EasyTier остановился — открой «журнал» в «Дополнительно»", "#FF5E62");
+                LanStatus("EasyTier остановился — нажми «Журнал»", "#FF5E62");
                 return;
             }
             // окно в трее или свёрнуто — список не нужен, сеть работает и так
@@ -376,13 +449,16 @@ namespace ZapretCS
         void LanRender(List<LanPeer> list)
         {
             double secs = (DateTime.Now - lanStarted).TotalSeconds;
-            if (list == null) { LanStatus(secs > 20 ? "EasyTier не отвечает — открой «журнал» в «Дополнительно»" : "Подключаюсь…", "#FFB547"); return; }
+            if (list == null) { LanStatus(secs > 20 ? "EasyTier не отвечает — нажми «Журнал»" : "Подключаюсь…", "#FFB547"); return; }
             var me = list.FirstOrDefault(p => p.Local);
             bool hasIp = me != null && Regex.IsMatch(me.Ip ?? "", @"^\d+\.\d+\.\d+\.\d+$");
             E<TextBlock>("LanMyIp").Text = hasIp ? me.Ip : "…";
             var others = list.Where(p => !p.Local).ToList();
-            if (!hasIp) LanStatus(secs > 30 ? "Нет связи с узлами поиска — открой «журнал» в «Дополнительно»" : "Получаю адрес в сети…", "#FFB547");
-            else LanStatus(others.Count == 0 ? "В сети · ждём друзей" : "В сети · друзей: " + others.Count, "#3DDC97");
+            bool node = LanEt.NodesSeen > 0;
+            if (hasIp) LanStatus(others.Count == 0 ? "В сети · ждём друзей" : "В сети · друзей: " + others.Count, "#3DDC97");
+            else if (node) LanStatus("Связь с узлом есть · ждём друзей", "#3DDC97");     // адрес может появиться, когда войдёт первый друг
+            else LanStatus(secs > 30 ? "Нет связи с узлами поиска — нажми «Журнал»" : "Ищу узлы поиска…", "#FFB547");
+            E<TextBlock>("LanPeersTitle").Text = Translate.T("В комнате") + (others.Count > 0 ? " · " + others.Count : "");
 
             var panel = E<StackPanel>("LanPeers");
             panel.Children.Clear();

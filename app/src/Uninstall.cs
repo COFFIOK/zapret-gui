@@ -86,7 +86,7 @@ namespace ZapretCS
             string home = HomeDir, root = ZapretCore.Root, strategy = S.Str("strategy");
             bool rootInside = ZapretInsideHome;
             try { StopTg(); } catch { }
-            try { LanEt.Stop(); } catch { }
+            try { LanEt.Stop(); LanEt.RemoveFirewall(); } catch { }
             string kept = null;
             Background(() =>
             {
