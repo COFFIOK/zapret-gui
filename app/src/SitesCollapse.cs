@@ -173,6 +173,15 @@ namespace ZapretCS
                 colR.Width = new GridLength(0);
             }
             SetWideLayout(mode == 1);
+            // компакт ниже по высоте: убираем подсказку под статусом и сжимаем отступы,
+            // чтобы карточка Telegram с кнопками не наезжала на «Тест стратегий» (кнопку включения не масштабируем — пиксели остаются ровными)
+            bool c = mode == 2;
+            var lbl = E<StackPanel>("ControlsBlock").Children[0] as FrameworkElement;
+            if (lbl != null && mode != 1) lbl.Margin = new Thickness(2, c ? 12 : 26, 0, 6);
+            E<TextBlock>("StatusText").Margin = new Thickness(0, c ? 6 : 10, 0, 0);
+            El("SubText").Visibility = c ? Visibility.Collapsed : Visibility.Visible;
+            E<Border>("TgCard").Margin = new Thickness(0, c ? 10 : 16, 0, 0);
+            E<Border>("SitesFoot").Margin = new Thickness(0, c ? 8 : 12, 0, 0);
             El("TitleVer").Visibility = mode == 2 ? Visibility.Collapsed : Visibility.Visible;
             Btn("CompactBtn").ToolTip = Translate.T(mode == 2 ? "Обычный вид" : "Компактный вид");
             E<System.Windows.Shapes.Path>("CompactIcon").Data = (Geometry)Win.FindResource(mode == 2 ? "PxExpandWin" : "PxCompactWin");
@@ -234,10 +243,11 @@ namespace ZapretCS
             if (!crossing) { movers.AddRange(swappers); swappers.Clear(); }
             var all = new List<FrameworkElement>(movers); all.AddRange(swappers);
 
-            var first = new List<Point>();
-            if (anim) { area.UpdateLayout(); foreach (var el in movers) { ResetFlip(el); first.Add(PosIn(el, area)); } }
+            var first = new List<Rect>();
+            if (anim) { area.UpdateLayout(); foreach (var el in movers) { ResetFlip(el); first.Add(BoundsIn(el, area)); } }
             FrameworkElement leaving = (FrameworkElement)(old == 0 ? El("SitesCard") : old == 1 ? El("SitesStrip") : El("SitesFoot"));
             Image ghost = anim ? Ghost(leaving, layer, area) : null;
+            Image subGhost = anim && mode == 2 ? Ghost(E<TextBlock>("SubText"), layer, area) : null;
             Image[] swapGhosts = new Image[swappers.Count];
             if (anim) for (int i = 0; i < swappers.Count; i++) { ResetFlip(swappers[i]); swapGhosts[i] = Ghost(swappers[i], layer, area); }
 
@@ -272,6 +282,8 @@ namespace ZapretCS
                 if (old == 2) Anim.D(gt, Anim.TY, 10, 200, 0, ease: Anim.Ease());
                 else Anim.D(gt, Anim.TX, 22, 200, 0, ease: Anim.Ease());
             }
+            if (subGhost != null) Anim.D(subGhost, Anim.OP, 0, 150, 1);
+            if (old == 2) { var sub = El("SubText"); sub.Opacity = 0; Anim.D(sub, Anim.OP, 1, 260, 0, begin: moveBegin + moveMs - 160); }
             // версия в заголовке тает, а не пропадает рывком
             if (mode == 2 || old == 2)
             {
@@ -284,13 +296,23 @@ namespace ZapretCS
             for (int i = 0; i < movers.Count; i++)
             {
                 var el = movers[i];
-                var now = PosIn(el, area);
-                double dx = first[i].X - now.X, dy = first[i].Y - now.Y;
-                if (Math.Abs(dx) < 0.5 && Math.Abs(dy) < 0.5) continue;
+                var now = BoundsIn(el, area);
+                // сдвиг считается в собственных координатах блока (у кнопки включения в компакте свой масштаб)
+                var lt = el.LayoutTransform as ScaleTransform;
+                double ls = lt != null && lt.ScaleX > 0 ? lt.ScaleX : 1;
+                double dx = (first[i].X - now.X) / ls, dy = (first[i].Y - now.Y) / ls;
+                double k = now.Width > 1 ? first[i].Width / now.Width : 1;
+                if (Math.Abs(dx) < 0.5 && Math.Abs(dy) < 0.5 && Math.Abs(k - 1) < 0.01) continue;
                 var t = FlipT(el);
                 t.X = dx; t.Y = dy;
                 Anim.D(t, Anim.TX, 0, moveMs, dx, begin: moveBegin, ease: ease);
                 Anim.D(t, Anim.TY, 0, moveMs, dy, begin: moveBegin, ease: ease);
+                if (Math.Abs(k - 1) >= 0.01)
+                {
+                    var sc = flipSs[el]; sc.ScaleX = k; sc.ScaleY = k;
+                    Anim.D(sc, Anim.SX, 1, moveMs, k, begin: moveBegin, ease: ease);
+                    Anim.D(sc, Anim.SY, 1, moveMs, k, begin: moveBegin, ease: ease);
+                }
             }
             // перепроявление: старый вид тает на месте снимком, новый проявляется уже на новом месте с лёгким сдвигом
             for (int i = 0; i < swappers.Count; i++)
@@ -340,15 +362,19 @@ namespace ZapretCS
 
         // ===== помощники =====
         readonly Dictionary<FrameworkElement, TranslateTransform> flipTs = new Dictionary<FrameworkElement, TranslateTransform>();
+        readonly Dictionary<FrameworkElement, ScaleTransform> flipSs = new Dictionary<FrameworkElement, ScaleTransform>();
         TranslateTransform FlipT(FrameworkElement el)
         {
             TranslateTransform t;
             if (flipTs.TryGetValue(el, out t)) return t;
             t = new TranslateTransform();
+            var sc = new ScaleTransform();
+            var g = new TransformGroup();
             var cur = el.RenderTransform;
-            if (cur == null || (cur.Value.IsIdentity && !(cur is TransformGroup))) el.RenderTransform = t;
-            else { var g = new TransformGroup(); g.Children.Add(cur); g.Children.Add(t); el.RenderTransform = g; }
-            flipTs[el] = t;
+            if (cur != null && !(cur.Value.IsIdentity && !(cur is TransformGroup))) g.Children.Add(cur);
+            g.Children.Add(sc); g.Children.Add(t);   // масштаб от левого верхнего угла, потом сдвиг
+            el.RenderTransform = g;
+            flipTs[el] = t; flipSs[el] = sc;
             return t;
         }
         void ResetFlip(FrameworkElement el)
@@ -357,6 +383,13 @@ namespace ZapretCS
             if (!flipTs.TryGetValue(el, out t)) return;
             t.BeginAnimation(TranslateTransform.XProperty, null); t.BeginAnimation(TranslateTransform.YProperty, null);
             t.X = 0; t.Y = 0;
+            var sc = flipSs[el];
+            sc.BeginAnimation(ScaleTransform.ScaleXProperty, null); sc.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+            sc.ScaleX = 1; sc.ScaleY = 1;
+        }
+        static Rect BoundsIn(FrameworkElement el, Visual root)
+        {
+            try { return el.TransformToAncestor(root).TransformBounds(new Rect(0, 0, el.ActualWidth, el.ActualHeight)); } catch { return new Rect(); }
         }
         static Point PosIn(FrameworkElement el, Visual root)
         {

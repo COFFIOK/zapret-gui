@@ -528,7 +528,7 @@
             <!-- логотип приложения с точкой состояния (зелёная — zapret работает) -->
             <Grid Width="24" Height="24" Margin="0,0,10,0" VerticalAlignment="Center">
               <Image x:Name="TitleLogo" Width="24" Height="24" RenderOptions.BitmapScalingMode="HighQuality"/>
-              <Rectangle x:Name="TitleDot" Width="8" Height="8" Fill="#5A6070" Stroke="#121419" StrokeThickness="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-3,-3"/>
+              <Rectangle x:Name="TitleDot" Width="8" Height="8" Fill="#5A6070" Stroke="#121419" StrokeThickness="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-1,-1"/>
             </Grid>
             <TextBlock Text="ZAPRET" Style="{StaticResource PxText}" FontSize="22.22" VerticalAlignment="Center" Margin="0,0,0,2"/>
             <TextBlock x:Name="TitleVer" Text="" Foreground="{StaticResource Muted}" FontSize="12" Margin="10,1,0,0" VerticalAlignment="Center"/>
@@ -578,6 +578,7 @@
             <StackPanel x:Name="CenterStack" VerticalAlignment="Center">
               <StackPanel.RenderTransform><TranslateTransform x:Name="CenterStackT"/></StackPanel.RenderTransform>
               <Button x:Name="PowerBtn" Width="200" Height="200" Cursor="Hand" HorizontalAlignment="Center" Focusable="False">
+                <Button.LayoutTransform><ScaleTransform x:Name="PowerSize"/></Button.LayoutTransform>
                 <Button.Template>
                   <ControlTemplate TargetType="Button"><ContentPresenter/></ControlTemplate>
                 </Button.Template>
