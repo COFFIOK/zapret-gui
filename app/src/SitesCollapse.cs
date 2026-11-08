@@ -436,7 +436,7 @@ namespace ZapretCS
             After(delay, () =>
             {
                 if (!widenedForOverlay || viewMode != 2) { widenedForOverlay = false; return; }
-                foreach (var n in new[] { "AuOverlay", "MigOverlay", "SettingsOverlay", "TestOverlay", "ShareOverlay", "FbOverlay", "UninstOverlay", "CloseOverlay", "QrOverlay", "CsOverlay" })
+                foreach (var n in new[] { "AuOverlay", "MigOverlay", "SettingsOverlay", "TestOverlay", "ShareOverlay", "FbOverlay", "UninstOverlay", "CloseOverlay", "QrOverlay", "CsOverlay", "LanOverlay" })
                 {
                     var el = Win.FindName(n) as UIElement;
                     if (el != null && el.Visibility == Visibility.Visible) return;

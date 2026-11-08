@@ -32,7 +32,7 @@ namespace ZapretCS
             {
                 if (S.Str("statsConsent", "") != "") return;
                 bool busy = !Win.IsVisible || Win.WindowState == WindowState.Minimized;
-                foreach (var n in new[] { "AuOverlay", "MigOverlay", "SettingsOverlay", "TestOverlay", "ShareOverlay", "FbOverlay", "UninstOverlay", "CloseOverlay", "QrOverlay" })
+                foreach (var n in new[] { "AuOverlay", "MigOverlay", "SettingsOverlay", "TestOverlay", "ShareOverlay", "FbOverlay", "UninstOverlay", "CloseOverlay", "QrOverlay", "LanOverlay" })
                 {
                     var el = Win.FindName(n) as UIElement;
                     if (el != null && el.Visibility == Visibility.Visible) { busy = true; break; }

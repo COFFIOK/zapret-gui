@@ -20,6 +20,7 @@
     <!-- пиксельные значки (клетка 2 px) -->
     <Geometry x:Key="PxX">M0,0h2v2h-2z M2,2h2v2h-2z M4,4h2v2h-2z M6,6h2v2h-2z M8,8h2v2h-2z M8,0h2v2h-2z M6,2h2v2h-2z M2,6h2v2h-2z M0,8h2v2h-2z</Geometry>
     <Geometry x:Key="PxMin">M0,8h10v2h-10z</Geometry>
+    <Geometry x:Key="PxNet">M6,0h4v4h-4z M7,4h2v3h-2z M3,7h10v2h-10z M2,9h2v2h-2z M12,9h2v2h-2z M0,11h5v5h-5z M11,11h5v5h-5z</Geometry>
     <Geometry x:Key="PxChat">M1,2h14v9h-8v2h-2v2h-2v-4h-2z M4,6h2v2h-2z M7,6h2v2h-2z M10,6h2v2h-2z</Geometry>
     <Geometry x:Key="PxGear">M4,0h2v2h2v-2h2v2h2v2h-2v2h2v2h2v2h-2v2h-2v2h2v2h-2v-2h-2v2h-2v-2h-2v2h-2v-2h2v-2h-2v-2h-2v-2h2v-2h2v-2h-2v-2h2z M6,6v4h4v-4z</Geometry>
     <Geometry x:Key="PxTick">M0,4h2v2h-2z M2,6h2v2h-2z M4,4h2v2h-2z M6,2h2v2h-2z M8,0h2v2h-2z</Geometry>
@@ -536,6 +537,12 @@
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
             <Button x:Name="CompactBtn" Style="{StaticResource TitleBtn}" Margin="0,0,4,0" ToolTip="Компактный вид">
               <Path x:Name="CompactIcon" Data="{StaticResource PxCompactWin}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="16" Height="14" Stretch="None" SnapsToDevicePixels="True"/>
+            </Button>
+            <Button x:Name="LanBtn" Style="{StaticResource TitleBtn}" Margin="0,0,4,0" ToolTip="Игровая сеть (бета)">
+              <Grid>
+                <Path Data="{StaticResource PxNet}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="16" Height="16" Stretch="None" SnapsToDevicePixels="True"/>
+                <Rectangle x:Name="LanDot" Width="8" Height="8" Fill="#3DDC97" Stroke="#121419" StrokeThickness="2" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-3,-4,0" Visibility="Collapsed"/>
+              </Grid>
             </Button>
             <Button x:Name="ChatBtn" Style="{StaticResource TitleBtn}" Margin="0,0,4,0" ToolTip="Чат с разработчиком">
               <Grid>
@@ -1278,6 +1285,88 @@
                   <Button x:Name="ShareAlt" DockPanel.Dock="Right" Style="{StaticResource Btn}" Padding="16,10" Margin="0,0,10,0" Visibility="Collapsed"/>
                   <TextBlock/>
                 </DockPanel>
+              </Grid>
+            </Border>
+          </Grid>
+        </Grid>
+
+        <!-- Игровая сеть (бета) -->
+        <Grid x:Name="LanOverlay" Grid.RowSpan="2" Visibility="Collapsed" Panel.ZIndex="40">
+          <Border x:Name="LanDim" Background="#C0090A0D" Opacity="0"/>
+          <Grid x:Name="LanPanel" Width="520" Margin="0,22" Opacity="0" RenderTransformOrigin="0.5,0.5">
+            <Grid.RenderTransform><ScaleTransform x:Name="LanScale" ScaleX="0.94" ScaleY="0.94"/></Grid.RenderTransform>
+            <Border Background="#99000000" Margin="7,7,-7,-7" IsHitTestVisible="False"/>
+            <Border Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2">
+              <Grid Margin="26,18,26,20">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <DockPanel Margin="0,0,0,14">
+                  <Button x:Name="LanClose" DockPanel.Dock="Right" VerticalAlignment="Top" Style="{StaticResource TitleBtn}"><Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
+                  <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock Text="Игровая сеть" Style="{StaticResource PxText}" FontSize="22.22"/>
+                      <Border Background="#FFB547" Padding="6,1,6,2" Margin="10,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="бета" FontSize="11" FontWeight="SemiBold" Foreground="#121419"/>
+                      </Border>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                      <Rectangle x:Name="LanStatusDot" Width="8" Height="8" Fill="#8A90A0" VerticalAlignment="Center"/>
+                      <TextBlock x:Name="LanStatus" Foreground="{StaticResource Muted}" FontSize="12" Margin="7,0,0,0" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                  </StackPanel>
+                </DockPanel>
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                  <StackPanel Margin="0,0,8,0">
+                    <!-- вне комнаты -->
+                    <StackPanel x:Name="LanIdle">
+                      <TextBlock Text="Сеть для игр с друзьями, как Хамачи: создай комнату и отправь код — друзья окажутся с тобой в одной локальной сети." Foreground="{StaticResource Muted}" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,16"/>
+                      <TextBlock Text="Твой ник" FontSize="13" Margin="0,0,0,6"/>
+                      <Border Background="#22262F" BorderBrush="#2E3340" BorderThickness="2" Height="44">
+                        <TextBox x:Name="LanNick" Background="Transparent" BorderThickness="0" Foreground="#E6E8EE" CaretBrush="#3DDC97" FontSize="13.5"
+                                 Padding="8,0" VerticalContentAlignment="Center" MaxLength="24"/>
+                      </Border>
+                      <Button x:Name="LanCreate" Style="{StaticResource AccentBtn}" Content="Создать комнату" Padding="22,12" Margin="0,16,0,0"/>
+                      <TextBlock Text="Или войти по коду друга" FontSize="13" Margin="0,22,0,6"/>
+                      <DockPanel>
+                        <Button x:Name="LanJoin" DockPanel.Dock="Right" Style="{StaticResource AccentBtn}" Content="Войти" Padding="22,0" Margin="8,0,0,0"/>
+                        <Border Background="#22262F" BorderBrush="#2E3340" BorderThickness="2" Height="44">
+                          <Grid>
+                            <TextBlock x:Name="LanCodeHint" Text="например K7M4-QX2D-P9WA" Foreground="#5A6070" FontSize="13" Margin="12,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                            <TextBox x:Name="LanCode" Background="Transparent" BorderThickness="0" Foreground="#E6E8EE" CaretBrush="#3DDC97" FontFamily="Consolas" FontSize="16" FontWeight="Bold"
+                                     Padding="8,0" VerticalContentAlignment="Center" CharacterCasing="Upper" MaxLength="20"/>
+                          </Grid>
+                        </Border>
+                      </DockPanel>
+                      <TextBlock x:Name="LanMoreBtn" Text="Дополнительно ▾" Foreground="#7FE8B8" FontSize="12" Cursor="Hand" Margin="0,20,0,0" HorizontalAlignment="Left"/>
+                      <StackPanel x:Name="LanMore" Visibility="Collapsed" Margin="0,10,0,0">
+                        <TextBlock Text="Узлы для поиска друзей через запятую, например tcp://1.2.3.4:11010. Пусто — общие узлы сообщества. У всех в комнате должны быть одинаковые." Foreground="{StaticResource Muted}" FontSize="11.5" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                        <Border Background="#22262F" BorderBrush="#2E3340" BorderThickness="2" Height="40">
+                          <TextBox x:Name="LanNodes" Background="Transparent" BorderThickness="0" Foreground="#E6E8EE" CaretBrush="#3DDC97" FontFamily="Consolas" FontSize="12.5"
+                                   Padding="8,0" VerticalContentAlignment="Center"/>
+                        </Border>
+                        <DockPanel Margin="0,10,0,0">
+                          <TextBlock x:Name="LanLog" DockPanel.Dock="Right" Text="Журнал" Foreground="#7FE8B8" FontSize="12" Cursor="Hand" VerticalAlignment="Center"/>
+                          <Button x:Name="LanReinstall" Style="{StaticResource Btn}" Content="Перекачать EasyTier" Padding="14,8" HorizontalAlignment="Left"/>
+                        </DockPanel>
+                      </StackPanel>
+                    </StackPanel>
+                    <!-- в комнате -->
+                    <StackPanel x:Name="LanRoom" Visibility="Collapsed">
+                      <TextBlock Text="Код комнаты — отправь его друзьям" FontSize="13" Margin="0,0,0,6"/>
+                      <Border Background="#1B3329" BorderBrush="#2D5A47" BorderThickness="2" Padding="16,10,10,10">
+                        <DockPanel>
+                          <Button x:Name="LanCopy" DockPanel.Dock="Right" Style="{StaticResource Btn}" Content="Копировать" Padding="14,8"/>
+                          <TextBlock x:Name="LanRoomCode" FontFamily="Consolas" FontSize="24" FontWeight="Bold" Foreground="#3DDC97" VerticalAlignment="Center"/>
+                        </DockPanel>
+                      </Border>
+                      <TextBlock Text="Твой адрес в сети" FontSize="13" Margin="0,18,0,2"/>
+                      <TextBlock x:Name="LanMyIp" FontFamily="Consolas" FontSize="26" FontWeight="Bold" Foreground="#3DDC97" Cursor="Hand" ToolTip="Нажми, чтобы скопировать" HorizontalAlignment="Left"/>
+                      <TextBlock Text="Если ты хост игры — друзья подключаются к этому адресу." Foreground="{StaticResource Muted}" FontSize="12" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                      <TextBlock Text="В комнате" FontSize="13" Margin="0,18,0,8"/>
+                      <StackPanel x:Name="LanPeers"/>
+                      <Button x:Name="LanLeave" Style="{StaticResource Btn}" Content="Выйти из комнаты" Padding="22,12" Margin="0,12,0,0"/>
+                    </StackPanel>
+                  </StackPanel>
+                </ScrollViewer>
               </Grid>
             </Border>
           </Grid>

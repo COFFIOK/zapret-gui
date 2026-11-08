@@ -92,6 +92,7 @@ namespace ZapretCS
             Step("polish", WirePolish);
             Step("perf", WirePerf);
             Step("sitesCollapse", WireSitesCollapse);
+            Step("lan", WireLan);
             // безопасность: права на папку Zapret и уборка старых временных файлов — в фоне, один раз при запуске
             Step("security", () => new System.Threading.Thread(() => { Sec.CleanTemp(); if (InHome) Sec.HardenFolder(HomeDir); }) { IsBackground = true, Priority = System.Threading.ThreadPriority.BelowNormal }.Start());
 
