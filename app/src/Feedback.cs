@@ -430,6 +430,7 @@ namespace ZapretCS
                 Win.Dispatcher.BeginInvoke(new Action(() =>
                 {
                     if (data == null) { wait.Text = Translate.T("картинка недоступна"); return; }
+                    if (fbImgCache.Count > 40) fbImgCache.Clear();   // не держим в памяти слишком много картинок
                     fbImgCache[img] = data; show(data);
                     var sv = E<ScrollViewer>("FbScroll");
                     if (sv.VerticalOffset >= sv.ScrollableHeight - 300) sv.ScrollToEnd();

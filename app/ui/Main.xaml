@@ -763,24 +763,26 @@
         </Grid>
 
         <!-- Плашка обновления приложения -->
-        <Border x:Name="AppUpdBar" Grid.Row="1" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="0,-6,0,0"
-                Background="#1B2B25" Padding="16,10" BorderBrush="#3DDC97" BorderThickness="1" Visibility="Collapsed" Opacity="0">
-          <Border.Effect><DropShadowEffect BlurRadius="0" ShadowDepth="5" Direction="315" Color="#000000" Opacity="0.6"/></Border.Effect>
-          <Border.RenderTransform><TranslateTransform x:Name="AppUpdShift" Y="-30"/></Border.RenderTransform>
-          <StackPanel>
-            <StackPanel Orientation="Horizontal">
-              <Rectangle Width="8" Height="8" Fill="#3DDC97" VerticalAlignment="Center" Margin="0,0,10,0"/>
-              <TextBlock x:Name="AppUpdText" FontSize="13" VerticalAlignment="Center" Margin="0,0,14,0"/>
-              <Button x:Name="AppUpdBtn" Style="{StaticResource AccentBtn}" Content="Обновить" Padding="14,5"/>
-              <Button x:Name="AppUpdLater" Style="{StaticResource TitleBtn}" Margin="6,0,0,0" ToolTip="Позже"><Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
-            </StackPanel>
-            <Border x:Name="AppUpdTrack" Height="4" Background="#22262F" Margin="0,8,0,0" Visibility="Collapsed">
-              <Border x:Name="AppUpdFill" Background="#3DDC97" RenderTransformOrigin="0,0.5">
-                <Border.RenderTransform><ScaleTransform x:Name="AppUpdFillS" ScaleX="0"/></Border.RenderTransform>
+        <Grid x:Name="AppUpdBar" Grid.Row="1" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="0,-6,0,0" Visibility="Collapsed" Opacity="0">
+          <Grid.RenderTransform><TranslateTransform x:Name="AppUpdShift" Y="-30"/></Grid.RenderTransform>
+          <!-- жёсткая пиксельная тень отдельным слоем: дешевле, чем эффект тени -->
+          <Border Background="#99000000" Margin="5,5,-5,-5" IsHitTestVisible="False"/>
+          <Border Background="#1B2B25" Padding="16,10" BorderBrush="#3DDC97" BorderThickness="1">
+            <StackPanel>
+              <StackPanel Orientation="Horizontal">
+                <Rectangle Width="8" Height="8" Fill="#3DDC97" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <TextBlock x:Name="AppUpdText" FontSize="13" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                <Button x:Name="AppUpdBtn" Style="{StaticResource AccentBtn}" Content="Обновить" Padding="14,5"/>
+                <Button x:Name="AppUpdLater" Style="{StaticResource TitleBtn}" Margin="6,0,0,0" ToolTip="Позже"><Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
+              </StackPanel>
+              <Border x:Name="AppUpdTrack" Height="4" Background="#22262F" Margin="0,8,0,0" Visibility="Collapsed">
+                <Border x:Name="AppUpdFill" Background="#3DDC97" RenderTransformOrigin="0,0.5">
+                  <Border.RenderTransform><ScaleTransform x:Name="AppUpdFillS" ScaleX="0"/></Border.RenderTransform>
+                </Border>
               </Border>
-            </Border>
-          </StackPanel>
-        </Border>
+            </StackPanel>
+          </Border>
+        </Grid>
 
         <!-- Панель настроек -->
         <Grid x:Name="SettingsOverlay" Grid.RowSpan="2" Visibility="Collapsed">
@@ -1005,503 +1007,523 @@
         <!-- Тест стратегий -->
         <Grid x:Name="TestOverlay" Grid.RowSpan="2" Visibility="Collapsed">
           <Border x:Name="TestDim" Background="#C0090A0D" Opacity="0"/>
-          <Border x:Name="TestPanel" Margin="26,22,26,22" Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2"
-                  Opacity="0" RenderTransformOrigin="0.5,0.5">
-            <Border.RenderTransform><ScaleTransform x:Name="TestScale" ScaleX="0.94" ScaleY="0.94"/></Border.RenderTransform>
-            <Border.Effect><DropShadowEffect BlurRadius="0" ShadowDepth="7" Direction="315" Color="#000000" Opacity="0.6"/></Border.Effect>
-            <Grid Margin="26,18,26,20">
-              <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-              </Grid.RowDefinitions>
-              <DockPanel Margin="0,0,0,14">
-                <Button x:Name="TestClose" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
-                <StackPanel>
-                  <TextBlock Text="Тест стратегий" Style="{StaticResource PxText}" FontSize="22.22"/>
-                  <TextBlock Text="Проверяю, какая стратегия лучше открывает твои сайты" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0"/>
-                </StackPanel>
-              </DockPanel>
-
-              <!-- всё видно сразу: компактная сетка без прокрутки -->
-              <StackPanel x:Name="TestSetup" Grid.Row="1">
-                <DockPanel Margin="2,0,0,6">
-                  <Button x:Name="GroupAll" DockPanel.Dock="Right" Style="{StaticResource Btn}" Padding="10,2" FontSize="11.5" Content="Снять все"/>
-                  <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="ЧТО ПРОВЕРЯТЬ" FontSize="11" FontWeight="SemiBold" Foreground="#8A90A0"/>
-                    <TextBlock x:Name="GroupCount" Foreground="#5A6070" FontSize="11" Margin="8,0,0,0"/>
+          <Grid x:Name="TestPanel" Margin="26,22,26,22" Opacity="0" RenderTransformOrigin="0.5,0.5">
+            <Grid.RenderTransform><ScaleTransform x:Name="TestScale" ScaleX="0.94" ScaleY="0.94"/></Grid.RenderTransform>
+            <!-- жёсткая пиксельная тень отдельным слоем: дешевле, чем эффект тени -->
+            <Border Background="#99000000" Margin="7,7,-7,-7" IsHitTestVisible="False"/>
+            <Border Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2">
+              <Grid Margin="26,18,26,20">
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto"/>
+                  <RowDefinition Height="Auto"/>
+                  <RowDefinition Height="Auto"/>
+                  <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <DockPanel Margin="0,0,0,14">
+                  <Button x:Name="TestClose" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
+                  <StackPanel>
+                    <TextBlock Text="Тест стратегий" Style="{StaticResource PxText}" FontSize="22.22"/>
+                    <TextBlock Text="Проверяю, какая стратегия лучше открывает твои сайты" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0"/>
                   </StackPanel>
                 </DockPanel>
-                <WrapPanel x:Name="GroupChips" ItemWidth="195" Margin="0,0,0,12"/>
-                <DockPanel Margin="2,0,0,6">
-                  <Button x:Name="StratAll" DockPanel.Dock="Right" Style="{StaticResource Btn}" Padding="10,2" FontSize="11.5" Content="Снять все"/>
-                  <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="СТРАТЕГИИ" FontSize="11" FontWeight="SemiBold" Foreground="#8A90A0"/>
-                    <TextBlock x:Name="StratCount" Foreground="#5A6070" FontSize="11" Margin="8,0,0,0"/>
-                  </StackPanel>
-                </DockPanel>
-                <ScrollViewer MaxHeight="290" VerticalScrollBarVisibility="Auto">
-                  <WrapPanel x:Name="StratChips" ItemWidth="195"/>
-                </ScrollViewer>
-              </StackPanel>
 
-              <Grid Grid.Row="2" Margin="0,14,0,12">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
-                  <TextBlock x:Name="TestStatus" FontSize="12.5" Foreground="#B8BDC9" TextTrimming="CharacterEllipsis"/>
-                  <Border Height="8" Background="#22262F" Margin="0,8,0,0" ClipToBounds="True">
-                    <Grid>
-                      <Border x:Name="TestBar" RenderTransformOrigin="0,0.5">
-                        <Border.Background>
-                          <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                            <GradientStop Color="#2BB57A" Offset="0"/>
-                            <GradientStop Color="#3DDC97" Offset="1"/>
-                          </LinearGradientBrush>
-                        </Border.Background>
-                        <Border.RenderTransform><ScaleTransform x:Name="TestBarScale" ScaleX="0"/></Border.RenderTransform>
-                      </Border>
-                      <Rectangle x:Name="TestShimmer" Width="120" HorizontalAlignment="Left" Opacity="0" IsHitTestVisible="False">
-                        <Rectangle.Fill>
-                          <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                            <GradientStop Color="#00FFFFFF" Offset="0"/>
-                            <GradientStop Color="#55FFFFFF" Offset="0.5"/>
-                            <GradientStop Color="#00FFFFFF" Offset="1"/>
-                          </LinearGradientBrush>
-                        </Rectangle.Fill>
-                        <Rectangle.RenderTransform><TranslateTransform x:Name="TestShimmerT" X="-120"/></Rectangle.RenderTransform>
-                      </Rectangle>
-                    </Grid>
-                  </Border>
+                <!-- всё видно сразу: компактная сетка без прокрутки -->
+                <StackPanel x:Name="TestSetup" Grid.Row="1">
+                  <DockPanel Margin="2,0,0,6">
+                    <Button x:Name="GroupAll" DockPanel.Dock="Right" Style="{StaticResource Btn}" Padding="10,2" FontSize="11.5" Content="Снять все"/>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                      <TextBlock Text="ЧТО ПРОВЕРЯТЬ" FontSize="11" FontWeight="SemiBold" Foreground="#8A90A0"/>
+                      <TextBlock x:Name="GroupCount" Foreground="#5A6070" FontSize="11" Margin="8,0,0,0"/>
+                    </StackPanel>
+                  </DockPanel>
+                  <WrapPanel x:Name="GroupChips" ItemWidth="195" Margin="0,0,0,12"/>
+                  <DockPanel Margin="2,0,0,6">
+                    <Button x:Name="StratAll" DockPanel.Dock="Right" Style="{StaticResource Btn}" Padding="10,2" FontSize="11.5" Content="Снять все"/>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                      <TextBlock Text="СТРАТЕГИИ" FontSize="11" FontWeight="SemiBold" Foreground="#8A90A0"/>
+                      <TextBlock x:Name="StratCount" Foreground="#5A6070" FontSize="11" Margin="8,0,0,0"/>
+                    </StackPanel>
+                  </DockPanel>
+                  <ScrollViewer MaxHeight="290" VerticalScrollBarVisibility="Auto">
+                    <WrapPanel x:Name="StratChips" ItemWidth="195"/>
+                  </ScrollViewer>
                 </StackPanel>
-                <Button x:Name="RunBtn" Grid.Column="1" Style="{StaticResource AccentBtn}" Content="Запустить тест" Padding="20,10" MinWidth="150"/>
-              </Grid>
 
-              <Grid Grid.Row="3">
-                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                <TextBlock x:Name="ResultsHead" Text="РЕЗУЛЬТАТЫ · нажми на строку, чтобы увидеть сайты" FontSize="11" FontWeight="SemiBold" Foreground="#5A6070" Margin="2,0,0,8" Visibility="Collapsed"/>
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                  <StackPanel x:Name="TestResults" Margin="0,0,6,0"/>
-                </ScrollViewer>
+                <Grid Grid.Row="2" Margin="0,14,0,12">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                  <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                    <TextBlock x:Name="TestStatus" FontSize="12.5" Foreground="#B8BDC9" TextTrimming="CharacterEllipsis"/>
+                    <Border Height="8" Background="#22262F" Margin="0,8,0,0" ClipToBounds="True">
+                      <Grid>
+                        <Border x:Name="TestBar" RenderTransformOrigin="0,0.5">
+                          <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                              <GradientStop Color="#2BB57A" Offset="0"/>
+                              <GradientStop Color="#3DDC97" Offset="1"/>
+                            </LinearGradientBrush>
+                          </Border.Background>
+                          <Border.RenderTransform><ScaleTransform x:Name="TestBarScale" ScaleX="0"/></Border.RenderTransform>
+                        </Border>
+                        <Rectangle x:Name="TestShimmer" Width="120" HorizontalAlignment="Left" Opacity="0" IsHitTestVisible="False">
+                          <Rectangle.Fill>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                              <GradientStop Color="#00FFFFFF" Offset="0"/>
+                              <GradientStop Color="#55FFFFFF" Offset="0.5"/>
+                              <GradientStop Color="#00FFFFFF" Offset="1"/>
+                            </LinearGradientBrush>
+                          </Rectangle.Fill>
+                          <Rectangle.RenderTransform><TranslateTransform x:Name="TestShimmerT" X="-120"/></Rectangle.RenderTransform>
+                        </Rectangle>
+                      </Grid>
+                    </Border>
+                  </StackPanel>
+                  <Button x:Name="RunBtn" Grid.Column="1" Style="{StaticResource AccentBtn}" Content="Запустить тест" Padding="20,10" MinWidth="150"/>
+                </Grid>
+
+                <Grid Grid.Row="3">
+                  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                  <TextBlock x:Name="ResultsHead" Text="РЕЗУЛЬТАТЫ · нажми на строку, чтобы увидеть сайты" FontSize="11" FontWeight="SemiBold" Foreground="#5A6070" Margin="2,0,0,8" Visibility="Collapsed"/>
+                  <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="TestResults" Margin="0,0,6,0"/>
+                  </ScrollViewer>
+                </Grid>
               </Grid>
-            </Grid>
-          </Border>
+            </Border>
+          </Grid>
         </Grid>
 
         <!-- Перенос настроек -->
         <Grid x:Name="MigOverlay" Grid.RowSpan="2" Visibility="Collapsed">
           <Border x:Name="MigDim" Background="#C0090A0D" Opacity="0"/>
-          <Border x:Name="MigPanel" Width="600" Margin="0,22" Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2"
-                  Opacity="0" RenderTransformOrigin="0.5,0.5">
-            <Border.RenderTransform><ScaleTransform x:Name="MigScale" ScaleX="0.94" ScaleY="0.94"/></Border.RenderTransform>
-            <Border.Effect><DropShadowEffect BlurRadius="0" ShadowDepth="7" Direction="315" Color="#000000" Opacity="0.6"/></Border.Effect>
-            <Grid Margin="26,18,26,20">
-              <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/>
-              </Grid.RowDefinitions>
-              <DockPanel Margin="0,0,0,16">
-                <Button x:Name="MigClose" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
-                <StackPanel>
-                  <TextBlock Text="Перенос настроек" Style="{StaticResource PxText}" FontSize="22.22"/>
-                  <TextBlock Text="Твои сайты, группы и настройки переедут в новую версию zapret" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0"/>
-                </StackPanel>
-              </DockPanel>
+          <Grid x:Name="MigPanel" Width="600" Margin="0,22" Opacity="0" RenderTransformOrigin="0.5,0.5">
+            <Grid.RenderTransform><ScaleTransform x:Name="MigScale" ScaleX="0.94" ScaleY="0.94"/></Grid.RenderTransform>
+            <!-- жёсткая пиксельная тень отдельным слоем: дешевле, чем эффект тени -->
+            <Border Background="#99000000" Margin="7,7,-7,-7" IsHitTestVisible="False"/>
+            <Border Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2">
+              <Grid Margin="26,18,26,20">
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <DockPanel Margin="0,0,0,16">
+                  <Button x:Name="MigClose" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
+                  <StackPanel>
+                    <TextBlock Text="Перенос настроек" Style="{StaticResource PxText}" FontSize="22.22"/>
+                    <TextBlock Text="Твои сайты, группы и настройки переедут в новую версию zapret" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0"/>
+                  </StackPanel>
+                </DockPanel>
 
-              <Grid x:Name="MigCards" Grid.Row="1" Margin="0,0,0,14">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="90"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                <Border Background="#1E2129" Padding="14,12" BorderBrush="#2A2E38" BorderThickness="2">
-                  <StackPanel>
-                    <TextBlock Text="ОТКУДА · старая" FontSize="10.5" FontWeight="SemiBold" Foreground="#5A6070" Margin="2,0,0,8"/>
-                    <ComboBox x:Name="MigFromBox"/>
+                <Grid x:Name="MigCards" Grid.Row="1" Margin="0,0,0,14">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="90"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                  <Border Background="#1E2129" Padding="14,12" BorderBrush="#2A2E38" BorderThickness="2">
+                    <StackPanel>
+                      <TextBlock Text="ОТКУДА · старая" FontSize="10.5" FontWeight="SemiBold" Foreground="#5A6070" Margin="2,0,0,8"/>
+                      <ComboBox x:Name="MigFromBox"/>
+                    </StackPanel>
+                  </Border>
+                  <Canvas Grid.Column="1" Height="10" Width="60" ClipToBounds="True" VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                      <StackPanel.RenderTransform><TranslateTransform x:Name="MigDotsT" X="-40"/></StackPanel.RenderTransform>
+                      <Rectangle Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="0.35"/>
+                      <Rectangle Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="0.6"/>
+                      <Rectangle Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="1"/>
+                      <Rectangle Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="0.35"/>
+                      <Rectangle Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="0.6"/>
+                      <Rectangle Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="1"/>
+                    </StackPanel>
+                  </Canvas>
+                  <Border Grid.Column="2" Background="#1A2621" Padding="14,12" BorderBrush="#2D5A47" BorderThickness="1">
+                    <Border.Effect><DropShadowEffect x:Name="MigToGlow" Color="#3DDC97" BlurRadius="0" ShadowDepth="0" Opacity="0.7"/></Border.Effect>
+                    <StackPanel>
+                      <TextBlock Text="КУДА · новая" FontSize="10.5" FontWeight="SemiBold" Foreground="#5A9C80" Margin="2,0,0,8"/>
+                      <ComboBox x:Name="MigToBox"/>
+                    </StackPanel>
+                  </Border>
+                </Grid>
+
+
+                <ScrollViewer x:Name="MigScroll" Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                  <StackPanel x:Name="MigSteps" Margin="0,0,6,0"/>
+                </ScrollViewer>
+                <StackPanel x:Name="MigEmpty" Grid.Row="2" Panel.ZIndex="5" VerticalAlignment="Center" HorizontalAlignment="Center" Visibility="Collapsed">
+                  <TextBlock Text="📦" FontFamily="Segoe UI Emoji" FontSize="40" HorizontalAlignment="Center"/>
+                  <TextBlock Text="Новая версия zapret не найдена" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,10,0,4"/>
+                  <TextBlock Text="Скачай новую версию и распакуй её в папку Zapret рядом с текущей. Потом открой это окно снова." Foreground="{StaticResource Muted}"
+                             FontSize="12.5" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="380"/>
+                  <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,16,0,0">
+                    <Button x:Name="MigOpenFolder" Style="{StaticResource Btn}" Content="Открыть папку Zapret" Margin="0,0,8,0"/>
+                    <Button x:Name="MigDemo" Style="{StaticResource AccentBtn}" Content="Посмотреть демо"/>
                   </StackPanel>
-                </Border>
-                <Canvas Grid.Column="1" Height="10" Width="60" ClipToBounds="True" VerticalAlignment="Center" HorizontalAlignment="Center">
-                  <StackPanel Orientation="Horizontal">
-                    <StackPanel.RenderTransform><TranslateTransform x:Name="MigDotsT" X="-40"/></StackPanel.RenderTransform>
-                    <Rectangle Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="0.35"/>
-                    <Rectangle Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="0.6"/>
-                    <Rectangle Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="1"/>
-                    <Rectangle Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="0.35"/>
-                    <Rectangle Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="0.6"/>
-                    <Rectangle Width="6" Height="6" Fill="#3DDC97" Margin="0,2,14,2" Opacity="1"/>
-                  </StackPanel>
-                </Canvas>
-                <Border Grid.Column="2" Background="#1A2621" Padding="14,12" BorderBrush="#2D5A47" BorderThickness="1">
-                  <Border.Effect><DropShadowEffect x:Name="MigToGlow" Color="#3DDC97" BlurRadius="0" ShadowDepth="0" Opacity="0.7"/></Border.Effect>
-                  <StackPanel>
-                    <TextBlock Text="КУДА · новая" FontSize="10.5" FontWeight="SemiBold" Foreground="#5A9C80" Margin="2,0,0,8"/>
-                    <ComboBox x:Name="MigToBox"/>
-                  </StackPanel>
-                </Border>
+                </StackPanel>
+
+                <DockPanel Grid.Row="3" Margin="0,14,0,0">
+                  <Button x:Name="MigRun" DockPanel.Dock="Right" Style="{StaticResource AccentBtn}" Content="Перенести" Padding="22,10" MinWidth="140"/>
+                  <TextBlock x:Name="MigDone" Text="Готово! Оригиналы файлов автора сохранены как .bak" Foreground="#7FE8B8" FontSize="12.5"
+                             VerticalAlignment="Center" Visibility="Collapsed" Opacity="0" TextWrapping="Wrap"/>
+                </DockPanel>
               </Grid>
-
-
-              <ScrollViewer x:Name="MigScroll" Grid.Row="2" VerticalScrollBarVisibility="Auto">
-                <StackPanel x:Name="MigSteps" Margin="0,0,6,0"/>
-              </ScrollViewer>
-              <StackPanel x:Name="MigEmpty" Grid.Row="2" Panel.ZIndex="5" VerticalAlignment="Center" HorizontalAlignment="Center" Visibility="Collapsed">
-                <TextBlock Text="📦" FontFamily="Segoe UI Emoji" FontSize="40" HorizontalAlignment="Center"/>
-                <TextBlock Text="Новая версия zapret не найдена" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,10,0,4"/>
-                <TextBlock Text="Скачай новую версию и распакуй её в папку Zapret рядом с текущей. Потом открой это окно снова." Foreground="{StaticResource Muted}"
-                           FontSize="12.5" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="380"/>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,16,0,0">
-                  <Button x:Name="MigOpenFolder" Style="{StaticResource Btn}" Content="Открыть папку Zapret" Margin="0,0,8,0"/>
-                  <Button x:Name="MigDemo" Style="{StaticResource AccentBtn}" Content="Посмотреть демо"/>
-                </StackPanel>
-              </StackPanel>
-
-              <DockPanel Grid.Row="3" Margin="0,14,0,0">
-                <Button x:Name="MigRun" DockPanel.Dock="Right" Style="{StaticResource AccentBtn}" Content="Перенести" Padding="22,10" MinWidth="140"/>
-                <TextBlock x:Name="MigDone" Text="Готово! Оригиналы файлов автора сохранены как .bak" Foreground="#7FE8B8" FontSize="12.5"
-                           VerticalAlignment="Center" Visibility="Collapsed" Opacity="0" TextWrapping="Wrap"/>
-              </DockPanel>
-            </Grid>
-          </Border>
+            </Border>
+          </Grid>
         </Grid>
 
         <!-- Поделиться / Вставить -->
         <Grid x:Name="ShareOverlay" Grid.RowSpan="2" Visibility="Collapsed">
           <Border x:Name="ShareDim" Background="#C0090A0D" Opacity="0"/>
-          <Border x:Name="SharePanel" Width="560" Margin="0,22" Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2"
-                  Opacity="0" RenderTransformOrigin="0.5,0.5">
-            <Border.RenderTransform><ScaleTransform x:Name="ShareScale" ScaleX="0.94" ScaleY="0.94"/></Border.RenderTransform>
-            <Border.Effect><DropShadowEffect BlurRadius="0" ShadowDepth="7" Direction="315" Color="#000000" Opacity="0.6"/></Border.Effect>
-            <Grid Margin="26,18,26,20">
-              <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-              <DockPanel Margin="0,0,0,12">
-                <Button x:Name="ShareClose" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
-                <StackPanel>
-                  <TextBlock x:Name="ShareTitle" Style="{StaticResource PxText}" FontSize="22.22"/>
-                  <TextBlock x:Name="ShareSub" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap"/>
+          <Grid x:Name="SharePanel" Width="560" Margin="0,22" Opacity="0" RenderTransformOrigin="0.5,0.5">
+            <Grid.RenderTransform><ScaleTransform x:Name="ShareScale" ScaleX="0.94" ScaleY="0.94"/></Grid.RenderTransform>
+            <!-- жёсткая пиксельная тень отдельным слоем: дешевле, чем эффект тени -->
+            <Border Background="#99000000" Margin="7,7,-7,-7" IsHitTestVisible="False"/>
+            <Border Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2">
+              <Grid Margin="26,18,26,20">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                <DockPanel Margin="0,0,0,12">
+                  <Button x:Name="ShareClose" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
+                  <StackPanel>
+                    <TextBlock x:Name="ShareTitle" Style="{StaticResource PxText}" FontSize="22.22"/>
+                    <TextBlock x:Name="ShareSub" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                  </StackPanel>
+                </DockPanel>
+                <DockPanel x:Name="ShareCountRow" Grid.Row="1" Margin="2,0,8,8">
+                  <TextBlock x:Name="ShareAll" DockPanel.Dock="Right" Text="Снять все" Foreground="#7FE8B8" FontSize="12" Cursor="Hand"/>
+                  <TextBlock x:Name="ShareCount" Foreground="{StaticResource Muted}" FontSize="12"/>
+                </DockPanel>
+                <Border x:Name="ShareListBox" Grid.Row="2" Background="#1E2129" BorderBrush="#262A33" BorderThickness="1" Padding="6">
+                  <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="ShareList" Margin="8,6,10,6"/>
+                  </ScrollViewer>
+                </Border>
+                <!-- готовый код -->
+                <StackPanel x:Name="ShareCodeView" Grid.Row="2" Visibility="Collapsed" VerticalAlignment="Center" Margin="0,0,0,10">
+                  <TextBlock Text="Код для друга" Foreground="{StaticResource Muted}" FontSize="13" HorizontalAlignment="Center"/>
+                  <Border x:Name="ShareCodeCard" Background="#1B3329" BorderBrush="#2D5A47" BorderThickness="1" Padding="34,14,34,16"
+                          HorizontalAlignment="Center" Margin="0,12,0,12" Cursor="Hand" ToolTip="Нажми, чтобы скопировать" RenderTransformOrigin="0.5,0.5">
+                    <Border.RenderTransform><ScaleTransform x:Name="ShareCodeScale"/></Border.RenderTransform>
+                    <TextBlock x:Name="ShareCodeText" FontFamily="Consolas" FontSize="44" FontWeight="Bold" Foreground="#3DDC97"/>
+                  </Border>
+                  <TextBlock x:Name="ShareCodeInfo" Foreground="{StaticResource Muted}" FontSize="12.5" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="400"/>
                 </StackPanel>
-              </DockPanel>
-              <DockPanel x:Name="ShareCountRow" Grid.Row="1" Margin="2,0,8,8">
-                <TextBlock x:Name="ShareAll" DockPanel.Dock="Right" Text="Снять все" Foreground="#7FE8B8" FontSize="12" Cursor="Hand"/>
-                <TextBlock x:Name="ShareCount" Foreground="{StaticResource Muted}" FontSize="12"/>
-              </DockPanel>
-              <Border x:Name="ShareListBox" Grid.Row="2" Background="#1E2129" BorderBrush="#262A33" BorderThickness="1" Padding="6">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                  <StackPanel x:Name="ShareList" Margin="8,6,10,6"/>
-                </ScrollViewer>
-              </Border>
-              <!-- готовый код -->
-              <StackPanel x:Name="ShareCodeView" Grid.Row="2" Visibility="Collapsed" VerticalAlignment="Center" Margin="0,0,0,10">
-                <TextBlock Text="Код для друга" Foreground="{StaticResource Muted}" FontSize="13" HorizontalAlignment="Center"/>
-                <Border x:Name="ShareCodeCard" Background="#1B3329" BorderBrush="#2D5A47" BorderThickness="1" Padding="34,14,34,16"
-                        HorizontalAlignment="Center" Margin="0,12,0,12" Cursor="Hand" ToolTip="Нажми, чтобы скопировать" RenderTransformOrigin="0.5,0.5">
-                  <Border.RenderTransform><ScaleTransform x:Name="ShareCodeScale"/></Border.RenderTransform>
-                  <TextBlock x:Name="ShareCodeText" FontFamily="Consolas" FontSize="44" FontWeight="Bold" Foreground="#3DDC97"/>
-                </Border>
-                <TextBlock x:Name="ShareCodeInfo" Foreground="{StaticResource Muted}" FontSize="12.5" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="400"/>
-              </StackPanel>
-              <!-- ввод кода -->
-              <StackPanel x:Name="ShareEnterView" Grid.Row="2" Visibility="Collapsed" VerticalAlignment="Center" Margin="0,0,0,10">
-                <TextBlock Text="Введи код, который прислал друг" FontSize="14" HorizontalAlignment="Center"/>
-                <Border x:Name="ShareCodeBoxWrap" Width="300" Height="66" Background="#22262F" BorderBrush="#2E3340" BorderThickness="1" Margin="0,14,0,10">
-                  <TextBox x:Name="ShareCodeBox" Background="Transparent" BorderThickness="0" Foreground="#E6E8EE" CaretBrush="#3DDC97"
-                           FontFamily="Consolas" FontSize="32" FontWeight="Bold" HorizontalContentAlignment="Center" VerticalAlignment="Center"
-                           CharacterCasing="Upper" MaxLength="9"/>
-                </Border>
-                <TextBlock x:Name="ShareEnterMsg" Foreground="{StaticResource Muted}" FontSize="12.5" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="400" MinHeight="18"/>
-                <TextBlock x:Name="SharePasteList" Text="Прислали список текстом? Скопируй его и нажми сюда" Foreground="#7FE8B8" FontSize="12" Cursor="Hand"
-                           HorizontalAlignment="Center" Margin="0,22,0,0"/>
-              </StackPanel>
-              <DockPanel Grid.Row="3" Margin="0,14,0,0">
-                <Button x:Name="ShareGo" DockPanel.Dock="Right" Style="{StaticResource AccentBtn}" Padding="22,10" MinWidth="150"/>
-                <Button x:Name="ShareAlt" DockPanel.Dock="Right" Style="{StaticResource Btn}" Padding="16,10" Margin="0,0,10,0" Visibility="Collapsed"/>
-                <TextBlock/>
-              </DockPanel>
-            </Grid>
-          </Border>
+                <!-- ввод кода -->
+                <StackPanel x:Name="ShareEnterView" Grid.Row="2" Visibility="Collapsed" VerticalAlignment="Center" Margin="0,0,0,10">
+                  <TextBlock Text="Введи код, который прислал друг" FontSize="14" HorizontalAlignment="Center"/>
+                  <Border x:Name="ShareCodeBoxWrap" Width="300" Height="66" Background="#22262F" BorderBrush="#2E3340" BorderThickness="1" Margin="0,14,0,10">
+                    <TextBox x:Name="ShareCodeBox" Background="Transparent" BorderThickness="0" Foreground="#E6E8EE" CaretBrush="#3DDC97"
+                             FontFamily="Consolas" FontSize="32" FontWeight="Bold" HorizontalContentAlignment="Center" VerticalAlignment="Center"
+                             CharacterCasing="Upper" MaxLength="9"/>
+                  </Border>
+                  <TextBlock x:Name="ShareEnterMsg" Foreground="{StaticResource Muted}" FontSize="12.5" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="400" MinHeight="18"/>
+                  <TextBlock x:Name="SharePasteList" Text="Прислали список текстом? Скопируй его и нажми сюда" Foreground="#7FE8B8" FontSize="12" Cursor="Hand"
+                             HorizontalAlignment="Center" Margin="0,22,0,0"/>
+                </StackPanel>
+                <DockPanel Grid.Row="3" Margin="0,14,0,0">
+                  <Button x:Name="ShareGo" DockPanel.Dock="Right" Style="{StaticResource AccentBtn}" Padding="22,10" MinWidth="150"/>
+                  <Button x:Name="ShareAlt" DockPanel.Dock="Right" Style="{StaticResource Btn}" Padding="16,10" Margin="0,0,10,0" Visibility="Collapsed"/>
+                  <TextBlock/>
+                </DockPanel>
+              </Grid>
+            </Border>
+          </Grid>
         </Grid>
 
         <!-- Чат с разработчиком -->
         <Grid x:Name="FbOverlay" Grid.RowSpan="2" Visibility="Collapsed" Panel.ZIndex="40">
           <Border x:Name="FbDim" Background="#C0090A0D" Opacity="0"/>
-          <Border x:Name="FbPanel" Width="560" Margin="0,22" Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2"
-                  Opacity="0" RenderTransformOrigin="0.5,0.5">
-            <Border.RenderTransform><ScaleTransform x:Name="FbScale" ScaleX="0.94" ScaleY="0.94"/></Border.RenderTransform>
-            <Border.Effect><DropShadowEffect BlurRadius="0" ShadowDepth="7" Direction="315" Color="#000000" Opacity="0.6"/></Border.Effect>
-            <Grid Margin="0,18,0,0">
-              <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-              <DockPanel Margin="26,0,26,12">
-                <Button x:Name="FbClose" DockPanel.Dock="Right" VerticalAlignment="Top" Style="{StaticResource TitleBtn}"><Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
-                <StackPanel>
-                  <TextBlock Text="Чат с разработчиком" Style="{StaticResource PxText}" FontSize="22.22"/>
-                  <TextBlock Text="Пиши об ошибках, идеях и вопросах — автор Zapret ответит здесь же" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap"/>
-                  <StackPanel x:Name="FbNickLine" Orientation="Horizontal" Margin="0,4,0,0" Visibility="Collapsed">
-                    <TextBlock Text="ты пишешь как" Foreground="{StaticResource Muted}" FontSize="12"/>
-                    <TextBlock x:Name="FbNickName" FontSize="12" FontWeight="SemiBold" Margin="5,0,0,0"/>
-                    <TextBlock x:Name="FbNickEdit" Text="изменить" Foreground="#3DDC97" FontSize="12" Cursor="Hand" Margin="12,0,0,0"/>
-                  </StackPanel>
-                </StackPanel>
-              </DockPanel>
-              <Border Grid.Row="1" Background="#13151B" BorderBrush="#22252D" BorderThickness="0,2,0,2">
-                <Grid>
-                  <ScrollViewer x:Name="FbScroll" VerticalScrollBarVisibility="Auto" Padding="20,14,14,14">
-                    <StackPanel x:Name="FbList"/>
-                  </ScrollViewer>
-                  <StackPanel x:Name="FbEmpty" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="380">
-                    <Path Data="{StaticResource PxChat}" Fill="#3A3F4B" Width="16" Height="16" Stretch="None" HorizontalAlignment="Center" SnapsToDevicePixels="True">
-                      <Path.LayoutTransform><ScaleTransform ScaleX="3" ScaleY="3"/></Path.LayoutTransform>
-                    </Path>
-                    <TextBlock Text="Здесь пока пусто" Style="{StaticResource PxText}" FontSize="16" HorizontalAlignment="Center" Margin="0,14,0,4"/>
-                    <TextBlock Text="Расскажи, что не работает или чего не хватает. Ответ придёт в этот чат — Zapret подскажет, когда он появится." Foreground="{StaticResource Muted}" FontSize="12" TextAlignment="Center" TextWrapping="Wrap"/>
-                  </StackPanel>
-                </Grid>
-              </Border>
-              <StackPanel Grid.Row="2" Margin="20,12,20,16">
-                <!-- сначала — ник -->
-                <StackPanel x:Name="FbNickPanel" Visibility="Collapsed">
-                  <TextBlock Text="Как к тебе обращаться?" FontSize="13" Margin="0,0,0,2"/>
-                  <TextBlock Text="Ник увидит только автор. Можно любой — не обязательно настоящее имя." Foreground="{StaticResource Muted}" FontSize="11.5" Margin="0,0,0,8" TextWrapping="Wrap"/>
-                  <DockPanel>
-                    <Button x:Name="FbNickSave" DockPanel.Dock="Right" Style="{StaticResource AccentBtn}" Content="Продолжить" Padding="18,0" Margin="8,0,0,0"/>
-                    <Border Background="#22262F" BorderBrush="#2E3340" BorderThickness="2" Height="44">
-                      <Grid>
-                        <TextBlock x:Name="FbNickHint" Text="Ник, например: Вася" Foreground="#5A6070" FontSize="13" Margin="12,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
-                        <TextBox x:Name="FbNickBox" Background="Transparent" BorderThickness="0" Foreground="#E6E8EE" CaretBrush="#3DDC97" FontSize="13"
-                                 Padding="8,0" VerticalContentAlignment="Center" MaxLength="24"/>
-                      </Grid>
-                    </Border>
-                  </DockPanel>
-                </StackPanel>
-                <!-- блокировка -->
-                <Border x:Name="FbBanPanel" Background="#2A1A1D" BorderBrush="#5A2A30" BorderThickness="2" Padding="14,10" Visibility="Collapsed">
+          <Grid x:Name="FbPanel" Width="560" Margin="0,22" Opacity="0" RenderTransformOrigin="0.5,0.5">
+            <Grid.RenderTransform><ScaleTransform x:Name="FbScale" ScaleX="0.94" ScaleY="0.94"/></Grid.RenderTransform>
+            <!-- жёсткая пиксельная тень отдельным слоем: дешевле, чем эффект тени -->
+            <Border Background="#99000000" Margin="7,7,-7,-7" IsHitTestVisible="False"/>
+            <Border Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2">
+              <Grid Margin="0,18,0,0">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                <DockPanel Margin="26,0,26,12">
+                  <Button x:Name="FbClose" DockPanel.Dock="Right" VerticalAlignment="Top" Style="{StaticResource TitleBtn}"><Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
                   <StackPanel>
-                    <TextBlock Text="Ты не можешь писать в чат" FontSize="13" FontWeight="SemiBold" Foreground="#FF8A8E"/>
-                    <TextBlock x:Name="FbBanText" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                    <TextBlock Text="Чат с разработчиком" Style="{StaticResource PxText}" FontSize="22.22"/>
+                    <TextBlock Text="Пиши об ошибках, идеях и вопросах — автор Zapret ответит здесь же" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                    <StackPanel x:Name="FbNickLine" Orientation="Horizontal" Margin="0,4,0,0" Visibility="Collapsed">
+                      <TextBlock Text="ты пишешь как" Foreground="{StaticResource Muted}" FontSize="12"/>
+                      <TextBlock x:Name="FbNickName" FontSize="12" FontWeight="SemiBold" Margin="5,0,0,0"/>
+                      <TextBlock x:Name="FbNickEdit" Text="изменить" Foreground="#3DDC97" FontSize="12" Cursor="Hand" Margin="12,0,0,0"/>
+                    </StackPanel>
                   </StackPanel>
+                </DockPanel>
+                <Border Grid.Row="1" Background="#13151B" BorderBrush="#22252D" BorderThickness="0,2,0,2">
+                  <Grid>
+                    <ScrollViewer x:Name="FbScroll" VerticalScrollBarVisibility="Auto" Padding="20,14,14,14">
+                      <StackPanel x:Name="FbList"/>
+                    </ScrollViewer>
+                    <StackPanel x:Name="FbEmpty" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="380">
+                      <Path Data="{StaticResource PxChat}" Fill="#3A3F4B" Width="16" Height="16" Stretch="None" HorizontalAlignment="Center" SnapsToDevicePixels="True">
+                        <Path.LayoutTransform><ScaleTransform ScaleX="3" ScaleY="3"/></Path.LayoutTransform>
+                      </Path>
+                      <TextBlock Text="Здесь пока пусто" Style="{StaticResource PxText}" FontSize="16" HorizontalAlignment="Center" Margin="0,14,0,4"/>
+                      <TextBlock Text="Расскажи, что не работает или чего не хватает. Ответ придёт в этот чат — Zapret подскажет, когда он появится." Foreground="{StaticResource Muted}" FontSize="12" TextAlignment="Center" TextWrapping="Wrap"/>
+                    </StackPanel>
+                  </Grid>
                 </Border>
-                <!-- обычная отправка -->
-                <StackPanel x:Name="FbComposer">
-                  <DockPanel x:Name="FbAttachRow" Margin="0,0,0,8" Visibility="Collapsed">
-                    <Border BorderBrush="#2E3340" BorderThickness="2" DockPanel.Dock="Left">
-                      <Image x:Name="FbAttachImg" MaxHeight="64" MaxWidth="120" Stretch="Uniform"/>
-                    </Border>
-                    <TextBlock x:Name="FbAttachDel" Text="убрать" Foreground="#3DDC97" FontSize="12" Cursor="Hand" VerticalAlignment="Center" Margin="12,0,0,0"/>
-                  </DockPanel>
-                  <DockPanel Margin="0,0,0,8">
-                    <CheckBox x:Name="FbLog" DockPanel.Dock="Right" Style="{StaticResource Toggle}" VerticalAlignment="Center" IsChecked="True"/>
-                    <TextBlock x:Name="FbLogText" Text="журнал" DockPanel.Dock="Right" Foreground="{StaticResource Muted}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"
-                               ToolTip="Приложить последние записи журнала работы — без имени пользователя и путей. Помогает найти ошибку."/>
-                    <WrapPanel VerticalAlignment="Center">
-                      <RadioButton x:Name="FbKindBug" GroupName="FbKind" Style="{StaticResource Chip}" Content="Ошибка" IsChecked="True" Margin="0,0,6,0"/>
-                      <RadioButton x:Name="FbKindIdea" GroupName="FbKind" Style="{StaticResource Chip}" Content="Идея" Margin="0,0,6,0"/>
-                      <RadioButton x:Name="FbKindOther" GroupName="FbKind" Style="{StaticResource Chip}" Content="Вопрос" Margin="0,0,6,0"/>
-                    </WrapPanel>
-                  </DockPanel>
-                  <DockPanel>
-                    <Button x:Name="FbSend" DockPanel.Dock="Right" Style="{StaticResource AccentBtn}" Padding="16,0" Margin="8,0,0,0" MinWidth="56" ToolTip="Отправить (Enter)">
-                      <Path Data="M0,0h2v2h2v2h2v2h2v2h-2v2h-2v2h-2v2h-2z" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="8" Height="14" Stretch="None" SnapsToDevicePixels="True"/>
-                    </Button>
-                    <Button x:Name="FbAttach" DockPanel.Dock="Right" Style="{StaticResource Btn}" Padding="12,0" Margin="8,0,0,0" ToolTip="Прикрепить фото или скриншот (можно вставить через Ctrl+V)">
-                      <Path Data="M0,2h14v10h-14z M2,4v6h10v-6z M3,9h2v-2h2v-2h2v2h2v2z" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="14" Height="14" Stretch="None" SnapsToDevicePixels="True"/>
-                    </Button>
-                    <Border Background="#22262F" BorderBrush="#2E3340" BorderThickness="2" MinHeight="44">
-                      <Grid>
-                        <TextBlock x:Name="FbHint" Text="Сообщение… (Shift+Enter — новая строка)" Foreground="#5A6070" FontSize="13" Margin="12,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
-                        <TextBox x:Name="FbText" Background="Transparent" BorderThickness="0" Foreground="#E6E8EE" CaretBrush="#3DDC97" FontSize="13"
-                                 Padding="8,10" AcceptsReturn="False" TextWrapping="Wrap" MaxLength="2000" MaxHeight="110" VerticalScrollBarVisibility="Auto"/>
-                      </Grid>
-                    </Border>
-                  </DockPanel>
+                <StackPanel Grid.Row="2" Margin="20,12,20,16">
+                  <!-- сначала — ник -->
+                  <StackPanel x:Name="FbNickPanel" Visibility="Collapsed">
+                    <TextBlock Text="Как к тебе обращаться?" FontSize="13" Margin="0,0,0,2"/>
+                    <TextBlock Text="Ник увидит только автор. Можно любой — не обязательно настоящее имя." Foreground="{StaticResource Muted}" FontSize="11.5" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                    <DockPanel>
+                      <Button x:Name="FbNickSave" DockPanel.Dock="Right" Style="{StaticResource AccentBtn}" Content="Продолжить" Padding="18,0" Margin="8,0,0,0"/>
+                      <Border Background="#22262F" BorderBrush="#2E3340" BorderThickness="2" Height="44">
+                        <Grid>
+                          <TextBlock x:Name="FbNickHint" Text="Ник, например: Вася" Foreground="#5A6070" FontSize="13" Margin="12,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                          <TextBox x:Name="FbNickBox" Background="Transparent" BorderThickness="0" Foreground="#E6E8EE" CaretBrush="#3DDC97" FontSize="13"
+                                   Padding="8,0" VerticalContentAlignment="Center" MaxLength="24"/>
+                        </Grid>
+                      </Border>
+                    </DockPanel>
+                  </StackPanel>
+                  <!-- блокировка -->
+                  <Border x:Name="FbBanPanel" Background="#2A1A1D" BorderBrush="#5A2A30" BorderThickness="2" Padding="14,10" Visibility="Collapsed">
+                    <StackPanel>
+                      <TextBlock Text="Ты не можешь писать в чат" FontSize="13" FontWeight="SemiBold" Foreground="#FF8A8E"/>
+                      <TextBlock x:Name="FbBanText" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                    </StackPanel>
+                  </Border>
+                  <!-- обычная отправка -->
+                  <StackPanel x:Name="FbComposer">
+                    <DockPanel x:Name="FbAttachRow" Margin="0,0,0,8" Visibility="Collapsed">
+                      <Border BorderBrush="#2E3340" BorderThickness="2" DockPanel.Dock="Left">
+                        <Image x:Name="FbAttachImg" MaxHeight="64" MaxWidth="120" Stretch="Uniform"/>
+                      </Border>
+                      <TextBlock x:Name="FbAttachDel" Text="убрать" Foreground="#3DDC97" FontSize="12" Cursor="Hand" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                    </DockPanel>
+                    <DockPanel Margin="0,0,0,8">
+                      <CheckBox x:Name="FbLog" DockPanel.Dock="Right" Style="{StaticResource Toggle}" VerticalAlignment="Center" IsChecked="True"/>
+                      <TextBlock x:Name="FbLogText" Text="журнал" DockPanel.Dock="Right" Foreground="{StaticResource Muted}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"
+                                 ToolTip="Приложить последние записи журнала работы — без имени пользователя и путей. Помогает найти ошибку."/>
+                      <WrapPanel VerticalAlignment="Center">
+                        <RadioButton x:Name="FbKindBug" GroupName="FbKind" Style="{StaticResource Chip}" Content="Ошибка" IsChecked="True" Margin="0,0,6,0"/>
+                        <RadioButton x:Name="FbKindIdea" GroupName="FbKind" Style="{StaticResource Chip}" Content="Идея" Margin="0,0,6,0"/>
+                        <RadioButton x:Name="FbKindOther" GroupName="FbKind" Style="{StaticResource Chip}" Content="Вопрос" Margin="0,0,6,0"/>
+                      </WrapPanel>
+                    </DockPanel>
+                    <DockPanel>
+                      <Button x:Name="FbSend" DockPanel.Dock="Right" Style="{StaticResource AccentBtn}" Padding="16,0" Margin="8,0,0,0" MinWidth="56" ToolTip="Отправить (Enter)">
+                        <Path Data="M0,0h2v2h2v2h2v2h2v2h-2v2h-2v2h-2v2h-2z" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="8" Height="14" Stretch="None" SnapsToDevicePixels="True"/>
+                      </Button>
+                      <Button x:Name="FbAttach" DockPanel.Dock="Right" Style="{StaticResource Btn}" Padding="12,0" Margin="8,0,0,0" ToolTip="Прикрепить фото или скриншот (можно вставить через Ctrl+V)">
+                        <Path Data="M0,2h14v10h-14z M2,4v6h10v-6z M3,9h2v-2h2v-2h2v2h2v2z" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="14" Height="14" Stretch="None" SnapsToDevicePixels="True"/>
+                      </Button>
+                      <Border Background="#22262F" BorderBrush="#2E3340" BorderThickness="2" MinHeight="44">
+                        <Grid>
+                          <TextBlock x:Name="FbHint" Text="Сообщение… (Shift+Enter — новая строка)" Foreground="#5A6070" FontSize="13" Margin="12,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                          <TextBox x:Name="FbText" Background="Transparent" BorderThickness="0" Foreground="#E6E8EE" CaretBrush="#3DDC97" FontSize="13"
+                                   Padding="8,10" AcceptsReturn="False" TextWrapping="Wrap" MaxLength="2000" MaxHeight="110" VerticalScrollBarVisibility="Auto"/>
+                        </Grid>
+                      </Border>
+                    </DockPanel>
+                  </StackPanel>
+                  <TextBlock x:Name="FbMsg" Foreground="{StaticResource Muted}" FontSize="12" Margin="2,6,0,0" TextWrapping="Wrap" Visibility="Collapsed"/>
                 </StackPanel>
-                <TextBlock x:Name="FbMsg" Foreground="{StaticResource Muted}" FontSize="12" Margin="2,6,0,0" TextWrapping="Wrap" Visibility="Collapsed"/>
-              </StackPanel>
-            </Grid>
-          </Border>
+              </Grid>
+            </Border>
+          </Grid>
         </Grid>
 
         <!-- Согласие на анонимную статистику (один раз) -->
         <Grid x:Name="CsOverlay" Grid.RowSpan="2" Visibility="Collapsed" Panel.ZIndex="45">
           <Border x:Name="CsDim" Background="#C0090A0D" Opacity="0"/>
-          <Border x:Name="CsPanel" Width="440" VerticalAlignment="Center" Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2"
-                  Opacity="0" RenderTransformOrigin="0.5,0.5">
-            <Border.RenderTransform><ScaleTransform x:Name="CsScale" ScaleX="0.94" ScaleY="0.94"/></Border.RenderTransform>
-            <Border.Effect><DropShadowEffect BlurRadius="0" ShadowDepth="7" Direction="315" Color="#000000" Opacity="0.6"/></Border.Effect>
-            <StackPanel Margin="28,24,28,22">
-              <TextBlock Text="Отправить данные анонимно?" Style="{StaticResource PxText}" FontSize="20" TextWrapping="Wrap"/>
-              <DockPanel Margin="0,22,0,0">
-                <Button x:Name="CsYes" DockPanel.Dock="Right" Style="{StaticResource AccentBtn}" Content="Отправить" Padding="22,10" MinWidth="140"/>
-                <Button x:Name="CsNo" DockPanel.Dock="Right" Style="{StaticResource Btn}" Content="Нет" Padding="22,10" Margin="0,0,10,0"/>
-                <TextBlock/>
-              </DockPanel>
-            </StackPanel>
-          </Border>
+          <Grid x:Name="CsPanel" Width="440" VerticalAlignment="Center" Opacity="0" RenderTransformOrigin="0.5,0.5">
+            <Grid.RenderTransform><ScaleTransform x:Name="CsScale" ScaleX="0.94" ScaleY="0.94"/></Grid.RenderTransform>
+            <!-- жёсткая пиксельная тень отдельным слоем: дешевле, чем эффект тени -->
+            <Border Background="#99000000" Margin="7,7,-7,-7" IsHitTestVisible="False"/>
+            <Border Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2">
+              <StackPanel Margin="28,24,28,22">
+                <TextBlock Text="Отправить данные анонимно?" Style="{StaticResource PxText}" FontSize="20" TextWrapping="Wrap"/>
+                <DockPanel Margin="0,22,0,0">
+                  <Button x:Name="CsYes" DockPanel.Dock="Right" Style="{StaticResource AccentBtn}" Content="Отправить" Padding="22,10" MinWidth="140"/>
+                  <Button x:Name="CsNo" DockPanel.Dock="Right" Style="{StaticResource Btn}" Content="Нет" Padding="22,10" Margin="0,0,10,0"/>
+                  <TextBlock/>
+                </DockPanel>
+              </StackPanel>
+            </Border>
+          </Grid>
         </Grid>
 
         <!-- Удаление Zapret -->
         <Grid x:Name="UninstOverlay" Grid.RowSpan="2" Visibility="Collapsed" Panel.ZIndex="45">
           <Border x:Name="UninstDim" Background="#C0090A0D" Opacity="0"/>
-          <Border x:Name="UninstPanel" Width="520" VerticalAlignment="Center" Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2"
-                  Opacity="0" RenderTransformOrigin="0.5,0.5">
-            <Border.RenderTransform><ScaleTransform x:Name="UninstScale" ScaleX="0.94" ScaleY="0.94"/></Border.RenderTransform>
-            <Border.Effect><DropShadowEffect BlurRadius="0" ShadowDepth="7" Direction="315" Color="#000000" Opacity="0.6"/></Border.Effect>
-            <StackPanel Margin="26,20,26,22">
-              <DockPanel Margin="0,0,0,14">
-                <Button x:Name="UninstClose" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
-                <StackPanel>
-                  <TextBlock Text="Удалить Zapret" Style="{StaticResource PxText}" FontSize="22.22"/>
-                  <TextBlock Text="Выбери, что сделать с zapret от Flowseal" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0"/>
+          <Grid x:Name="UninstPanel" Width="520" VerticalAlignment="Center" Opacity="0" RenderTransformOrigin="0.5,0.5">
+            <Grid.RenderTransform><ScaleTransform x:Name="UninstScale" ScaleX="0.94" ScaleY="0.94"/></Grid.RenderTransform>
+            <!-- жёсткая пиксельная тень отдельным слоем: дешевле, чем эффект тени -->
+            <Border Background="#99000000" Margin="7,7,-7,-7" IsHitTestVisible="False"/>
+            <Border Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2">
+              <StackPanel Margin="26,20,26,22">
+                <DockPanel Margin="0,0,0,14">
+                  <Button x:Name="UninstClose" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
+                  <StackPanel>
+                    <TextBlock Text="Удалить Zapret" Style="{StaticResource PxText}" FontSize="22.22"/>
+                    <TextBlock Text="Выбери, что сделать с zapret от Flowseal" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0"/>
+                  </StackPanel>
+                </DockPanel>
+                <StackPanel x:Name="UninstChoice">
+                  <Border x:Name="UnKeep" Background="#1E2129" BorderBrush="#2E3340" BorderThickness="2" Padding="16,14" Margin="0,0,0,10" Cursor="Hand">
+                    <Grid>
+                      <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                      <TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" FontSize="20" Width="38" VerticalAlignment="Center" Foreground="#3DDC97"/>
+                      <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="Оставить zapret от Flowseal" FontSize="14" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="UnKeepSub" Text="Удалится только приложение. Папка zapret со всеми твоими сайтами и настройками переедет на рабочий стол." Foreground="{StaticResource Muted}" FontSize="11.5" TextWrapping="Wrap" Margin="0,3,0,0"/>
+                      </StackPanel>
+                      <Grid Grid.Column="2" Width="20" Height="20" Margin="12,0,0,0" VerticalAlignment="Center">
+                        <Rectangle Stroke="#3A3F4B" StrokeThickness="2"/>
+                        <Rectangle x:Name="UnKeepDot" Width="10" Height="10" Fill="#3DDC97" Opacity="0"/>
+                      </Grid>
+                    </Grid>
+                  </Border>
+                  <Border x:Name="UnAll" Background="#1E2129" BorderBrush="#2E3340" BorderThickness="2" Padding="16,14" Margin="0,0,0,10" Cursor="Hand">
+                    <Grid>
+                      <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                      <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="20" Width="38" VerticalAlignment="Center" Foreground="#E0566A"/>
+                      <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="Удалить всё" FontSize="14" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="UnAllSub" Text="Приложение, zapret, Telegram-прокси и твои списки сайтов — ничего не останется." Foreground="{StaticResource Muted}" FontSize="11.5" TextWrapping="Wrap" Margin="0,3,0,0"/>
+                      </StackPanel>
+                      <Grid Grid.Column="2" Width="20" Height="20" Margin="12,0,0,0" VerticalAlignment="Center">
+                        <Rectangle Stroke="#3A3F4B" StrokeThickness="2"/>
+                        <Rectangle x:Name="UnAllDot" Width="10" Height="10" Fill="#3DDC97" Opacity="0"/>
+                      </Grid>
+                    </Grid>
+                  </Border>
                 </StackPanel>
-              </DockPanel>
-              <StackPanel x:Name="UninstChoice">
-                <Border x:Name="UnKeep" Background="#1E2129" BorderBrush="#2E3340" BorderThickness="2" Padding="16,14" Margin="0,0,0,10" Cursor="Hand">
-                  <Grid>
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                    <TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" FontSize="20" Width="38" VerticalAlignment="Center" Foreground="#3DDC97"/>
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                      <TextBlock Text="Оставить zapret от Flowseal" FontSize="14" FontWeight="SemiBold"/>
-                      <TextBlock x:Name="UnKeepSub" Text="Удалится только приложение. Папка zapret со всеми твоими сайтами и настройками переедет на рабочий стол." Foreground="{StaticResource Muted}" FontSize="11.5" TextWrapping="Wrap" Margin="0,3,0,0"/>
-                    </StackPanel>
-                    <Grid Grid.Column="2" Width="20" Height="20" Margin="12,0,0,0" VerticalAlignment="Center">
-                      <Rectangle Stroke="#3A3F4B" StrokeThickness="2"/>
-                      <Rectangle x:Name="UnKeepDot" Width="10" Height="10" Fill="#3DDC97" Opacity="0"/>
-                    </Grid>
-                  </Grid>
-                </Border>
-                <Border x:Name="UnAll" Background="#1E2129" BorderBrush="#2E3340" BorderThickness="2" Padding="16,14" Margin="0,0,0,10" Cursor="Hand">
-                  <Grid>
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                    <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="20" Width="38" VerticalAlignment="Center" Foreground="#E0566A"/>
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                      <TextBlock Text="Удалить всё" FontSize="14" FontWeight="SemiBold"/>
-                      <TextBlock x:Name="UnAllSub" Text="Приложение, zapret, Telegram-прокси и твои списки сайтов — ничего не останется." Foreground="{StaticResource Muted}" FontSize="11.5" TextWrapping="Wrap" Margin="0,3,0,0"/>
-                    </StackPanel>
-                    <Grid Grid.Column="2" Width="20" Height="20" Margin="12,0,0,0" VerticalAlignment="Center">
-                      <Rectangle Stroke="#3A3F4B" StrokeThickness="2"/>
-                      <Rectangle x:Name="UnAllDot" Width="10" Height="10" Fill="#3DDC97" Opacity="0"/>
-                    </Grid>
-                  </Grid>
-                </Border>
+                <TextBlock x:Name="UninstStatus" Foreground="{StaticResource Muted}" FontSize="12.5" TextWrapping="Wrap" Margin="2,4,0,0" MinHeight="18"/>
+                <DockPanel Margin="0,14,0,0">
+                  <Button x:Name="UninstGo" DockPanel.Dock="Right" Style="{StaticResource AccentBtn}" Background="#E0566A" Foreground="#FFFFFF" Padding="22,10" MinWidth="150" Content="Удалить"/>
+                  <Button x:Name="UninstCancel" DockPanel.Dock="Right" Style="{StaticResource Btn}" Padding="18,10" Margin="0,0,10,0" Content="Отмена"/>
+                  <TextBlock/>
+                </DockPanel>
               </StackPanel>
-              <TextBlock x:Name="UninstStatus" Foreground="{StaticResource Muted}" FontSize="12.5" TextWrapping="Wrap" Margin="2,4,0,0" MinHeight="18"/>
-              <DockPanel Margin="0,14,0,0">
-                <Button x:Name="UninstGo" DockPanel.Dock="Right" Style="{StaticResource AccentBtn}" Background="#E0566A" Foreground="#FFFFFF" Padding="22,10" MinWidth="150" Content="Удалить"/>
-                <Button x:Name="UninstCancel" DockPanel.Dock="Right" Style="{StaticResource Btn}" Padding="18,10" Margin="0,0,10,0" Content="Отмена"/>
-                <TextBlock/>
-              </DockPanel>
-            </StackPanel>
-          </Border>
+            </Border>
+          </Grid>
         </Grid>
 
         <!-- QR для телефона -->
         <!-- Обновление приложения -->
         <Grid x:Name="AuOverlay" Grid.RowSpan="2" Visibility="Collapsed" Panel.ZIndex="60">
           <Border x:Name="AuDim" Background="#C0090A0D" Opacity="0"/>
-          <Border x:Name="AuPanel" Width="380" VerticalAlignment="Center" Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2"
-                  Opacity="0" RenderTransformOrigin="0.5,0.5">
-            <Border.RenderTransform><ScaleTransform x:Name="AuScale" ScaleX="0.94" ScaleY="0.94"/></Border.RenderTransform>
-            <Border.Effect><DropShadowEffect BlurRadius="0" ShadowDepth="7" Direction="315" Color="#000000" Opacity="0.6"/></Border.Effect>
-            <StackPanel Margin="28,30,28,26">
-              <Grid Width="96" Height="96" HorizontalAlignment="Center" RenderOptions.EdgeMode="Aliased" SnapsToDevicePixels="True">
-                <Path x:Name="AuRing" Fill="#22262F"/>
-                <Path x:Name="AuArc" Fill="#3DDC97"/>
-                <Image x:Name="AuLogo" Width="46" Height="46" RenderOptions.BitmapScalingMode="HighQuality" RenderTransformOrigin="0.5,0.5">
-                  <Image.RenderTransform><ScaleTransform x:Name="AuLogoS"/></Image.RenderTransform>
-                </Image>
-                <Grid x:Name="AuOk" Opacity="0" RenderTransformOrigin="0.5,0.5">
-                  <Grid.RenderTransform><ScaleTransform x:Name="AuOkS" ScaleX="0.4" ScaleY="0.4"/></Grid.RenderTransform>
-                  <Path x:Name="AuOkDisc" Fill="#3DDC97"/>
-                  <Path Data="M0,16h6v6h-6z M6,22h6v6h-6z M12,28h6v6h-6z M18,22h6v6h-6z M24,16h6v6h-6z M30,10h6v6h-6z M36,4h6v6h-6z" Fill="#0F1115" Width="42" Height="34" Stretch="None" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          <Grid x:Name="AuPanel" Width="380" VerticalAlignment="Center" Opacity="0" RenderTransformOrigin="0.5,0.5">
+            <Grid.RenderTransform><ScaleTransform x:Name="AuScale" ScaleX="0.94" ScaleY="0.94"/></Grid.RenderTransform>
+            <!-- жёсткая пиксельная тень отдельным слоем: дешевле, чем эффект тени -->
+            <Border Background="#99000000" Margin="7,7,-7,-7" IsHitTestVisible="False"/>
+            <Border Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2">
+              <StackPanel Margin="28,30,28,26">
+                <Grid Width="96" Height="96" HorizontalAlignment="Center" RenderOptions.EdgeMode="Aliased" SnapsToDevicePixels="True">
+                  <Path x:Name="AuRing" Fill="#22262F"/>
+                  <Path x:Name="AuArc" Fill="#3DDC97"/>
+                  <Image x:Name="AuLogo" Width="46" Height="46" RenderOptions.BitmapScalingMode="HighQuality" RenderTransformOrigin="0.5,0.5">
+                    <Image.RenderTransform><ScaleTransform x:Name="AuLogoS"/></Image.RenderTransform>
+                  </Image>
+                  <Grid x:Name="AuOk" Opacity="0" RenderTransformOrigin="0.5,0.5">
+                    <Grid.RenderTransform><ScaleTransform x:Name="AuOkS" ScaleX="0.4" ScaleY="0.4"/></Grid.RenderTransform>
+                    <Path x:Name="AuOkDisc" Fill="#3DDC97"/>
+                    <Path Data="M0,16h6v6h-6z M6,22h6v6h-6z M12,28h6v6h-6z M18,22h6v6h-6z M24,16h6v6h-6z M30,10h6v6h-6z M36,4h6v6h-6z" Fill="#0F1115" Width="42" Height="34" Stretch="None" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </Grid>
+                  <Path x:Name="AuBurst" Fill="#3DDC97" Opacity="0" RenderTransformOrigin="0.5,0.5">
+                    <Path.RenderTransform><ScaleTransform x:Name="AuBurstS"/></Path.RenderTransform>
+                  </Path>
                 </Grid>
-                <Path x:Name="AuBurst" Fill="#3DDC97" Opacity="0" RenderTransformOrigin="0.5,0.5">
-                  <Path.RenderTransform><ScaleTransform x:Name="AuBurstS"/></Path.RenderTransform>
-                </Path>
-              </Grid>
-              <TextBlock x:Name="AuTitle" Style="{StaticResource PxText}" FontSize="22.22" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,18,0,4"/>
-              <TextBlock x:Name="AuSub" Foreground="#8A90A0" FontSize="12.5" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
-              <StackPanel x:Name="AuProgress">
-                <Border Height="6" Background="#22262F" Margin="0,18,0,0" ClipToBounds="True">
-                  <Border Background="#3DDC97" RenderTransformOrigin="0,0.5">
-                    <Border.RenderTransform><ScaleTransform x:Name="AuFillS" ScaleX="0"/></Border.RenderTransform>
+                <TextBlock x:Name="AuTitle" Style="{StaticResource PxText}" FontSize="22.22" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,18,0,4"/>
+                <TextBlock x:Name="AuSub" Foreground="#8A90A0" FontSize="12.5" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
+                <StackPanel x:Name="AuProgress">
+                  <Border Height="6" Background="#22262F" Margin="0,18,0,0" ClipToBounds="True">
+                    <Border Background="#3DDC97" RenderTransformOrigin="0,0.5">
+                      <Border.RenderTransform><ScaleTransform x:Name="AuFillS" ScaleX="0"/></Border.RenderTransform>
+                    </Border>
                   </Border>
+                  <TextBlock x:Name="AuPct" FontSize="11.5" Foreground="#8A90A0" HorizontalAlignment="Center" Margin="0,8,0,0"/>
+                </StackPanel>
+                <Border x:Name="AuNews" Visibility="Collapsed" Background="#1E2129" Padding="14,12" Margin="0,16,0,0" BorderBrush="#262A33" BorderThickness="1">
+                  <StackPanel x:Name="AuNewsList"/>
                 </Border>
-                <TextBlock x:Name="AuPct" FontSize="11.5" Foreground="#8A90A0" HorizontalAlignment="Center" Margin="0,8,0,0"/>
+                <StackPanel x:Name="AuBtns" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,18,0,0" Visibility="Collapsed">
+                  <Button x:Name="AuNewsBtn" Style="{StaticResource Btn}" Content="Что нового" Margin="0,0,8,0" Padding="16,8"/>
+                  <Button x:Name="AuOkBtn" Style="{StaticResource AccentBtn}" Content="Отлично" Padding="20,8"/>
+                </StackPanel>
               </StackPanel>
-              <Border x:Name="AuNews" Visibility="Collapsed" Background="#1E2129" Padding="14,12" Margin="0,16,0,0" BorderBrush="#262A33" BorderThickness="1">
-                <StackPanel x:Name="AuNewsList"/>
-              </Border>
-              <StackPanel x:Name="AuBtns" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,18,0,0" Visibility="Collapsed">
-                <Button x:Name="AuNewsBtn" Style="{StaticResource Btn}" Content="Что нового" Margin="0,0,8,0" Padding="16,8"/>
-                <Button x:Name="AuOkBtn" Style="{StaticResource AccentBtn}" Content="Отлично" Padding="20,8"/>
-              </StackPanel>
-            </StackPanel>
-          </Border>
+            </Border>
+          </Grid>
         </Grid>
 
         <!-- Что делать по ✕ -->
         <Grid x:Name="CloseOverlay" Grid.RowSpan="2" Visibility="Collapsed" Panel.ZIndex="50">
           <Border x:Name="CloseDim" Background="#C0090A0D" Opacity="0"/>
-          <Border x:Name="ClosePanel" Width="420" VerticalAlignment="Center" Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2"
-                  Opacity="0" RenderTransformOrigin="0.5,0.5">
-            <Border.RenderTransform><ScaleTransform x:Name="CloseScale" ScaleX="0.94" ScaleY="0.94"/></Border.RenderTransform>
-            <Border.Effect><DropShadowEffect BlurRadius="0" ShadowDepth="7" Direction="315" Color="#000000" Opacity="0.6"/></Border.Effect>
-            <StackPanel Margin="24,18,24,22">
-              <DockPanel Margin="0,0,0,6">
-                <Button x:Name="CloseAskX" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
-                <TextBlock Text="Закрыть Zapret?" Style="{StaticResource PxText}" FontSize="22.22" VerticalAlignment="Center"/>
-              </DockPanel>
-              <TextBlock Text="Выбор запомнится. Поменять можно в настройках → Запуск." Foreground="#8A90A0" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,16"/>
-              <Button x:Name="CloseToTray" Style="{StaticResource Btn}" Padding="14,12" Margin="0,0,0,8">
-                <Grid Width="330">
-                  <Grid.ColumnDefinitions><ColumnDefinition Width="36"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                  <TextBlock Text="&#xE921;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="#3DDC97" VerticalAlignment="Center"/>
-                  <StackPanel Grid.Column="1">
-                    <TextBlock Text="Свернуть в трей" FontSize="14" FontWeight="SemiBold"/>
-                    <TextBlock Text="Значок останется рядом с часами, zapret и Telegram продолжат работать" Foreground="#8A90A0" FontSize="11.5" TextWrapping="Wrap" Margin="0,2,0,0"/>
-                  </StackPanel>
-                </Grid>
-              </Button>
-              <Button x:Name="CloseToExit" Style="{StaticResource Btn}" Padding="14,12">
-                <Grid Width="330">
-                  <Grid.ColumnDefinitions><ColumnDefinition Width="36"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                  <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="#FF8C99" VerticalAlignment="Center"/>
-                  <StackPanel Grid.Column="1">
-                    <TextBlock Text="Закрыть полностью" FontSize="14" FontWeight="SemiBold"/>
-                    <TextBlock Text="Окно и значок закроются. Включённый zapret продолжит работать" Foreground="#8A90A0" FontSize="11.5" TextWrapping="Wrap" Margin="0,2,0,0"/>
-                  </StackPanel>
-                </Grid>
-              </Button>
-            </StackPanel>
-          </Border>
+          <Grid x:Name="ClosePanel" Width="420" VerticalAlignment="Center" Opacity="0" RenderTransformOrigin="0.5,0.5">
+            <Grid.RenderTransform><ScaleTransform x:Name="CloseScale" ScaleX="0.94" ScaleY="0.94"/></Grid.RenderTransform>
+            <!-- жёсткая пиксельная тень отдельным слоем: дешевле, чем эффект тени -->
+            <Border Background="#99000000" Margin="7,7,-7,-7" IsHitTestVisible="False"/>
+            <Border Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2">
+              <StackPanel Margin="24,18,24,22">
+                <DockPanel Margin="0,0,0,6">
+                  <Button x:Name="CloseAskX" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
+                  <TextBlock Text="Закрыть Zapret?" Style="{StaticResource PxText}" FontSize="22.22" VerticalAlignment="Center"/>
+                </DockPanel>
+                <TextBlock Text="Выбор запомнится. Поменять можно в настройках → Запуск." Foreground="#8A90A0" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,16"/>
+                <Button x:Name="CloseToTray" Style="{StaticResource Btn}" Padding="14,12" Margin="0,0,0,8">
+                  <Grid Width="330">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="36"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <TextBlock Text="&#xE921;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="#3DDC97" VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="1">
+                      <TextBlock Text="Свернуть в трей" FontSize="14" FontWeight="SemiBold"/>
+                      <TextBlock Text="Значок останется рядом с часами, zapret и Telegram продолжат работать" Foreground="#8A90A0" FontSize="11.5" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                    </StackPanel>
+                  </Grid>
+                </Button>
+                <Button x:Name="CloseToExit" Style="{StaticResource Btn}" Padding="14,12">
+                  <Grid Width="330">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="36"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="#FF8C99" VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="1">
+                      <TextBlock Text="Закрыть полностью" FontSize="14" FontWeight="SemiBold"/>
+                      <TextBlock Text="Окно и значок закроются. Включённый zapret продолжит работать" Foreground="#8A90A0" FontSize="11.5" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                    </StackPanel>
+                  </Grid>
+                </Button>
+              </StackPanel>
+            </Border>
+          </Grid>
         </Grid>
 
         <Grid x:Name="QrOverlay" Grid.RowSpan="2" Visibility="Collapsed">
           <Border x:Name="QrDim" Background="#C0090A0D" Opacity="0"/>
-          <Border x:Name="QrPanel" Width="440" VerticalAlignment="Center" Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2"
-                  Opacity="0" RenderTransformOrigin="0.5,0.5">
-            <Border.RenderTransform><ScaleTransform x:Name="QrScale" ScaleX="0.94" ScaleY="0.94"/></Border.RenderTransform>
-            <Border.Effect><DropShadowEffect BlurRadius="0" ShadowDepth="7" Direction="315" Color="#000000" Opacity="0.6"/></Border.Effect>
-            <StackPanel Margin="26,18,26,22">
-              <DockPanel Margin="0,0,0,10">
-                <Button x:Name="QrClose" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
-                <TextBlock Text="Telegram на телефоне" Style="{StaticResource PxText}" FontSize="22.22" VerticalAlignment="Center"/>
-              </DockPanel>
-              <TextBlock Text="1. Телефон должен быть в той же Wi-Fi сети, что и компьютер" Foreground="#B8BDC9" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,3"/>
-              <TextBlock Text="2. Наведи камеру телефона на код" Foreground="#B8BDC9" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,3"/>
-              <TextBlock Text="3. В Telegram нажми «Подключить прокси»" Foreground="#B8BDC9" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,14"/>
-              <Border x:Name="QrBox" Background="#FFFFFF" Padding="14" Width="250" Height="250" HorizontalAlignment="Center" RenderTransformOrigin="0.5,0.5">
-                <Border.RenderTransform><ScaleTransform x:Name="QrBoxS"/></Border.RenderTransform>
-                <Grid>
-                  <Viewbox Stretch="Uniform"><Path x:Name="QrPath" Fill="#000000"/></Viewbox>
-                  <TextBlock x:Name="QrWait" Text="Готовлю…" Foreground="#5A6070" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                </Grid>
-              </Border>
-              <TextBlock x:Name="QrAddr" Foreground="{StaticResource Muted}" FontSize="11.5" HorizontalAlignment="Center" Margin="0,10,0,12"/>
-              <Button x:Name="QrCopy" Style="{StaticResource Btn}" Content="Скопировать ссылку" HorizontalAlignment="Center"/>
-            </StackPanel>
-          </Border>
+          <Grid x:Name="QrPanel" Width="440" VerticalAlignment="Center" Opacity="0" RenderTransformOrigin="0.5,0.5">
+            <Grid.RenderTransform><ScaleTransform x:Name="QrScale" ScaleX="0.94" ScaleY="0.94"/></Grid.RenderTransform>
+            <!-- жёсткая пиксельная тень отдельным слоем: дешевле, чем эффект тени -->
+            <Border Background="#99000000" Margin="7,7,-7,-7" IsHitTestVisible="False"/>
+            <Border Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2">
+              <StackPanel Margin="26,18,26,22">
+                <DockPanel Margin="0,0,0,10">
+                  <Button x:Name="QrClose" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
+                  <TextBlock Text="Telegram на телефоне" Style="{StaticResource PxText}" FontSize="22.22" VerticalAlignment="Center"/>
+                </DockPanel>
+                <TextBlock Text="1. Телефон должен быть в той же Wi-Fi сети, что и компьютер" Foreground="#B8BDC9" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,3"/>
+                <TextBlock Text="2. Наведи камеру телефона на код" Foreground="#B8BDC9" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,3"/>
+                <TextBlock Text="3. В Telegram нажми «Подключить прокси»" Foreground="#B8BDC9" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,14"/>
+                <Border x:Name="QrBox" Background="#FFFFFF" Padding="14" Width="250" Height="250" HorizontalAlignment="Center" RenderTransformOrigin="0.5,0.5">
+                  <Border.RenderTransform><ScaleTransform x:Name="QrBoxS"/></Border.RenderTransform>
+                  <Grid>
+                    <Viewbox Stretch="Uniform"><Path x:Name="QrPath" Fill="#000000"/></Viewbox>
+                    <TextBlock x:Name="QrWait" Text="Готовлю…" Foreground="#5A6070" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </Grid>
+                </Border>
+                <TextBlock x:Name="QrAddr" Foreground="{StaticResource Muted}" FontSize="11.5" HorizontalAlignment="Center" Margin="0,10,0,12"/>
+                <Button x:Name="QrCopy" Style="{StaticResource Btn}" Content="Скопировать ссылку" HorizontalAlignment="Center"/>
+              </StackPanel>
+            </Border>
+          </Grid>
         </Grid>
 
         <!-- Уведомление -->
-        <Border x:Name="Toast" Grid.Row="1" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,18"
-                Background="#2A2E38" Padding="18,10" Opacity="0" IsHitTestVisible="False" MaxWidth="560">
-          <Border.Effect><DropShadowEffect BlurRadius="0" ShadowDepth="5" Direction="315" Color="#000000" Opacity="0.6"/></Border.Effect>
-          <Border.RenderTransform><TranslateTransform x:Name="ToastShift" Y="30"/></Border.RenderTransform>
-          <TextBlock x:Name="ToastText" FontSize="13" TextWrapping="Wrap"/>
-        </Border>
+        <Grid x:Name="Toast" Grid.Row="1" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,18" Opacity="0" IsHitTestVisible="False" MaxWidth="560">
+          <Grid.RenderTransform><TranslateTransform x:Name="ToastShift" Y="30"/></Grid.RenderTransform>
+          <!-- жёсткая пиксельная тень отдельным слоем: дешевле, чем эффект тени -->
+          <Border Background="#99000000" Margin="5,5,-5,-5" IsHitTestVisible="False"/>
+          <Border Background="#2A2E38" Padding="18,10">
+            <TextBlock x:Name="ToastText" FontSize="13" TextWrapping="Wrap"/>
+          </Border>
+        </Grid>
       </Grid>
     </Border>
     </Grid>
