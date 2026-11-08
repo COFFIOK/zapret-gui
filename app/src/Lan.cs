@@ -94,7 +94,7 @@ namespace ZapretCS
     static class LanEt
     {
         // общие узлы сообщества (старый public.easytier.cn закрыт); подключаемся ко всем сразу, хватает любого живого
-        public static readonly string[] DefaultNodes = { "tcp://us01.225284.xyz:11010", "udp://us01.225284.xyz:11010", "tcp://sh.vomiku.com:7910", "tcp://161.33.207.13:51010" };
+        public static readonly string[] DefaultNodes = { "tcp://us01.225284.xyz:11010", "udp://us01.225284.xyz:11010", "tcp://sh.vomiku.com:7910", "udp://sh.vomiku.com:7910" };
         public const string Rpc = "127.0.0.1:15899";
         public static string Dir;
         public static string Core { get { return Path.Combine(Dir, "easytier-core.exe"); } }
