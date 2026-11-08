@@ -373,7 +373,11 @@ namespace ZapretCS
                 if (src != null && src.CompositionTarget != null) { sx = src.CompositionTarget.TransformToDevice.M11; sy = src.CompositionTarget.TransformToDevice.M22; }
                 var rtb = new RenderTargetBitmap((int)Math.Ceiling(el.ActualWidth * sx), (int)Math.Ceiling(el.ActualHeight * sy), 96 * sx, 96 * sy, PixelFormats.Pbgra32);
                 var dv = new DrawingVisual();
-                using (var dc = dv.RenderOpen()) dc.DrawRectangle(new VisualBrush(el), null, new Rect(0, 0, el.ActualWidth, el.ActualHeight));
+                // снимок 1:1: без растягивания по границам содержимого (иначе текст увеличивается и мутнеет)
+                var r = new Rect(0, 0, el.ActualWidth, el.ActualHeight);
+                var vb = new VisualBrush(el) { Stretch = Stretch.None, AlignmentX = AlignmentX.Left, AlignmentY = AlignmentY.Top,
+                    ViewboxUnits = BrushMappingMode.Absolute, Viewbox = r, ViewportUnits = BrushMappingMode.Absolute, Viewport = r };
+                using (var dc = dv.RenderOpen()) dc.DrawRectangle(vb, null, r);
                 rtb.Render(dv);
                 var p = PosIn(el, area);
                 var img = new Image { Source = rtb, Width = el.ActualWidth, Height = el.ActualHeight, IsHitTestVisible = false, RenderTransform = new TranslateTransform() };
