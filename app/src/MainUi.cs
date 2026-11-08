@@ -21,7 +21,7 @@ namespace ZapretCS
     partial class MainUi
     {
         public static MainUi Current;
-        public const string AppVersion = "2.1.0";
+        public const string AppVersion = "2.2.0";
 
         public readonly string GuiDir, HomeDir;
         public readonly bool InHome;
@@ -88,6 +88,7 @@ namespace ZapretCS
             Step("uninstall", WireUninstall);
             Step("tray", BuildTray);
             Step("translate", () => Translate.Init(this));
+            Step("telemetry", StartTelemetry);
             // безопасность: права на папку Zapret и уборка старых временных файлов — в фоне, один раз при запуске
             Step("security", () => new System.Threading.Thread(() => { Sec.CleanTemp(); if (InHome) Sec.HardenFolder(HomeDir); }) { IsBackground = true, Priority = System.Threading.ThreadPriority.BelowNormal }.Start());
 

@@ -1157,6 +1157,11 @@
                 <StackPanel>
                   <TextBlock Text="Чат с разработчиком" Style="{StaticResource PxText}" FontSize="22.22"/>
                   <TextBlock Text="Пиши об ошибках, идеях и вопросах — автор Zapret ответит здесь же" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                  <StackPanel x:Name="FbNickLine" Orientation="Horizontal" Margin="0,4,0,0" Visibility="Collapsed">
+                    <TextBlock Text="ты пишешь как" Foreground="{StaticResource Muted}" FontSize="12"/>
+                    <TextBlock x:Name="FbNickName" FontSize="12" FontWeight="SemiBold" Margin="5,0,0,0"/>
+                    <TextBlock x:Name="FbNickEdit" Text="изменить" Foreground="#3DDC97" FontSize="12" Cursor="Hand" Margin="12,0,0,0"/>
+                  </StackPanel>
                 </StackPanel>
               </DockPanel>
               <Border Grid.Row="1" Background="#13151B" BorderBrush="#22252D" BorderThickness="0,2,0,2">
@@ -1174,31 +1179,94 @@
                 </Grid>
               </Border>
               <StackPanel Grid.Row="2" Margin="20,12,20,16">
-                <DockPanel Margin="0,0,0,8">
-                  <CheckBox x:Name="FbLog" DockPanel.Dock="Right" Style="{StaticResource Toggle}" VerticalAlignment="Center" IsChecked="True"/>
-                  <TextBlock x:Name="FbLogText" Text="журнал" DockPanel.Dock="Right" Foreground="{StaticResource Muted}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"
-                             ToolTip="Приложить последние записи журнала работы — без имени пользователя и путей. Помогает найти ошибку."/>
-                  <WrapPanel VerticalAlignment="Center">
-                    <RadioButton x:Name="FbKindBug" GroupName="FbKind" Style="{StaticResource Chip}" Content="Ошибка" IsChecked="True" Margin="0,0,6,0"/>
-                    <RadioButton x:Name="FbKindIdea" GroupName="FbKind" Style="{StaticResource Chip}" Content="Идея" Margin="0,0,6,0"/>
-                    <RadioButton x:Name="FbKindOther" GroupName="FbKind" Style="{StaticResource Chip}" Content="Вопрос" Margin="0,0,6,0"/>
-                  </WrapPanel>
-                </DockPanel>
-                <DockPanel>
-                  <Button x:Name="FbSend" DockPanel.Dock="Right" Style="{StaticResource AccentBtn}" Padding="16,0" Margin="8,0,0,0" MinWidth="56" ToolTip="Отправить (Enter)">
-                    <Path Data="M0,0h2v2h2v2h2v2h2v2h-2v2h-2v2h-2v2h-2z" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="8" Height="14" Stretch="None" SnapsToDevicePixels="True"/>
-                  </Button>
-                  <Border Background="#22262F" BorderBrush="#2E3340" BorderThickness="2" MinHeight="44">
-                    <Grid>
-                      <TextBlock x:Name="FbHint" Text="Сообщение… (Shift+Enter — новая строка)" Foreground="#5A6070" FontSize="13" Margin="12,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
-                      <TextBox x:Name="FbText" Background="Transparent" BorderThickness="0" Foreground="#E6E8EE" CaretBrush="#3DDC97" FontSize="13"
-                               Padding="8,10" AcceptsReturn="False" TextWrapping="Wrap" MaxLength="2000" MaxHeight="110" VerticalScrollBarVisibility="Auto"/>
-                    </Grid>
-                  </Border>
-                </DockPanel>
+                <!-- сначала — ник -->
+                <StackPanel x:Name="FbNickPanel" Visibility="Collapsed">
+                  <TextBlock Text="Как к тебе обращаться?" FontSize="13" Margin="0,0,0,2"/>
+                  <TextBlock Text="Ник увидит только автор. Можно любой — не обязательно настоящее имя." Foreground="{StaticResource Muted}" FontSize="11.5" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                  <DockPanel>
+                    <Button x:Name="FbNickSave" DockPanel.Dock="Right" Style="{StaticResource AccentBtn}" Content="Продолжить" Padding="18,0" Margin="8,0,0,0"/>
+                    <Border Background="#22262F" BorderBrush="#2E3340" BorderThickness="2" Height="44">
+                      <Grid>
+                        <TextBlock x:Name="FbNickHint" Text="Ник, например: Вася" Foreground="#5A6070" FontSize="13" Margin="12,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        <TextBox x:Name="FbNickBox" Background="Transparent" BorderThickness="0" Foreground="#E6E8EE" CaretBrush="#3DDC97" FontSize="13"
+                                 Padding="8,0" VerticalContentAlignment="Center" MaxLength="24"/>
+                      </Grid>
+                    </Border>
+                  </DockPanel>
+                </StackPanel>
+                <!-- блокировка -->
+                <Border x:Name="FbBanPanel" Background="#2A1A1D" BorderBrush="#5A2A30" BorderThickness="2" Padding="14,10" Visibility="Collapsed">
+                  <StackPanel>
+                    <TextBlock Text="Ты не можешь писать в чат" FontSize="13" FontWeight="SemiBold" Foreground="#FF8A8E"/>
+                    <TextBlock x:Name="FbBanText" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                  </StackPanel>
+                </Border>
+                <!-- обычная отправка -->
+                <StackPanel x:Name="FbComposer">
+                  <DockPanel x:Name="FbAttachRow" Margin="0,0,0,8" Visibility="Collapsed">
+                    <Border BorderBrush="#2E3340" BorderThickness="2" DockPanel.Dock="Left">
+                      <Image x:Name="FbAttachImg" MaxHeight="64" MaxWidth="120" Stretch="Uniform"/>
+                    </Border>
+                    <TextBlock x:Name="FbAttachDel" Text="убрать" Foreground="#3DDC97" FontSize="12" Cursor="Hand" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                  </DockPanel>
+                  <DockPanel Margin="0,0,0,8">
+                    <CheckBox x:Name="FbLog" DockPanel.Dock="Right" Style="{StaticResource Toggle}" VerticalAlignment="Center" IsChecked="True"/>
+                    <TextBlock x:Name="FbLogText" Text="журнал" DockPanel.Dock="Right" Foreground="{StaticResource Muted}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"
+                               ToolTip="Приложить последние записи журнала работы — без имени пользователя и путей. Помогает найти ошибку."/>
+                    <WrapPanel VerticalAlignment="Center">
+                      <RadioButton x:Name="FbKindBug" GroupName="FbKind" Style="{StaticResource Chip}" Content="Ошибка" IsChecked="True" Margin="0,0,6,0"/>
+                      <RadioButton x:Name="FbKindIdea" GroupName="FbKind" Style="{StaticResource Chip}" Content="Идея" Margin="0,0,6,0"/>
+                      <RadioButton x:Name="FbKindOther" GroupName="FbKind" Style="{StaticResource Chip}" Content="Вопрос" Margin="0,0,6,0"/>
+                    </WrapPanel>
+                  </DockPanel>
+                  <DockPanel>
+                    <Button x:Name="FbSend" DockPanel.Dock="Right" Style="{StaticResource AccentBtn}" Padding="16,0" Margin="8,0,0,0" MinWidth="56" ToolTip="Отправить (Enter)">
+                      <Path Data="M0,0h2v2h2v2h2v2h2v2h-2v2h-2v2h-2v2h-2z" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="8" Height="14" Stretch="None" SnapsToDevicePixels="True"/>
+                    </Button>
+                    <Button x:Name="FbAttach" DockPanel.Dock="Right" Style="{StaticResource Btn}" Padding="12,0" Margin="8,0,0,0" ToolTip="Прикрепить фото или скриншот (можно вставить через Ctrl+V)">
+                      <Path Data="M0,2h14v10h-14z M2,4v6h10v-6z M3,9h2v-2h2v-2h2v2h2v2z" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="14" Height="14" Stretch="None" SnapsToDevicePixels="True"/>
+                    </Button>
+                    <Border Background="#22262F" BorderBrush="#2E3340" BorderThickness="2" MinHeight="44">
+                      <Grid>
+                        <TextBlock x:Name="FbHint" Text="Сообщение… (Shift+Enter — новая строка)" Foreground="#5A6070" FontSize="13" Margin="12,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        <TextBox x:Name="FbText" Background="Transparent" BorderThickness="0" Foreground="#E6E8EE" CaretBrush="#3DDC97" FontSize="13"
+                                 Padding="8,10" AcceptsReturn="False" TextWrapping="Wrap" MaxLength="2000" MaxHeight="110" VerticalScrollBarVisibility="Auto"/>
+                      </Grid>
+                    </Border>
+                  </DockPanel>
+                </StackPanel>
                 <TextBlock x:Name="FbMsg" Foreground="{StaticResource Muted}" FontSize="12" Margin="2,6,0,0" TextWrapping="Wrap" Visibility="Collapsed"/>
               </StackPanel>
             </Grid>
+          </Border>
+        </Grid>
+
+        <!-- Согласие на анонимную статистику (один раз) -->
+        <Grid x:Name="CsOverlay" Grid.RowSpan="2" Visibility="Collapsed" Panel.ZIndex="45">
+          <Border x:Name="CsDim" Background="#C0090A0D" Opacity="0"/>
+          <Border x:Name="CsPanel" Width="500" VerticalAlignment="Center" Background="#171A21" BorderBrush="#2A2E38" BorderThickness="2"
+                  Opacity="0" RenderTransformOrigin="0.5,0.5">
+            <Border.RenderTransform><ScaleTransform x:Name="CsScale" ScaleX="0.94" ScaleY="0.94"/></Border.RenderTransform>
+            <Border.Effect><DropShadowEffect BlurRadius="0" ShadowDepth="7" Direction="315" Color="#000000" Opacity="0.6"/></Border.Effect>
+            <StackPanel Margin="28,22,28,22">
+              <TextBlock Text="Помочь Zapret?" Style="{StaticResource PxText}" FontSize="22.22"/>
+              <TextBlock Text="Можно один раз отправить автору анонимные данные об этой установке — так он поймёт, что чаще всего используют и что улучшать. Отправка происходит только один раз, больше ничего и никогда не отправляется."
+                         Foreground="{StaticResource Muted}" FontSize="12.5" Margin="0,8,0,14" TextWrapping="Wrap"/>
+              <Border Background="#1D2028" BorderBrush="#2E3340" BorderThickness="2" Padding="14,10">
+                <StackPanel>
+                  <TextBlock Text="Что отправится" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                  <TextBlock Text="версии Zapret, zapret и Windows · язык и тема · выбранная стратегия · включены ли Telegram-прокси, игровой фильтр, экономия и автообновление · сколько своих сайтов (только число)"
+                             Foreground="{StaticResource Muted}" FontSize="11.5" TextWrapping="Wrap"/>
+                  <TextBlock Text="Не отправится" FontSize="12" FontWeight="SemiBold" Margin="0,10,0,4"/>
+                  <TextBlock Text="имя, IP-адрес, списки сайтов, файлы и всё остальное" Foreground="{StaticResource Muted}" FontSize="11.5" TextWrapping="Wrap"/>
+                </StackPanel>
+              </Border>
+              <DockPanel Margin="0,18,0,0">
+                <Button x:Name="CsYes" DockPanel.Dock="Right" Style="{StaticResource AccentBtn}" Content="Разрешить" Padding="22,10" MinWidth="140"/>
+                <Button x:Name="CsNo" DockPanel.Dock="Right" Style="{StaticResource Btn}" Content="Нет, спасибо" Padding="18,10" Margin="0,0,10,0"/>
+                <TextBlock/>
+              </DockPanel>
+            </StackPanel>
           </Border>
         </Grid>
 

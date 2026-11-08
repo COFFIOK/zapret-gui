@@ -15,6 +15,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
 namespace ZapretCS
@@ -24,6 +25,10 @@ namespace ZapretCS
         bool fbSending, fbLoading, fbOpen;
         long fbLastN;                       // номер последнего показанного сообщения
         DispatcherTimer fbFastTimer, fbSlowTimer;
+        byte[] fbPendingImg;                // прикреплённая картинка (уже сжатая в JPEG)
+        string fbBanUntil;                  // null — можно писать; 'forever' или ISO-время
+        bool fbEditNick;
+        static readonly Dictionary<string, byte[]> fbImgCache = new Dictionary<string, byte[]>();
 
         void WireFeedback()
         {
@@ -51,6 +56,23 @@ namespace ZapretCS
             E<RadioButton>("FbKindIdea").Checked += (s, e) => E<CheckBox>("FbLog").IsChecked = false;
             E<RadioButton>("FbKindOther").Checked += (s, e) => E<CheckBox>("FbLog").IsChecked = false;
             Btn("FbSend").Click += (s, e) => Safe(SendFeedback);
+            Btn("FbAttach").Click += (s, e) => Safe(PickChatImage);
+            El("FbAttachDel").MouseLeftButtonUp += (s, e) => SetChatImage(null);
+            // Ctrl+V с картинкой в буфере обмена — прикрепить скриншот
+            text.PreviewKeyDown += (s, e) =>
+            {
+                if (e.Key == Key.V && (Keyboard.Modifiers & ModifierKeys.Control) != 0 && Clipboard.ContainsImage())
+                {
+                    Safe(() => SetChatImage(PrepImage(Clipboard.GetImage())));
+                    e.Handled = true;
+                }
+            };
+            // ник
+            var nick = E<TextBox>("FbNickBox");
+            nick.TextChanged += (s, e) => El("FbNickHint").Visibility = nick.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+            nick.KeyDown += (s, e) => { if (e.Key == Key.Enter) Safe(SaveNick); };
+            Btn("FbNickSave").Click += (s, e) => Safe(SaveNick);
+            El("FbNickEdit").MouseLeftButtonUp += (s, e) => { fbEditNick = true; nick.Text = S.Str("chatNick", ""); UpdateChatUi(); nick.Focus(); nick.SelectAll(); };
             Win.KeyDown += (s, e) => { if (e.Key == Key.Escape && El("FbOverlay").Visibility == Visibility.Visible && !fbSending) CloseFeedback(); };
 
             // пока чат открыт — проверяем ответы часто; в фоне — редко и только если человек уже писал
@@ -68,10 +90,12 @@ namespace ZapretCS
             FbStatus("", false);
             Btn("FbSend").IsEnabled = true;
             SetChatDot(false);
+            fbEditNick = false;
+            UpdateChatUi();
             OpenOverlay("Fb");
             LoadChat(true);
             fbFastTimer.Start();
-            After(260, () => E<TextBox>("FbText").Focus());
+            After(260, () => { if (string.IsNullOrEmpty(S.Str("chatNick", ""))) E<TextBox>("FbNickBox").Focus(); else E<TextBox>("FbText").Focus(); });
         }
 
         void CloseFeedback()
@@ -79,6 +103,45 @@ namespace ZapretCS
             fbOpen = false;
             fbFastTimer.Stop();
             CloseOverlay("Fb");
+        }
+
+        // что показать внизу чата: ввод ника, блокировку или обычное поле
+        void UpdateChatUi()
+        {
+            string nick = S.Str("chatNick", "");
+            bool needNick = fbEditNick || nick.Length < 2;
+            bool banned = fbBanUntil != null;
+            El("FbNickPanel").Visibility = needNick && !banned ? Visibility.Visible : Visibility.Collapsed;
+            El("FbBanPanel").Visibility = banned ? Visibility.Visible : Visibility.Collapsed;
+            El("FbComposer").Visibility = !needNick && !banned ? Visibility.Visible : Visibility.Collapsed;
+            El("FbNickLine").Visibility = nick.Length >= 2 && !needNick ? Visibility.Visible : Visibility.Collapsed;
+            E<TextBlock>("FbNickName").Text = nick;
+            if (banned)
+            {
+                string until = fbBanUntil == "forever" ? Translate.T("Автор закрыл тебе доступ к чату.") : Translate.T("Писать можно будет после") + " " + ChatTime(fbBanUntil, true) + ".";
+                E<TextBlock>("FbBanText").Text = until;
+            }
+        }
+
+        void SaveNick()
+        {
+            string n = Regex.Replace(E<TextBox>("FbNickBox").Text ?? "", @"\s+", " ").Trim();
+            if (n.Length < 2) { FbStatus(Translate.T("Ник — хотя бы 2 символа"), true); return; }
+            S.Set("chatNick", n); S.Save();
+            fbEditNick = false;
+            FbStatus("", false);
+            UpdateChatUi();
+            E<TextBox>("FbText").Focus();
+        }
+
+        void SetChatBan(object ban)
+        {
+            var d = ban as Dictionary<string, object>;
+            object u = null;
+            string until = d != null && d.TryGetValue("until", out u) ? Convert.ToString(u) : null;
+            if (until == fbBanUntil) return;
+            fbBanUntil = string.IsNullOrEmpty(until) ? null : until;
+            UpdateChatUi();
         }
 
         void SetChatDot(bool on)
@@ -115,7 +178,8 @@ namespace ZapretCS
                 {
                     fbLoading = false;
                     if (d == null) return;
-                    object m; d.TryGetValue("msgs", out m);
+                    object m, ban; d.TryGetValue("msgs", out m);
+                    d.TryGetValue("ban", out ban); SetChatBan(ban);
                     var list = m as IEnumerable;
                     if (list != null) foreach (var x in list) { var msg = x as Dictionary<string, object>; if (msg != null) AddBubble(msg); }
                     ShowChatEmpty();
@@ -147,37 +211,51 @@ namespace ZapretCS
             if (fbSending) return;
             var box = E<TextBox>("FbText");
             string text = box.Text.Trim();
-            if (text.Length == 0) return;
+            var img = fbPendingImg;
+            if (text.Length == 0 && img == null) return;
             bool first = !S.Bool("chatStarted");
             string kind = E<RadioButton>("FbKindIdea").IsChecked == true ? "idea" : E<RadioButton>("FbKindOther").IsChecked == true ? "other" : "bug";
             var os = Environment.OSVersion.Version;
             var body = new Dictionary<string, object> {
                 { "id", InstallId() }, { "v", AppVersion }, { "z", ZapretCore.LocalVersion ?? "" },
                 { "os", os.Major + "." + os.Minor + "." + os.Build }, { "lang", Translate.En ? "en" : "ru" },
-                { "kind", kind }, { "text", text }, { "strat", S.Str("strategy", "") }, { "on", State == "on" }
+                { "kind", kind }, { "text", text }, { "nick", S.Str("chatNick", "") }, { "strat", S.Str("strategy", "") }, { "on", State == "on" }
             };
             if (E<CheckBox>("FbLog").IsChecked == true) body["log"] = LogTail(60, 6000);
 
             fbSending = true;
             Btn("FbSend").IsEnabled = false;
-            FbStatus(Translate.T("Отправляю…"), false);
+            FbStatus(Translate.T(img != null ? "Загружаю картинку…" : "Отправляю…"), false);
+            string id = InstallId();
             ThreadPool.QueueUserWorkItem(_ =>
             {
-                string err = null;
-                try { ChatPost("/chat/send", body); }
+                string err = null; object ban = null;
+                try
+                {
+                    if (img != null) body["img"] = UploadChatImage(id, img);
+                    ChatPost("/chat/send", body);
+                }
                 catch (WebException ex)
                 {
                     var r = ex.Response as HttpWebResponse;
-                    err = r != null && (int)r.StatusCode == 429 ? "Слишком много сообщений — попробуй позже" : "Не получилось отправить — проверь интернет";
+                    int code = r != null ? (int)r.StatusCode : 0;
+                    if (code == 403)
+                    {
+                        try { using (var sr = new StreamReader(r.GetResponseStream(), Encoding.UTF8)) ban = new JavaScriptSerializer().DeserializeObject(sr.ReadToEnd()); } catch { }
+                        err = "Ты не можешь писать в чат";
+                    }
+                    else err = code == 429 ? "Слишком много сообщений — попробуй позже" : code == 413 || code == 415 ? "Картинка не подошла — попробуй другую" : "Не получилось отправить — проверь интернет";
                 }
                 catch { err = "Не получилось отправить — проверь интернет"; }
                 Win.Dispatcher.BeginInvoke(new Action(() =>
                 {
                     fbSending = false;
                     Btn("FbSend").IsEnabled = true;
+                    if (ban != null) { SetChatBan(ban); FbStatus("", false); return; }
                     if (err != null) { FbStatus(Translate.T(err), true); return; }
                     FbStatus("", false);
                     box.Text = "";
+                    SetChatImage(null);
                     if (first) { S.Set("chatStarted", true); S.Save(); }
                     // журнал после первого сообщения об ошибке обычно уже не нужен
                     E<CheckBox>("FbLog").IsChecked = false;
@@ -226,8 +304,10 @@ namespace ZapretCS
             {
                 sp.Children.Add(new TextBlock { Text = Translate.T(kind == "bug" ? "Ошибка" : kind == "idea" ? "Идея" : "Вопрос"), FontSize = 11, Foreground = muted, Margin = new Thickness(0, 0, 0, 3) });
             }
+            string img = m.TryGetValue("img", out o) ? Convert.ToString(o) : "";
+            if (!string.IsNullOrEmpty(img)) sp.Children.Add(ChatImageView(img));
             // TextBox только для чтения — чтобы текст можно было выделить и скопировать
-            sp.Children.Add(new TextBox
+            if (text.Length > 0) sp.Children.Add(new TextBox
             {
                 Text = text, IsReadOnly = true, TextWrapping = TextWrapping.Wrap, Background = Brushes.Transparent, BorderThickness = new Thickness(0),
                 Foreground = Win.Foreground, FontSize = 13, Padding = new Thickness(0), Margin = new Thickness(-2, 0, 0, 0)
@@ -239,13 +319,128 @@ namespace ZapretCS
             sv.Dispatcher.BeginInvoke(new Action(sv.ScrollToEnd), DispatcherPriority.Loaded);
         }
 
-        static string ChatTime(string iso)
+        static string ChatTime(string iso, bool full = false)
         {
             DateTime t;
             if (!DateTime.TryParse(iso, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out t)) return "";
             t = t.ToLocalTime();
-            if (t.Date == DateTime.Today) return t.ToString("HH:mm");
+            if (t.Date == DateTime.Today && !full) return t.ToString("HH:mm");
             return t.ToString("d MMM, HH:mm", Translate.En ? CultureInfo.GetCultureInfo("en-US") : CultureInfo.GetCultureInfo("ru-RU"));
+        }
+
+        // ---- картинки ----
+        void PickChatImage()
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog { Filter = Translate.T("Картинки") + "|*.png;*.jpg;*.jpeg;*.bmp;*.gif", Title = Translate.T("Выбери фото или скриншот") };
+            if (dlg.ShowDialog(Win) != true) return;
+            try
+            {
+                var bi = new BitmapImage();
+                using (var fs = File.OpenRead(dlg.FileName)) { bi.BeginInit(); bi.CacheOption = BitmapCacheOption.OnLoad; bi.StreamSource = fs; bi.EndInit(); }
+                SetChatImage(PrepImage(bi));
+            }
+            catch { FbStatus(Translate.T("Не получилось открыть картинку"), true); }
+        }
+
+        void SetChatImage(byte[] jpg)
+        {
+            fbPendingImg = jpg;
+            El("FbAttachRow").Visibility = jpg != null ? Visibility.Visible : Visibility.Collapsed;
+            E<Image>("FbAttachImg").Source = jpg != null ? DecodeImage(jpg, 240) : null;
+            if (jpg != null) { E<CheckBox>("FbLog").IsChecked = E<RadioButton>("FbKindBug").IsChecked == true; E<TextBox>("FbText").Focus(); }
+        }
+
+        // уменьшаем до 1600 px по большей стороне и сжимаем в JPEG (не больше ~1.4 МБ)
+        static byte[] PrepImage(BitmapSource src)
+        {
+            foreach (var t in new[] { new { Side = 1600, Q = 85 }, new { Side = 1280, Q = 75 }, new { Side = 1024, Q = 65 } })
+            {
+                BitmapSource b = src;
+                double sc = Math.Min(1.0, t.Side / (double)Math.Max(src.PixelWidth, src.PixelHeight));
+                if (sc < 1) b = new TransformedBitmap(src, new ScaleTransform(sc, sc));
+                if (b.Format != PixelFormats.Bgr24 && b.Format != PixelFormats.Bgr32) b = new FormatConvertedBitmap(b, PixelFormats.Bgr24, null, 0);
+                var enc = new JpegBitmapEncoder { QualityLevel = t.Q };
+                enc.Frames.Add(BitmapFrame.Create(b));
+                using (var ms = new MemoryStream()) { enc.Save(ms); if (ms.Length <= 1400 * 1024) return ms.ToArray(); }
+            }
+            throw new Exception("too big");
+        }
+
+        static BitmapImage DecodeImage(byte[] data, int width)
+        {
+            var bi = new BitmapImage();
+            bi.BeginInit(); bi.CacheOption = BitmapCacheOption.OnLoad; bi.StreamSource = new MemoryStream(data);
+            if (width > 0) bi.DecodePixelWidth = width;
+            bi.EndInit(); bi.Freeze();
+            return bi;
+        }
+
+        static string UploadChatImage(string id, byte[] jpg)
+        {
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+            var req = (HttpWebRequest)WebRequest.Create(ShareServer + "/chat/img?id=" + id);
+            req.Method = "POST"; req.ContentType = "image/jpeg"; req.UserAgent = "ZapretGUI/" + AppVersion; req.Timeout = 60000; req.ReadWriteTimeout = 60000;
+            req.ContentLength = jpg.Length;
+            using (var st = req.GetRequestStream()) st.Write(jpg, 0, jpg.Length);
+            using (var r = req.GetResponse())
+            using (var sr = new StreamReader(r.GetResponseStream(), Encoding.UTF8))
+            {
+                var d = new JavaScriptSerializer().DeserializeObject(sr.ReadToEnd()) as Dictionary<string, object>;
+                object k;
+                if (d == null || !d.TryGetValue("img", out k)) throw new WebException("no img");
+                return Convert.ToString(k);
+            }
+        }
+
+        UIElement ChatImageView(string img)
+        {
+            var im = new Image { MaxWidth = 300, MaxHeight = 240, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Left, Cursor = Cursors.Hand };
+            var wait = new TextBlock { Text = Translate.T("картинка…"), Foreground = (Brush)Win.FindResource("Muted"), FontSize = 12, Margin = new Thickness(8) };
+            var box = new Border { BorderBrush = (Brush)Win.FindResource("Line"), BorderThickness = new Thickness(1), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 6), Child = wait };
+            Action<byte[]> show = data =>
+            {
+                try { im.Source = DecodeImage(data, 600); box.Child = im; } catch { wait.Text = Translate.T("не удалось показать картинку"); }
+            };
+            im.MouseLeftButtonUp += (s, e) => OpenChatImage(img);
+            byte[] cached;
+            if (fbImgCache.TryGetValue(img, out cached)) { show(cached); return box; }
+            string id = InstallId();
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                byte[] data = null;
+                try
+                {
+                    ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+                    var req = (HttpWebRequest)WebRequest.Create(ShareServer + "/chat/img/" + img + "?id=" + id);
+                    req.UserAgent = "ZapretGUI/" + AppVersion; req.Timeout = 30000; req.ReadWriteTimeout = 30000;
+                    using (var r = req.GetResponse())
+                    using (var ms = new MemoryStream()) { r.GetResponseStream().CopyTo(ms); data = ms.ToArray(); }
+                }
+                catch { }
+                Win.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (data == null) { wait.Text = Translate.T("картинка недоступна"); return; }
+                    fbImgCache[img] = data; show(data);
+                    var sv = E<ScrollViewer>("FbScroll");
+                    if (sv.VerticalOffset >= sv.ScrollableHeight - 300) sv.ScrollToEnd();
+                }));
+            });
+            return box;
+        }
+
+        static void OpenChatImage(string img)
+        {
+            byte[] data;
+            if (!fbImgCache.TryGetValue(img, out data)) return;
+            try
+            {
+                string dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ZapretChat");
+                Directory.CreateDirectory(dir);
+                string f = System.IO.Path.Combine(dir, img + (data.Length > 1 && data[0] == 0x89 ? ".png" : ".jpg"));
+                if (!File.Exists(f)) File.WriteAllBytes(f, data);
+                System.Diagnostics.Process.Start(f);
+            }
+            catch { }
         }
 
         void FbStatus(string text, bool error)
