@@ -26,6 +26,8 @@
     <Geometry x:Key="PxDown">M0,0h10v2h-2v2h-2v2h-2v-2h-2v-2h-2z</Geometry>
     <Geometry x:Key="PxCollapse">M0,0h2v2h2v2h2v2h-2v2h-2v2h-2z M6,0h2v2h2v2h2v2h-2v2h-2v2h-2z</Geometry>
     <Geometry x:Key="PxRight">M0,0h2v2h2v2h2v2h-2v2h-2v2h-2z</Geometry>
+    <Geometry x:Key="PxCompactWin">M0,0h16v2h-16z M0,12h16v2h-16z M0,2h2v10h-2z M14,2h2v10h-2z M4,4h4v6h-4z</Geometry>
+    <Geometry x:Key="PxExpandWin">M0,0h16v2h-16z M0,12h16v2h-16z M0,2h2v10h-2z M14,2h2v10h-2z M4,4h8v6h-8z</Geometry>
 
     <!-- кнопка: квадратная, рамка 2 px, жёсткая тень; при нажатии «вдавливается» в тень -->
     <Style x:Key="Btn" TargetType="Button">
@@ -532,6 +534,9 @@
             <TextBlock x:Name="TitleVer" Text="" Foreground="{StaticResource Muted}" FontSize="12" Margin="10,1,0,0" VerticalAlignment="Center"/>
           </StackPanel>
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+            <Button x:Name="CompactBtn" Style="{StaticResource TitleBtn}" Margin="0,0,4,0" ToolTip="Компактный вид">
+              <Path x:Name="CompactIcon" Data="{StaticResource PxCompactWin}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="16" Height="14" Stretch="None" SnapsToDevicePixels="True"/>
+            </Button>
             <Button x:Name="ChatBtn" Style="{StaticResource TitleBtn}" Margin="0,0,4,0" ToolTip="Чат с разработчиком">
               <Grid>
                 <Path Data="{StaticResource PxChat}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="16" Height="16" Stretch="None" SnapsToDevicePixels="True"/>
@@ -712,6 +717,20 @@
                   </Grid>
                 </Button>
               </Grid>
+              <!-- компактный вид: «Мои сайты» — строка внизу, по нажатию окно разворачивается -->
+              <Border x:Name="SitesFoot" Background="{StaticResource Card}" BorderBrush="#262A33" BorderThickness="2" Height="44" Margin="0,12,0,0"
+                      Cursor="Hand" Visibility="Collapsed" ToolTip="Открыть «Мои сайты»">
+                <Border.RenderTransform><TranslateTransform x:Name="SitesFootT"/></Border.RenderTransform>
+                <DockPanel Margin="14,0">
+                  <Path x:Name="FootChev" DockPanel.Dock="Right" Data="{StaticResource PxRight}" Fill="#8A90A0" VerticalAlignment="Center" SnapsToDevicePixels="True">
+                    <Path.RenderTransform><TranslateTransform x:Name="FootChevT"/></Path.RenderTransform>
+                  </Path>
+                  <TextBlock x:Name="FootCount" DockPanel.Dock="Right" Style="{StaticResource PxText}" FontSize="16" Foreground="#8A90A0" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                  <Rectangle x:Name="FootApplyDot" DockPanel.Dock="Right" Width="8" Height="8" Fill="#3DDC97" VerticalAlignment="Center" Margin="0,0,10,0" Visibility="Collapsed" ToolTip="Изменения применятся после перезапуска"/>
+                  <StackPanel x:Name="FootDots" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                  <TextBlock Text="Мои сайты" FontSize="14" VerticalAlignment="Center"/>
+                </DockPanel>
+              </Border>
             </StackPanel>
           </Grid>
 
@@ -731,6 +750,8 @@
                       HorizontalAlignment="Center" Margin="0,18,0,0" SnapsToDevicePixels="True" RenderTransformOrigin="0.5,0.5">
                   <Path.RenderTransform><TransformGroup><ScaleTransform ScaleX="-1"/><TranslateTransform x:Name="StripChevT"/></TransformGroup></Path.RenderTransform>
                 </Path>
+                <!-- цветные метки групп сайтов -->
+                <StackPanel x:Name="StripDots" DockPanel.Dock="Top" HorizontalAlignment="Center" Margin="0,22,0,0"/>
                 <StackPanel DockPanel.Dock="Bottom" HorizontalAlignment="Center" Margin="0,0,0,16">
                   <Rectangle x:Name="StripApplyDot" Width="8" Height="8" Fill="#3DDC97" HorizontalAlignment="Center" Margin="0,0,0,10" Visibility="Collapsed" ToolTip="Изменения применятся после перезапуска"/>
                   <TextBlock x:Name="StripCount" Style="{StaticResource PxText}" FontSize="16" Foreground="#8A90A0" HorizontalAlignment="Center"/>
@@ -796,6 +817,8 @@
               </DockPanel>
             </Border>
           </Grid>
+          <!-- снимки уходящих панелей во время смены вида -->
+          <Canvas x:Name="FlipLayer" Grid.ColumnSpan="3" IsHitTestVisible="False" Panel.ZIndex="50"/>
         </Grid>
 
         <!-- Плашка обновления приложения -->

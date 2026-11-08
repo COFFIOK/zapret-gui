@@ -166,6 +166,7 @@ namespace ZapretCS
         }
         void OpenSettings()
         {
+            OverlayOpened("Settings");
             El("SettingsOverlay").Visibility = Visibility.Visible;
             Anim.D(A("Dim"), Anim.OP, 1, 260, 0);
             Anim.D(A("SettingsShift"), Anim.TX, 0, 360, 620, ease: new System.Windows.Media.Animation.QuinticEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut });
@@ -187,6 +188,7 @@ namespace ZapretCS
             Anim.D(A("SettingsShift"), Anim.TX, 620, 260, ease: new System.Windows.Media.Animation.CubicEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseIn });
             Anim.D(A("GearRot"), Anim.Ang, 0, 450);
             After(290, () => El("SettingsOverlay").Visibility = Visibility.Collapsed);
+            OverlayClosed(320);
         }
 
         // перезапуск приложения (смена темы, языка, акцента, обновление zapret)

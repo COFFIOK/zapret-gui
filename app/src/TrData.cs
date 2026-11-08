@@ -6,6 +6,9 @@ namespace ZapretCS
         static readonly string[,] Pairs = {
             { @"Свернуть «Мои сайты» вправо", @"Collapse “My sites” to the right" },
             { @"Развернуть «Мои сайты»", @"Expand “My sites”" },
+            { @"Компактный вид", @"Compact view" },
+            { @"Обычный вид", @"Normal view" },
+            { @"Открыть «Мои сайты»", @"Open “My sites”" },
             { @"Отправить данные анонимно?", @"Send data anonymously?" },
             { @"Спасибо!", @"Thank you!" },
             { @"Нет", @"No" },

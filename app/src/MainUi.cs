@@ -186,7 +186,7 @@ namespace ZapretCS
             });
             Btn("CloseAskX").Click += (s, e) => CloseOverlay("Close");
             El("CloseDim").MouseLeftButtonUp += (s, e) => CloseOverlay("Close");
-            Btn("CloseToTray").Click += (s, e) => Safe(() => { SetCloseAction("tray"); El("CloseOverlay").Visibility = Visibility.Collapsed; HideToTray(); });
+            Btn("CloseToTray").Click += (s, e) => Safe(() => { SetCloseAction("tray"); El("CloseOverlay").Visibility = Visibility.Collapsed; OverlayClosed(50); HideToTray(); });
             Btn("CloseToExit").Click += (s, e) => Safe(() => { SetCloseAction("exit"); ExitApp(); });
 
             var pb = Btn("PowerBtn");
@@ -235,6 +235,7 @@ namespace ZapretCS
         // ---- оверлеи (окно поверх главного: тусклый фон + панель) ----
         public void OpenOverlay(string p)
         {
+            OverlayOpened(p);
             El(p + "Overlay").Visibility = Visibility.Visible;
             Anim.D(A(p + "Dim"), Anim.OP, 1, 220, 0);
             Anim.D(A(p + "Panel"), Anim.OP, 1, 250, 0);
@@ -249,6 +250,7 @@ namespace ZapretCS
             Anim.D(A(p + "Scale"), Anim.SX, 0.96, 180);
             Anim.D(A(p + "Scale"), Anim.SY, 0.96, 180);
             After(190, () => El(p + "Overlay").Visibility = Visibility.Collapsed);
+            OverlayClosed(220);
         }
         public static void After(int ms, Action a)
         {
