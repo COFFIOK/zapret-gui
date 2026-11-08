@@ -24,6 +24,7 @@
     <Geometry x:Key="PxGear">M4,0h2v2h2v-2h2v2h2v2h-2v2h2v2h2v2h-2v2h-2v2h2v2h-2v-2h-2v2h-2v-2h-2v2h-2v-2h2v-2h-2v-2h-2v-2h2v-2h2v-2h-2v-2h2z M6,6v4h4v-4z</Geometry>
     <Geometry x:Key="PxTick">M0,4h2v2h-2z M2,6h2v2h-2z M4,4h2v2h-2z M6,2h2v2h-2z M8,0h2v2h-2z</Geometry>
     <Geometry x:Key="PxDown">M0,0h10v2h-2v2h-2v2h-2v-2h-2v-2h-2z</Geometry>
+    <Geometry x:Key="PxCollapse">M0,0h2v2h2v2h2v2h-2v2h-2v2h-2z M6,0h2v2h2v2h2v2h-2v2h-2v2h-2z</Geometry>
     <Geometry x:Key="PxRight">M0,0h2v2h2v2h2v2h-2v2h-2v2h-2z</Geometry>
 
     <!-- кнопка: квадратная, рамка 2 px, жёсткая тень; при нажатии «вдавливается» в тень -->
@@ -547,15 +548,15 @@
           </StackPanel>
         </Grid>
 
-        <Grid Grid.Row="1" Margin="22,4,22,20">
+        <Grid x:Name="MainArea" Grid.Row="1" Margin="22,4,22,20">
           <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="330"/>
+            <ColumnDefinition x:Name="LeftColDef" Width="330"/>
             <ColumnDefinition Width="22"/>
-            <ColumnDefinition Width="*"/>
+            <ColumnDefinition x:Name="RightColDef" Width="*"/>
           </Grid.ColumnDefinitions>
 
-          <!-- Левая колонка -->
-          <Grid Grid.Column="0">
+          <!-- Левая колонка (когда «Мои сайты» свёрнуты — стоит по центру) -->
+          <Grid x:Name="LeftCol" Grid.Column="0" Width="330" HorizontalAlignment="Center">
             <Grid.RowDefinitions>
               <RowDefinition Height="*"/>
               <RowDefinition Height="Auto"/>
@@ -703,13 +704,33 @@
           </Grid>
 
           <!-- Правая колонка -->
-          <Grid Grid.Column="2">
+          <Grid x:Name="RightCol" Grid.Column="2">
             <Grid.RowDefinitions>
               <RowDefinition Height="*"/>
-              <RowDefinition Height="Auto"/>
+              <RowDefinition x:Name="ApplyRow" Height="Auto"/>
             </Grid.RowDefinitions>
 
+            <!-- «Мои сайты» в свёрнутом виде: узкая вертикальная вкладка справа -->
+            <Border x:Name="SitesStrip" Grid.RowSpan="2" Width="52" Background="{StaticResource Card}" BorderBrush="#262A33" BorderThickness="2"
+                    Cursor="Hand" Visibility="Collapsed" Opacity="0" ToolTip="Развернуть «Мои сайты»">
+              <Border.RenderTransform><TranslateTransform x:Name="SitesStripT"/></Border.RenderTransform>
+              <DockPanel>
+                <Path x:Name="StripChev" DockPanel.Dock="Top" Data="{StaticResource PxCollapse}" Fill="#8A90A0" Width="12" Height="10" Stretch="None"
+                      HorizontalAlignment="Center" Margin="0,18,0,0" SnapsToDevicePixels="True" RenderTransformOrigin="0.5,0.5">
+                  <Path.RenderTransform><TransformGroup><ScaleTransform ScaleX="-1"/><TranslateTransform x:Name="StripChevT"/></TransformGroup></Path.RenderTransform>
+                </Path>
+                <StackPanel DockPanel.Dock="Bottom" HorizontalAlignment="Center" Margin="0,0,0,16">
+                  <Rectangle x:Name="StripApplyDot" Width="8" Height="8" Fill="#3DDC97" HorizontalAlignment="Center" Margin="0,0,0,10" Visibility="Collapsed" ToolTip="Изменения применятся после перезапуска"/>
+                  <TextBlock x:Name="StripCount" Style="{StaticResource PxText}" FontSize="16" Foreground="#8A90A0" HorizontalAlignment="Center"/>
+                </StackPanel>
+                <TextBlock x:Name="StripTitle" Text="Мои сайты" Style="{StaticResource PxText}" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center">
+                  <TextBlock.LayoutTransform><RotateTransform Angle="-90"/></TextBlock.LayoutTransform>
+                </TextBlock>
+              </DockPanel>
+            </Border>
+
             <Border x:Name="SitesCard" Grid.Row="0" Background="{StaticResource Card}" Padding="18" BorderBrush="#262A33" BorderThickness="2">
+              <Border.RenderTransform><TranslateTransform x:Name="SitesCardT"/></Border.RenderTransform>
               <Grid>
                 <Grid.RowDefinitions>
                   <RowDefinition Height="Auto"/>
@@ -724,6 +745,9 @@
                     </Button>
                     <Button x:Name="PasteBtn" Style="{StaticResource Btn}" Padding="10,5" FontSize="12" ToolTip="Ввести код от друга или вставить скопированный список">
                       <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE8AC;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,1,6,0"/><TextBlock Text="Ввести код"/></StackPanel>
+                    </Button>
+                    <Button x:Name="SitesCollapse" Style="{StaticResource TitleBtn}" Margin="6,0,-6,0" ToolTip="Свернуть «Мои сайты» вправо">
+                      <Path Data="{StaticResource PxCollapse}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="12" Height="10" Stretch="None" SnapsToDevicePixels="True"/>
                     </Button>
                   </StackPanel>
                   <TextBlock Text="Мои сайты" Style="{StaticResource PxText}" FontSize="22.22" VerticalAlignment="Center" Margin="0,0,0,2"/>

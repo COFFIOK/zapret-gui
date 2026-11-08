@@ -4,6 +4,8 @@ namespace ZapretCS
     static partial class Translate
     {
         static readonly string[,] Pairs = {
+            { @"Свернуть «Мои сайты» вправо", @"Collapse “My sites” to the right" },
+            { @"Развернуть «Мои сайты»", @"Expand “My sites”" },
             { @"Отправить данные анонимно?", @"Send data anonymously?" },
             { @"Спасибо!", @"Thank you!" },
             { @"Нет", @"No" },
