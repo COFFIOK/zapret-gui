@@ -7,11 +7,9 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
@@ -21,11 +19,9 @@ namespace ZapretCS
     partial class MainUi
     {
         const double StripWidth = 52;
-        const int MoveMs = 520;
         int viewMode;            // 0 полный, 1 ряд, 2 компакт
         int modeBeforeCompact;
         bool modeBusy;
-        double fullWinWidth;
 
         int SInt(string key, int def)
         {
@@ -34,7 +30,6 @@ namespace ZapretCS
 
         void WireSitesCollapse()
         {
-            fullWinWidth = Win.Width;
             Btn("SitesCollapse").Click += (s, e) => Safe(() => SetMode(1, true));
             Btn("CompactBtn").Click += (s, e) => Safe(() => SetMode(viewMode == 2 ? (modeBeforeCompact == 2 ? 0 : modeBeforeCompact) : 2, true));
 
@@ -183,15 +178,41 @@ namespace ZapretCS
             E<System.Windows.Shapes.Path>("CompactIcon").Data = (Geometry)Win.FindResource(mode == 2 ? "PxExpandWin" : "PxCompactWin");
         }
 
-        // окно ровно под левую колонку: всё, что шире неё, убираем
-        double CompactWidth()
+        // компакт: окно не меняет размер (менять размер прозрачного окна — это рывки и мигание),
+        // вместо этого «оболочка» с рамкой сжимается к центру, а пустые края окна прозрачные и не мешают кликам
+        double CompactInset()
         {
             var sm = E<Grid>("Shell").Margin;
             double extra = E<Grid>("MainArea").ActualWidth + sm.Left + sm.Right - 330;
-            return extra <= 0 ? Win.Width : Math.Round(Win.Width - extra);
+            return extra <= 0 ? 0 : Math.Floor(extra / 2);
+        }
+        int insetId;
+        void SetInset(double inset, int ms, int begin = 0)
+        {
+            var shell = E<Grid>("Shell");
+            int id = ++insetId;
+            var to = new Thickness(inset, 0, inset, 0);
+            if (ms <= 0 || Anim.Eco || !Win.IsVisible)
+            {
+                shell.BeginAnimation(FrameworkElement.MarginProperty, null);
+                shell.Margin = to; return;
+            }
+            var a = new ThicknessAnimation { To = to, Duration = new Duration(TimeSpan.FromMilliseconds(ms)), EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut } };
+            if (begin > 0) a.BeginTime = TimeSpan.FromMilliseconds(begin);
+            a.Completed += (s, e) =>
+            {
+                if (id != insetId) return;
+                shell.BeginAnimation(FrameworkElement.MarginProperty, null);
+                shell.Margin = to;
+            };
+            shell.BeginAnimation(FrameworkElement.MarginProperty, a);
         }
 
         // ===== переход между видами =====
+        // Порядок, чтобы ничего не наезжало друг на друга:
+        //   1) уходящая панель тает и отъезжает в сторону;
+        //   2) блоки едут на новые места (если их пути пересекаются — тают и проявляются уже на новом месте);
+        //   3) новая панель проявляется последней.
         void SetMode(int mode, bool animate)
         {
             if (modeBusy || mode == viewMode) return;
@@ -201,85 +222,118 @@ namespace ZapretCS
             var area = E<Grid>("MainArea");
             var layer = E<Canvas>("FlipLayer");
             UpdateStrip();
-            if (widenedForOverlay) widenedForOverlay = false;
+            widenedForOverlay = false;
 
-            // что двигаем: кнопка, подписи, стратегия, Telegram, тест
             var controls = E<StackPanel>("ControlsBlock");
-            var els = new List<FrameworkElement> { (FrameworkElement)El("PowerBtn"), E<TextBlock>("StatusText"), E<TextBlock>("SubText") };
-            foreach (UIElement c in controls.Children) { var fe = c as FrameworkElement; if (fe != null && fe.Visibility == Visibility.Visible) els.Add(fe); }
-            els.Add(E<StackPanel>("TestHost"));
-            var first = new List<Point>();
-            if (anim) { area.UpdateLayout(); foreach (var el in els) { ResetFlip(el); first.Add(PosIn(el, area)); } }
+            var movers = new List<FrameworkElement> { (FrameworkElement)El("PowerBtn"), E<TextBlock>("StatusText"), E<TextBlock>("SubText") };
+            var swappers = new List<FrameworkElement>();
+            foreach (UIElement c in controls.Children) { var fe = c as FrameworkElement; if (fe != null && fe.Visibility == Visibility.Visible) swappers.Add(fe); }
+            swappers.Add(E<StackPanel>("TestHost"));
+            // в «ряд» и обратно стратегия и Telegram проходят сквозь подписи — их не двигаем, а перепроявляем
+            bool crossing = old == 1 || mode == 1;
+            if (!crossing) { movers.AddRange(swappers); swappers.Clear(); }
+            var all = new List<FrameworkElement>(movers); all.AddRange(swappers);
 
-            // уходящая панель тает снимком
+            var first = new List<Point>();
+            if (anim) { area.UpdateLayout(); foreach (var el in movers) { ResetFlip(el); first.Add(PosIn(el, area)); } }
             FrameworkElement leaving = (FrameworkElement)(old == 0 ? El("SitesCard") : old == 1 ? El("SitesStrip") : El("SitesFoot"));
             Image ghost = anim ? Ghost(leaving, layer, area) : null;
+            Image[] swapGhosts = new Image[swappers.Count];
+            if (anim) for (int i = 0; i < swappers.Count; i++) { ResetFlip(swappers[i]); swapGhosts[i] = Ghost(swappers[i], layer, area); }
 
-            double toW = old == 2 ? fullWinWidth : -1;
             ApplyLayout(mode);
             viewMode = mode;
             S.Set("viewMode", mode); S.Set("modeBeforeCompact", modeBeforeCompact); S.Set("sitesCollapsed", mode == 1); S.Save();
+            var ver = El("TitleVer");
 
-            if (mode == 2) { area.UpdateLayout(); toW = CompactWidth(); }
             if (!anim)
             {
-                if (toW > 0) MoveWindow(toW, 0);
+                Anim.Stop(ver, Anim.OP); ver.Opacity = 1;
+                if (mode == 2) { area.UpdateLayout(); SetInset(CompactInset(), 0); }
+                else SetInset(0, 0);
                 return;
             }
             modeBusy = true;
+            // компакт → обычный: оболочка начинает раскрываться сразу, вместе с движением блоков
+            double inset = -1;
+            if (mode == 2) { area.UpdateLayout(); inset = CompactInset(); }
+            else if (old == 2) inset = 0;
             area.UpdateLayout();
 
-            // FLIP: каждый блок стартует с прежнего места и плавно доезжает до нового, по очереди
+            const int moveBegin = 110, moveMs = 480;
             var ease = new CubicEase { EasingMode = EasingMode.EaseInOut };
-            for (int i = 0; i < els.Count; i++)
+            var outEase = new QuinticEase { EasingMode = EasingMode.EaseOut };
+
+            // 1) уходящая панель
+            if (ghost != null)
             {
-                var el = els[i];
+                var gt = (TranslateTransform)ghost.RenderTransform;
+                Anim.D(ghost, Anim.OP, 0, 170, 1, ease: new QuadraticEase { EasingMode = EasingMode.EaseIn });
+                if (old == 2) Anim.D(gt, Anim.TY, 10, 200, 0, ease: Anim.Ease());
+                else Anim.D(gt, Anim.TX, 22, 200, 0, ease: Anim.Ease());
+            }
+            // версия в заголовке тает, а не пропадает рывком
+            if (mode == 2 || old == 2)
+            {
+                ver.Visibility = Visibility.Visible;
+                if (mode == 2) { Anim.D(ver, Anim.OP, 0, 150, 1); After(160, () => { if (viewMode == 2) ver.Visibility = Visibility.Collapsed; }); }
+                else { ver.Opacity = 0; Anim.D(ver, Anim.OP, 1, 260, 0, begin: moveBegin + moveMs - 200); }
+            }
+
+            // 2) движение блоков одной группой — все с одинаковым началом, поэтому не сходятся и не расходятся
+            for (int i = 0; i < movers.Count; i++)
+            {
+                var el = movers[i];
                 var now = PosIn(el, area);
                 double dx = first[i].X - now.X, dy = first[i].Y - now.Y;
                 if (Math.Abs(dx) < 0.5 && Math.Abs(dy) < 0.5) continue;
                 var t = FlipT(el);
-                int delay = i * 28;
                 t.X = dx; t.Y = dy;
-                Anim.D(t, Anim.TX, 0, MoveMs, dx, begin: delay, ease: ease);
-                Anim.D(t, Anim.TY, 0, MoveMs, dy, begin: delay, ease: ease);
+                Anim.D(t, Anim.TX, 0, moveMs, dx, begin: moveBegin, ease: ease);
+                Anim.D(t, Anim.TY, 0, moveMs, dy, begin: moveBegin, ease: ease);
             }
-
-            if (ghost != null)
+            // перепроявление: старый вид тает на месте снимком, новый проявляется уже на новом месте с лёгким сдвигом
+            for (int i = 0; i < swappers.Count; i++)
             {
-                var gt = (TranslateTransform)ghost.RenderTransform;
-                Anim.D(ghost, Anim.OP, 0, 260, 1, ease: new QuadraticEase { EasingMode = EasingMode.EaseIn });
-                if (old == 2) Anim.D(gt, Anim.TY, 14, 300, 0, ease: Anim.Ease());
-                else Anim.D(gt, Anim.TX, old == 0 ? 48 : 18, 340, 0, ease: Anim.Ease());
+                var g = swapGhosts[i];
+                if (g != null) Anim.D(g, Anim.OP, 0, 150, 1);
+                var el = swappers[i];
+                var t = FlipT(el);
+                el.Opacity = 0;
+                int b = moveBegin + moveMs - 220 + i * 45;
+                double sx = mode == 1 ? 14 : 0, sy = mode == 1 ? 0 : 12;
+                t.X = sx; t.Y = sy;
+                Anim.D(el, Anim.OP, 1, 260, 0, begin: b);
+                Anim.D(t, Anim.TX, 0, 380, sx, begin: b, ease: outEase);
+                Anim.D(t, Anim.TY, 0, 380, sy, begin: b, ease: outEase);
             }
+            if (inset >= 0) SetInset(inset, moveMs, moveBegin);
 
-            // входящая панель
-            var outEase = new QuinticEase { EasingMode = EasingMode.EaseOut };
+            // 3) новая панель — последней
+            int enter = moveBegin + moveMs - 160;
             if (mode == 0)
             {
-                var card = El("SitesCard");
-                card.Opacity = 0;
-                int b = old == 2 ? 300 : 150;
-                Anim.D(card, Anim.OP, 1, 320, 0, begin: b);
-                Anim.D(A("SitesCardT"), Anim.TX, 0, 560, 48, begin: b - 60, ease: outEase);
+                var card = El("SitesCard"); card.Opacity = 0;
+                Anim.D(card, Anim.OP, 1, 300, 0, begin: enter);
+                Anim.D(A("SitesCardT"), Anim.TX, 0, 460, 28, begin: enter, ease: outEase);
             }
             else if (mode == 1)
             {
                 var strip = El("SitesStrip"); strip.Opacity = 0;
-                Anim.D(strip, Anim.OP, 1, 300, 0, begin: 200);
-                Anim.D(A("SitesStripT"), Anim.TX, 0, 480, 18, begin: 160, ease: outEase);
+                Anim.D(strip, Anim.OP, 1, 280, 0, begin: enter);
+                Anim.D(A("SitesStripT"), Anim.TX, 0, 420, 14, begin: enter, ease: outEase);
             }
             else
             {
                 var foot = El("SitesFoot"); foot.Opacity = 0;
-                Anim.D(foot, Anim.OP, 1, 300, 0, begin: 300);
-                Anim.D(A("SitesFootT"), Anim.TY, 0, 460, 14, begin: 260, ease: outEase);
+                Anim.D(foot, Anim.OP, 1, 280, 0, begin: enter);
+                Anim.D(A("SitesFootT"), Anim.TY, 0, 420, 12, begin: enter, ease: outEase);
             }
 
-            if (toW > 0) MoveWindow(toW, MoveMs);
-            After(MoveMs + 320, () =>
+            After(enter + 480, () =>
             {
                 layer.Children.Clear();
-                foreach (var el in els) ResetFlip(el);
+                foreach (var el in all) { ResetFlip(el); el.BeginAnimation(UIElement.OpacityProperty, null); el.Opacity = 1; }
                 modeBusy = false;
             });
         }
@@ -331,75 +385,13 @@ namespace ZapretCS
             catch { return null; }
         }
 
-        // окно меняет ширину вокруг своего центра — содержимое по центру стоит на месте.
-        // Само окно (прозрачное) менять каждый кадр дорого и рывками, поэтому анимируется только
-        // «оболочка» внутри него, а размер окна меняется один раз: в конце при сужении, в начале при расширении.
-        int winMoveId;
-        void MoveWindow(double toW, int ms)
-        {
-            var shell = E<Grid>("Shell");
-            int id = ++winMoveId;
-            shell.BeginAnimation(FrameworkElement.MarginProperty, null);
-            shell.Margin = new Thickness(0);
-            double fromW = Win.Width, fromL = Win.Left;
-            if (double.IsNaN(fromL)) { Win.Width = toW; return; }
-            double half = (fromW - toW) / 2;
-            double toL = Math.Round(fromL + half);
-            if (Math.Abs(half) < 0.5) return;
-            if (ms <= 0 || Anim.Eco || !Win.IsVisible) { Win.Width = toW; Win.Left = toL; return; }
-            var ease = new CubicEase { EasingMode = EasingMode.EaseInOut };
-            if (half > 0)
-            {
-                // сужение: оболочка сжимается к центру, потом окно один раз подгоняется под неё
-                var a = new ThicknessAnimation(new Thickness(0), new Thickness(half, 0, half, 0), new Duration(TimeSpan.FromMilliseconds(ms))) { EasingFunction = ease };
-                a.Completed += (s, e) =>
-                {
-                    if (id != winMoveId) return;
-                    shell.BeginAnimation(FrameworkElement.MarginProperty, null);
-                    shell.Margin = new Thickness(0);
-                    SetBounds(toL, toW);
-                };
-                shell.BeginAnimation(FrameworkElement.MarginProperty, a);
-            }
-            else
-            {
-                // расширение: окно сразу становится широким, а оболочка в нём раскрывается от центра
-                double h = -half;
-                shell.Margin = new Thickness(h, 0, h, 0);
-                SetBounds(toL, toW);
-                var a = new ThicknessAnimation(new Thickness(h, 0, h, 0), new Thickness(0), new Duration(TimeSpan.FromMilliseconds(ms))) { EasingFunction = ease };
-                a.Completed += (s, e) =>
-                {
-                    if (id != winMoveId) return;
-                    shell.BeginAnimation(FrameworkElement.MarginProperty, null);
-                    shell.Margin = new Thickness(0);
-                };
-                shell.BeginAnimation(FrameworkElement.MarginProperty, a);
-            }
-        }
-
-        // положение и ширина окна — одним вызовом, без промежуточного кадра
-        [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
-        void SetBounds(double left, double width)
-        {
-            var hwnd = new WindowInteropHelper(Win).Handle;
-            var src = PresentationSource.FromVisual(Win);
-            if (hwnd != IntPtr.Zero && src != null && src.CompositionTarget != null)
-            {
-                var m = src.CompositionTarget.TransformToDevice;
-                SetWindowPos(hwnd, IntPtr.Zero, (int)Math.Round(left * m.M11), (int)Math.Round(Win.Top * m.M22),
-                    (int)Math.Round(width * m.M11), (int)Math.Round(Win.ActualHeight * m.M22), 0x0014);
-            }
-            Win.Width = width; Win.Left = left;
-        }
-
         // окна-панели шире компактного окна: на время открытия окно расширяется, потом снова сужается
         bool widenedForOverlay;
         void OverlayOpened(string p)
         {
             if (viewMode != 2 || widenedForOverlay) return;
             widenedForOverlay = true;
-            MoveWindow(fullWinWidth, 360);
+            SetInset(0, 340);
         }
         void OverlayClosed(int delay)
         {
@@ -414,7 +406,7 @@ namespace ZapretCS
                 }
                 widenedForOverlay = false;
                 E<Grid>("MainArea").UpdateLayout();
-                MoveWindow(CompactWidth(), 360);
+                SetInset(CompactInset(), 340);
             });
         }
     }

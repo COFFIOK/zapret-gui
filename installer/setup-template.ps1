@@ -22,7 +22,7 @@ $utf8 = New-Object System.Text.UTF8Encoding($false)
 # временные файлы — в системной папке Temp: туда не может писать обычная программа пользователя
 $TempDir = Join-Path $env:SystemRoot ('Temp\zapret-setup-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
 New-Item -ItemType Directory -Path $TempDir | Out-Null
-function Save-Payload([string]$name, [string]$dest) { [IO.File]::WriteAllBytes($dest, [Convert]::FromBase64String($Payload[$name])) }
+function Save-Payload { param([string]$name, [string]$dest) [IO.File]::WriteAllBytes($dest, [Convert]::FromBase64String($Payload[$name])) }
 $IconTmp = Join-Path $TempDir 'zapret.ico'
 Save-Payload 'zapret.ico' $IconTmp
 
@@ -566,7 +566,8 @@ function Stop-OldApp {
     }
 }
 # убрать остатки старой версии (PowerShell) и тестовой сборки
-function Remove-OldVersion([string]$app) {
+function Remove-OldVersion {
+    param([string]$app)
     foreach ($f in 'zapret-gui.ps1', 'untranslated.txt', 'ZapretCS.exe', 'cs-error.log') {
         Remove-Item -LiteralPath (Join-Path $app $f) -Force -ErrorAction SilentlyContinue
     }
@@ -606,7 +607,8 @@ public static class ZPriv {
     }
 }
 "@ -ErrorAction SilentlyContinue
-function Set-SafeAcl([string]$dir) {
+function Set-SafeAcl {
+    param([string]$dir)
     if (-not $dir -or -not (Test-Path -LiteralPath $dir)) { return }
     $log = New-Object System.Collections.Generic.List[string]
     try {
@@ -695,7 +697,8 @@ Start-Process cmd.exe -ArgumentList "/c timeout /t 2 /nobreak >nul & rmdir /s /q
     # Иначе любая программа без прав могла бы подменить Zapret.exe или winws.exe, которые запускаются с правами администратора.
     Set-SafeAcl $script:dest
 }
-function New-Shortcut($path) {
+function New-Shortcut {
+    param($path)
     $sh = New-Object -ComObject WScript.Shell
     $l = $sh.CreateShortcut($path)
     $l.TargetPath = Join-Path $script:dest 'Zapret.bat'; $l.WorkingDirectory = $script:dest
@@ -708,6 +711,65 @@ function Register-NoPrompt {
     $pr = New-ScheduledTaskPrincipal -UserId ([Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Highest
     $set = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances Parallel -Priority 4
     Register-ScheduledTask -TaskName 'ZapretGUI' -Action $act -Principal $pr -Settings $set -Description 'Запуск приложения Zapret без запроса прав администратора' -Force | Out-Null
+}
+
+# Тяжёлые шаги (распаковка, права на папку, задачи планировщика) идут в фоновом потоке,
+# чтобы анимации установщика не подтормаживали. Окно только опрашивает, готово ли.
+function Unpack-Zapret {
+    Get-Process -Name winws -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    if ($script:localSrc) {
+        New-Item -ItemType Directory -Force -Path $script:dest | Out-Null
+        $name = Split-Path -Leaf $script:localSrc
+        if ($name -notmatch 'zapret') { $name = 'zapret-discord-youtube' }
+        $target = Join-Path $script:dest $name
+        if ((Split-Path -Parent $script:localSrc) -eq $script:dest -or $script:localSrc -eq $target) {
+            return @{ Target = $script:localSrc; State = 'skip'; Note = 'уже в папке установки — использую как есть' }
+        }
+        if (-not (Test-Path -LiteralPath $target)) { New-Item -ItemType Directory -Path $target | Out-Null }
+        Copy-Item -Path (Join-Path $script:localSrc '*') -Destination $target -Recurse -Force
+        return @{ Target = $target; State = 'ok'; Note = "скопирован с настройками: $name" }
+    }
+    $ex = Join-Path $TempDir 'unz'
+    if (Test-Path -LiteralPath $ex) { Remove-Item -LiteralPath $ex -Recurse -Force }
+    [IO.Compression.ZipFile]::ExtractToDirectory($script:zipPath, $ex)
+    $top = @(Get-ChildItem -LiteralPath $ex -Directory)
+    $src = if ($top.Count -eq 1 -and -not (Test-Path -LiteralPath (Join-Path $ex 'bin\winws.exe'))) { $top[0].FullName } else { $ex }
+    if (-not (Test-Path -LiteralPath (Join-Path $src 'bin\winws.exe'))) { throw 'В архиве нет zapret (bin\winws.exe не найден)' }
+    $name = Split-Path -Leaf $src
+    if ($name -eq 'unz') { $name = 'zapret-discord-youtube' + $(if ($script:dlTag) { '-' + $script:dlTag } else { '' }) }
+    New-Item -ItemType Directory -Force -Path $script:dest | Out-Null
+    $target = Join-Path $script:dest $name
+    if (Test-Path -LiteralPath $target) { return @{ Target = $target; State = 'skip'; Note = "$name уже установлен" } }
+    Move-Item -LiteralPath $src -Destination $target
+    return @{ Target = $target; State = 'ok'; Note = $name }
+}
+function Make-Shortcuts {
+    param([bool]$desktop)
+    New-Shortcut (Join-Path ([Environment]::GetFolderPath('Programs')) 'Zapret.lnk')
+    if ($desktop) { New-Shortcut (Join-Path ([Environment]::GetFolderPath('Desktop')) 'Zapret.lnk'); return 'рабочий стол и меню «Пуск»' }
+    return 'меню «Пуск»'
+}
+$WorkFns = 'Save-Payload', 'Stop-OldApp', 'Remove-OldVersion', 'Set-SafeAcl', 'Install-App', 'New-Shortcut', 'Register-NoPrompt', 'Unpack-Zapret', 'Make-Shortcuts'
+function Start-Work([string]$call) {
+    $sync = [hashtable]::Synchronized(@{ Done = $false; Error = $null; Result = $null })
+    $script:work = $sync
+    $vars = @{ Payload = $Payload; utf8 = $utf8; TempDir = $TempDir; IconTmp = $IconTmp; UninstKey = $UninstKey; AppVersion = $AppVersion
+               DetectedStrategy = $DetectedStrategy; dest = $script:dest; wasRunning = $script:wasRunning; localSrc = $script:localSrc
+               zipPath = $script:zipPath; dlTag = $(if ($script:dl) { $script:dl.Tag } else { $null }); desktop = [bool]$ui.OptDesktop.IsChecked }
+    $defs = ($WorkFns | ForEach-Object { "function $_ {`n" + (Get-Item "function:$_").ScriptBlock.ToString() + "`n}" }) -join "`n"
+    $code = "param(`$sync, `$V)`n`$ErrorActionPreference = 'Stop'`nforeach (`$k in @(`$V.Keys)) { Set-Variable -Name `$k -Value `$V[`$k] -Scope Script }`n$defs`n" +
+            "try { `$sync.Result = & { $call } } catch { `$sync.Error = `$_.Exception.Message } finally { `$sync.Done = `$true }"
+    $rs = [runspacefactory]::CreateRunspace(); $rs.ApartmentState = 'STA'; $rs.Open()
+    $ps = [powershell]::Create(); $ps.Runspace = $rs
+    [void]$ps.AddScript($code).AddArgument($sync).AddArgument($vars)
+    $script:workPs = $ps; $script:workH = $ps.BeginInvoke()
+}
+# true — фоновая работа закончилась (ошибка — исключением)
+function Work-Done {
+    if (-not $script:work.Done) { return $false }
+    try { $script:workPs.EndInvoke($script:workH) | Out-Null; $script:workPs.Runspace.Close(); $script:workPs.Dispose() } catch {}
+    if ($script:work.Error) { throw $script:work.Error }
+    return $true
 }
 
 # Конечный автомат установки, шаги идут по таймеру — окно не зависает
@@ -749,56 +811,30 @@ $tick.Add_Tick({
                 }
             }
             2 {
-                if ($script:phase -eq 'start') { Step-Run 2; $ui.ProgText.Text = $(if ($script:localSrc) { 'Копирую zapret с твоими настройками…' } else { 'Распаковываю…' }); $script:phase = 'go'; return }
-                if ($script:localSrc) {
-                    New-Item -ItemType Directory -Force -Path $script:dest | Out-Null
-                    $name = Split-Path -Leaf $script:localSrc
-                    if ($name -notmatch 'zapret') { $name = 'zapret-discord-youtube' }
-                    $target = Join-Path $script:dest $name
-                    if ((Split-Path -Parent $script:localSrc) -eq $script:dest -or $script:localSrc -eq $target) {
-                        $target = $script:localSrc
-                        Step-Done 2 'skip' 'уже в папке установки — использую как есть'
-                    } else {
-                        if (-not (Test-Path -LiteralPath $target)) { New-Item -ItemType Directory -Path $target | Out-Null }
-                        Copy-Item -Path (Join-Path $script:localSrc '*') -Destination $target -Recurse -Force
-                        Step-Done 2 'ok' "скопирован с настройками: $name"
-                    }
-                    $script:zapretFolder = $target
-                    Set-Bar 0.6; $script:step = 3; $script:phase = 'start'; return
+                if ($script:phase -eq 'start') {
+                    Step-Run 2; $ui.ProgText.Text = $(if ($script:localSrc) { 'Копирую zapret с твоими настройками…' } else { 'Распаковываю…' })
+                    Start-Work 'Unpack-Zapret'; $script:phase = 'wait'; return
                 }
-                $ex = Join-Path $TempDir 'unz'
-                if (Test-Path -LiteralPath $ex) { Remove-Item -LiteralPath $ex -Recurse -Force }
-                [IO.Compression.ZipFile]::ExtractToDirectory($script:zipPath, $ex)
-                $top = @(Get-ChildItem -LiteralPath $ex -Directory)
-                $src = if ($top.Count -eq 1 -and -not (Test-Path -LiteralPath (Join-Path $ex 'bin\winws.exe'))) { $top[0].FullName } else { $ex }
-                if (-not (Test-Path -LiteralPath (Join-Path $src 'bin\winws.exe'))) { throw 'В архиве нет zapret (bin\winws.exe не найден)' }
-                $name = Split-Path -Leaf $src
-                if ($name -eq 'unz') { $name = 'zapret-discord-youtube' + $(if ($script:dl.Tag) { '-' + $script:dl.Tag } else { '' }) }
-                New-Item -ItemType Directory -Force -Path $script:dest | Out-Null
-                $target = Join-Path $script:dest $name
-                if (Test-Path -LiteralPath $target) {
-                    Step-Done 2 'skip' "$name уже установлен"
-                } else {
-                    Move-Item -LiteralPath $src -Destination $target
-                    Step-Done 2 'ok' $name
-                }
-                $script:zapretFolder = $target
+                if (-not (Work-Done)) { return }
+                $r = $script:work.Result
+                Step-Done 2 $r.State $r.Note
+                $script:zapretFolder = $r.Target
                 Set-Bar 0.6; $script:step = 3; $script:phase = 'start'
             }
             3 {
-                if ($script:phase -eq 'start') { Step-Run 3; $ui.ProgText.Text = 'Устанавливаю приложение…'; $script:phase = 'go'; return }
-                Install-App; Step-Done 3 'ok' (Join-Path $script:dest 'app'); Set-Bar 0.75; $script:step = 4; $script:phase = 'start'
+                if ($script:phase -eq 'start') { Step-Run 3; $ui.ProgText.Text = 'Устанавливаю приложение…'; Start-Work 'Install-App'; $script:phase = 'wait'; return }
+                if (-not (Work-Done)) { return }
+                Step-Done 3 'ok' (Join-Path $script:dest 'app'); Set-Bar 0.75; $script:step = 4; $script:phase = 'start'
             }
             4 {
-                if ($script:phase -eq 'start') { Step-Run 4; $script:phase = 'go'; return }
-                New-Shortcut (Join-Path ([Environment]::GetFolderPath('Programs')) 'Zapret.lnk')
-                $made = 'меню «Пуск»'
-                if ($ui.OptDesktop.IsChecked) { New-Shortcut (Join-Path ([Environment]::GetFolderPath('Desktop')) 'Zapret.lnk'); $made = 'рабочий стол и меню «Пуск»' }
-                Step-Done 4 'ok' $made; Set-Bar 0.88; $script:step = 5; $script:phase = 'start'
+                if ($script:phase -eq 'start') { Step-Run 4; Start-Work 'Make-Shortcuts $desktop'; $script:phase = 'wait'; return }
+                if (-not (Work-Done)) { return }
+                Step-Done 4 'ok' ([string]$script:work.Result); Set-Bar 0.88; $script:step = 5; $script:phase = 'start'
             }
             5 {
-                if ($script:phase -eq 'start') { Step-Run 5; $script:phase = 'go'; return }
-                Register-NoPrompt; Step-Done 5 'ok' 'включено'
+                if ($script:phase -eq 'start') { Step-Run 5; Start-Work 'Register-NoPrompt'; $script:phase = 'wait'; return }
+                if (-not (Work-Done)) { return }
+                Step-Done 5 'ok' 'включено'
                 Set-Bar 1; $script:step = 6
             }
             6 {
@@ -847,9 +883,7 @@ function Begin-Install {
     $src = $ui.SrcBox.SelectedItem.Tag
     $script:localSrc = if ($src -and $src -ne 'download' -and -not $script:manualZip) { $src } else { $null }
     $script:wasRunning = [bool](Get-Process -Name winws -ErrorAction SilentlyContinue)
-    # закрыть открытое окно Zapret, чтобы обновить его файлы
-    Stop-OldApp
-    Get-Process -Name winws -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    # открытое окно Zapret и winws закрываются в фоне, в шагах распаковки и установки
     $ui.PageSetup.Visibility = 'Collapsed'
     $ui.PageProgress.Visibility = 'Visible'; Anim $ui.PageProgress $OP 1 300 0
     $ui.Steps.Children.Clear()
