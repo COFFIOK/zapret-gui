@@ -88,6 +88,90 @@ namespace ZapretCS
         }
     }
 
+    // Проверка связи с другом: пинг (20 раз) и скорость в обе стороны.
+    // Для скорости у каждого в комнате работает маленький сервер на адресе игровой сети (порт 11099).
+    class LanCheck { public bool Running; public string Stage = "", Line = "", Verdict = "", Color = "#8A90A0"; }
+
+    static class LanSpeed
+    {
+        public const int Port = 11099;
+        const int Bytes = 2 * 1024 * 1024;
+        static System.Net.Sockets.TcpListener srv;
+        static string srvIp;
+        static int active;
+
+        // сервер слушает только адрес игровой сети — из обычной сети и интернета к нему не подключиться
+        public static void Serve(string ip)
+        {
+            if (ip == srvIp && srv != null) return;
+            StopServe();
+            try
+            {
+                srv = new System.Net.Sockets.TcpListener(IPAddress.Parse(ip), Port);
+                srv.Start(4);
+                srvIp = ip;
+                var l = srv;
+                new Thread(() =>
+                {
+                    while (true)
+                    {
+                        System.Net.Sockets.TcpClient c;
+                        try { c = l.AcceptTcpClient(); } catch { return; }
+                        if (Interlocked.Increment(ref active) > 3) { Interlocked.Decrement(ref active); try { c.Close(); } catch { } continue; }
+                        ThreadPool.QueueUserWorkItem(_ => { try { Handle(c); } catch { } finally { Interlocked.Decrement(ref active); try { c.Close(); } catch { } } });
+                    }
+                }) { IsBackground = true, Name = "lan-speed" }.Start();
+            }
+            catch { srv = null; srvIp = null; }
+        }
+        public static void StopServe() { try { if (srv != null) srv.Stop(); } catch { } srv = null; srvIp = null; }
+
+        static void Handle(System.Net.Sockets.TcpClient c)
+        {
+            c.ReceiveTimeout = 10000; c.SendTimeout = 10000;
+            var st = c.GetStream();
+            int cmd = st.ReadByte();
+            var buf = new byte[65536];
+            if (cmd == 'D') { for (int sent = 0; sent < Bytes; sent += buf.Length) st.Write(buf, 0, buf.Length); }
+            else if (cmd == 'U')
+            {
+                int got = 0;
+                while (got < Bytes) { int n = st.Read(buf, 0, buf.Length); if (n <= 0) return; got += n; }
+                st.WriteByte(1);
+            }
+        }
+
+        // мегабит/с; -1 — у друга нет сервера (старая версия Zapret) или не достучались
+        public static double Measure(string ip, bool download)
+        {
+            try
+            {
+                using (var c = new System.Net.Sockets.TcpClient())
+                {
+                    var ar = c.BeginConnect(ip, Port, null, null);
+                    if (!ar.AsyncWaitHandle.WaitOne(3000)) return -1;
+                    c.EndConnect(ar);
+                    c.ReceiveTimeout = 12000; c.SendTimeout = 12000; c.NoDelay = true;
+                    var st = c.GetStream();
+                    var buf = new byte[65536];
+                    var sw = Stopwatch.StartNew();
+                    st.WriteByte((byte)(download ? 'D' : 'U'));
+                    if (download)
+                    {
+                        int got = 0;
+                        while (got < Bytes) { int n = st.Read(buf, 0, buf.Length); if (n <= 0) break; got += n; }
+                        if (got < Bytes / 4) return -1;
+                        return got * 8.0 / 1e6 / Math.Max(0.001, sw.Elapsed.TotalSeconds);
+                    }
+                    for (int sent = 0; sent < Bytes; sent += buf.Length) st.Write(buf, 0, buf.Length);
+                    if (st.ReadByte() != 1) return -1;
+                    return Bytes * 8.0 / 1e6 / Math.Max(0.001, sw.Elapsed.TotalSeconds);
+                }
+            }
+            catch { return -1; }
+        }
+    }
+
     class LanPeer { public string Nick, Ip, Cost, Lat; public bool Local; }
 
     // ---------- EasyTier: скачать, запустить, спросить список ----------
@@ -288,6 +372,8 @@ namespace ZapretCS
     partial class MainUi
     {
         string lanCode;
+        readonly Dictionary<string, LanCheck> lanChecks = new Dictionary<string, LanCheck>();
+        List<LanPeer> lanLastList;
         bool lanBusy, lanPolling;
         DateTime lanStarted;
         DispatcherTimer lanTimer;
@@ -341,7 +427,7 @@ namespace ZapretCS
             beta.Click += (s, e) => Safe(() => SetBeta(beta.IsChecked == true));
 
             // выход из Zapret — сеть выключается (закрытие в трей сеть не трогает)
-            Win.Closed += (s, e) => { try { LanEt.Stop(); } catch { } };
+            Win.Closed += (s, e) => { try { LanSpeed.StopServe(); LanEt.Stop(); } catch { } };
             LanStatus(LanEt.Installed ? "Готово к подключению" : "EasyTier скачается при первом подключении (≈30 МБ)", "#8A90A0");
             LanShowRoom(false, false);
         }
@@ -461,8 +547,9 @@ namespace ZapretCS
         void LanLeave()
         {
             lanTimer.Stop();
-            ThreadPool.QueueUserWorkItem(_ => LanEt.Stop());
+            ThreadPool.QueueUserWorkItem(_ => { LanSpeed.StopServe(); LanEt.Stop(); });
             lanCode = null;
+            lanChecks.Clear();
             LanShowRoom(false, true);
             LanStatus("Ты вышел из комнаты", "#8A90A0");
         }
@@ -511,6 +598,8 @@ namespace ZapretCS
             var me = list.FirstOrDefault(p => p.Local);
             bool hasIp = me != null && Regex.IsMatch(me.Ip ?? "", @"^\d+\.\d+\.\d+\.\d+$");
             E<TextBlock>("LanMyIp").Text = hasIp ? me.Ip : "…";
+            if (hasIp) { string myIp = me.Ip; ThreadPool.QueueUserWorkItem(_ => LanSpeed.Serve(myIp)); }
+            lanLastList = list;
             var others = list.Where(p => !p.Local).ToList();
             bool node = LanEt.NodesSeen > 0;
             if (hasIp) LanStatus(others.Count == 0 ? "В сети · ждём друзей" : "В сети · друзей: " + others.Count, "#3DDC97");
@@ -528,8 +617,7 @@ namespace ZapretCS
         {
             bool direct = p.Cost == "p2p";
             var b = new Border { Background = Theme.B("#1E2129"), BorderBrush = Theme.B("#262A33"), BorderThickness = new Thickness(2), Padding = new Thickness(12, 9, 12, 9), Margin = new Thickness(0, 0, 0, 8), Cursor = Cursors.Hand };
-            b.ToolTip = Translate.T("Нажми, чтобы скопировать адрес");
-            var g = new DockPanel();
+            var g = new DockPanel { ToolTip = Translate.T("Нажми, чтобы скопировать адрес") };
             double lat; bool hasLat = double.TryParse(p.Lat, NumberStyles.Any, CultureInfo.InvariantCulture, out lat) && lat > 0;
             string latColor = !hasLat ? "#8A90A0" : lat < 80 ? "#3DDC97" : lat < 160 ? "#FFB547" : "#FF5E62";
             var right = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
@@ -544,13 +632,104 @@ namespace ZapretCS
             left.Children.Add(nl);
             left.Children.Add(new TextBlock { Text = p.Ip, FontFamily = new FontFamily("Consolas"), FontSize = 13, Foreground = Theme.B("#8A90A0"), Margin = new Thickness(16, 2, 0, 0) });
             g.Children.Add(left);
-            b.Child = g;
             string ip = p.Ip;
+            g.Background = Brushes.Transparent;
+            g.MouseLeftButtonUp += (s, e) => { LanCopyText(ip); LanStatus("Адрес " + ip + " скопирован", "#3DDC97"); };
+
+            var body = new StackPanel();
+            body.Children.Add(g);
+            body.Children.Add(LanCheckView(p));
+            b.Child = body;
+            b.Cursor = null;
+            g.Cursor = Cursors.Hand;
             b.MouseEnter += (s, e) => b.BorderBrush = (Brush)Win.FindResource("Accent");
             b.MouseLeave += (s, e) => b.BorderBrush = Theme.B("#262A33");
-            b.MouseLeftButtonUp += (s, e) => { LanCopyText(ip); LanStatus("Адрес " + ip + " скопирован", "#3DDC97"); };
             return b;
         }
+
+        UIElement LanCheckView(LanPeer p)
+        {
+            LanCheck c; lanChecks.TryGetValue(p.Ip, out c);
+            var box = new StackPanel { Margin = new Thickness(16, 8, 0, 0) };
+            if (c != null && (c.Running || c.Line != ""))
+            {
+                var line = new StackPanel { Orientation = Orientation.Horizontal };
+                if (c.Running) line.Children.Add(new TextBlock { Text = Translate.T(c.Stage), FontSize = 12, Foreground = Theme.B("#FFB547") });
+                else
+                {
+                    line.Children.Add(new System.Windows.Shapes.Rectangle { Width = 6, Height = 6, Fill = Theme.B(c.Color), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 7, 0) });
+                    line.Children.Add(new TextBlock { Text = Translate.T(c.Verdict), FontSize = 12.5, FontWeight = FontWeights.SemiBold, Foreground = Theme.B(c.Color) });
+                }
+                box.Children.Add(line);
+                if (!c.Running) box.Children.Add(new TextBlock { Text = c.Line, FontSize = 12, Foreground = Theme.B("#8A90A0"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(13, 2, 0, 0) });
+            }
+            if (c == null || !c.Running)
+            {
+                var link = new TextBlock { Text = Translate.T(c != null && c.Line != "" ? "Проверить ещё раз" : "Проверить связь"), FontSize = 12, Foreground = Theme.B("#7FE8B8"), Cursor = Cursors.Hand, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, c != null && c.Line != "" ? 6 : 0, 0, 0) };
+                link.TextDecorations = TextDecorations.Underline;
+                string ip = p.Ip, nick = p.Nick;
+                link.MouseLeftButtonUp += (s, e) => { e.Handled = true; LanRunCheck(ip, nick); };
+                box.Children.Add(link);
+            }
+            return box;
+        }
+
+        void LanRunCheck(string ip, string nick)
+        {
+            LanCheck c;
+            if (lanChecks.TryGetValue(ip, out c) && c.Running) return;
+            c = new LanCheck { Running = true, Stage = "Проверяю пинг…" };
+            lanChecks[ip] = c;
+            LanRefreshPeers();
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                // 1) пинг: 20 раз, задержка, разброс, потери
+                var times = new List<long>(); int sent = 0;
+                using (var ping = new System.Net.NetworkInformation.Ping())
+                    for (int i = 0; i < 20 && lanCode != null; i++)
+                    {
+                        sent++;
+                        try { var r = ping.Send(ip, 1500); if (r.Status == System.Net.NetworkInformation.IPStatus.Success) times.Add(r.RoundtripTime); } catch { }
+                        Thread.Sleep(120);
+                    }
+                double loss = sent == 0 ? 100 : 100.0 * (sent - times.Count) / sent;
+                double avg = times.Count > 0 ? times.Average() : 0;
+                double jitter = 0;
+                for (int i = 1; i < times.Count; i++) jitter += Math.Abs(times[i] - times[i - 1]);
+                if (times.Count > 1) jitter /= times.Count - 1;
+
+                // 2) скорость в обе стороны
+                Win.Dispatcher.BeginInvoke(new Action(() => { c.Stage = "Проверяю скорость…"; LanRefreshPeers(); }));
+                double down = lanCode != null ? LanSpeed.Measure(ip, true) : -1;
+                double up = lanCode != null && down >= 0 ? LanSpeed.Measure(ip, false) : -1;
+
+                // 3) вывод
+                var parts = new List<string>();
+                if (times.Count > 0) parts.Add(Translate.T("пинг") + " " + Math.Round(avg) + " " + Translate.T("мс") + " (±" + Math.Round(jitter) + ")");
+                parts.Add(Translate.T("потери") + " " + Math.Round(loss) + "%");
+                if (down >= 0) parts.Add("↓ " + Mbit(down) + "  ↑ " + Mbit(up));
+                else parts.Add(Translate.T("скорость не проверить — у друга старая версия Zapret"));
+                string verdict, color;
+                if (times.Count == 0 && down < 0) { verdict = "Друг не отвечает — проверь, что у него открыт Zapret"; color = "#FF5E62"; }
+                else if (times.Count == 0) { verdict = "Пинг не проходит — брандмауэр друга, но связь есть"; color = "#FFB547"; }
+                else if (loss >= 5) { verdict = "Нестабильно: теряются пакеты — в играх будут рывки"; color = "#FF5E62"; }
+                else if (avg >= 150) { verdict = "Высокий пинг — в быстрых играх будет тяжело"; color = "#FFB547"; }
+                else if (jitter >= 30) { verdict = "Пинг скачет — возможны рывки"; color = "#FFB547"; }
+                else if (down >= 0 && Math.Min(down, up) < 2) { verdict = "Пинг хороший, но скорость низкая — большие карты и моды будут грузиться долго"; color = "#FFB547"; }
+                else { verdict = "Связь хорошая для игр"; color = "#3DDC97"; }
+                Win.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    c.Running = false; c.Verdict = verdict; c.Color = color; c.Line = string.Join(" · ", parts);
+                    LanRefreshPeers();
+                    if (El("LanOverlay").Visibility != Visibility.Visible) Toast((nick == "" ? ip : nick) + ": " + Translate.T(verdict), color == "#FF5E62");
+                }));
+            });
+        }
+
+        static string Mbit(double v) { return v < 0 ? "—" : (v >= 10 ? Math.Round(v).ToString(CultureInfo.InvariantCulture) : v.ToString("0.0", CultureInfo.InvariantCulture)) + " " + Translate.T("Мбит/с"); }
+
+        // перерисовать список по последним данным, не дожидаясь опроса
+        void LanRefreshPeers() { if (lanLastList != null && lanCode != null) LanRender(lanLastList); }
 
         TextBlock LanNote(string t) { return new TextBlock { Text = Translate.T(t), FontSize = 12.5, Foreground = Theme.B("#8A90A0"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(2, 0, 0, 8) }; }
 
