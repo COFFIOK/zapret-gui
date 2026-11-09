@@ -538,7 +538,7 @@
             <Button x:Name="CompactBtn" Style="{StaticResource TitleBtn}" Margin="0,0,4,0" ToolTip="Компактный вид">
               <Path x:Name="CompactIcon" Data="{StaticResource PxCompactWin}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="16" Height="14" Stretch="None" SnapsToDevicePixels="True"/>
             </Button>
-            <Button x:Name="LanBtn" Style="{StaticResource TitleBtn}" Margin="0,0,4,0" ToolTip="Игровая сеть (бета)">
+            <Button x:Name="LanBtn" Style="{StaticResource TitleBtn}" Margin="0,0,4,0" ToolTip="Игровая сеть (бета)" Visibility="Collapsed">
               <Grid>
                 <Path Data="{StaticResource PxNet}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="16" Height="16" Stretch="None" SnapsToDevicePixels="True"/>
                 <Rectangle x:Name="LanDot" Width="8" Height="8" Fill="#3DDC97" Stroke="#121419" StrokeThickness="2" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-3,-4,0" Visibility="Collapsed"/>
@@ -1006,6 +1006,19 @@
                           <TextBlock Text="без анимаций и эффектов — меньше нагрузка на компьютер и батарею ноутбука. Всё работает как обычно" Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"/>
                         </StackPanel>
                         <CheckBox x:Name="EcoToggle" Grid.Column="1" Style="{StaticResource Toggle}" VerticalAlignment="Center"/>
+                      </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SetCard}" Margin="0,10,0,0">
+                      <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+                          <StackPanel Orientation="Horizontal">
+                            <TextBlock FontSize="13"><Run Text="&#xE968;" FontFamily="Segoe MDL2 Assets" Foreground="#3DDC97"/><Run Text="  Бета-тестирование"/></TextBlock>
+                            <Border Background="#FFB547" Padding="5,0,5,1" Margin="8,0,0,0" VerticalAlignment="Center"><TextBlock Text="бета" FontSize="10" FontWeight="SemiBold" Foreground="#121419"/></Border>
+                          </StackPanel>
+                          <TextBlock Text="новые функции до релиза. Сейчас: «Игровая сеть» — играть с друзьями по локальной сети, как в Хамачи. Может работать нестабильно" Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                        </StackPanel>
+                        <CheckBox x:Name="BetaToggle" Grid.Column="1" Style="{StaticResource Toggle}" VerticalAlignment="Center"/>
                       </Grid>
                     </Border>
                   </StackPanel>

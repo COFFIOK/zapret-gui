@@ -334,10 +334,68 @@ namespace ZapretCS
                 if (Regex.IsMatch(ip, @"^\d")) { LanCopyText(ip); LanStatus("Адрес скопирован", "#3DDC97"); }
             };
 
+            // доступ только через «Бета-тестирование» в настройках
+            var beta = E<CheckBox>("BetaToggle");
+            beta.IsChecked = S.Bool("betaLan");
+            El("LanBtn").Visibility = S.Bool("betaLan") ? Visibility.Visible : Visibility.Collapsed;
+            beta.Click += (s, e) => Safe(() => SetBeta(beta.IsChecked == true));
+
             // выход из Zapret — сеть выключается (закрытие в трей сеть не трогает)
             Win.Closed += (s, e) => { try { LanEt.Stop(); } catch { } };
             LanStatus(LanEt.Installed ? "Готово к подключению" : "EasyTier скачается при первом подключении (≈30 МБ)", "#8A90A0");
             LanShowRoom(false, false);
+        }
+
+        // включили бета-тестирование — появляется кнопка и сразу ставится EasyTier; выключили — сеть останавливается и удаляется
+        void SetBeta(bool on)
+        {
+            S.Set("betaLan", on); S.Save();
+            var btn = El("LanBtn");
+            if (on)
+            {
+                btn.Visibility = Visibility.Visible;
+                if (!Anim.Eco) Anim.D(btn, Anim.OP, 1, 300, 0);
+                if (LanEt.Installed) { Toast("Игровая сеть (бета) включена — значок в заголовке"); return; }
+                lanBusy = true;
+                LanStatus("Устанавливаю игровую сеть…", "#FFB547");
+                Toast("Устанавливаю игровую сеть (бета)…");
+                ThreadPool.QueueUserWorkItem(_ =>
+                {
+                    try
+                    {
+                        string v = LanEt.Install(m => Win.Dispatcher.BeginInvoke(new Action(() => LanStatus(m, "#FFB547"))));
+                        Win.Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            lanBusy = false; S.Set("lanEtVer", v); S.Save();
+                            LanStatus("Готово к подключению", "#8A90A0");
+                            Toast("Игровая сеть (бета) готова — значок в заголовке");
+                        }));
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Write("lan install: " + ex.Message);
+                        Win.Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            lanBusy = false;
+                            LanStatus("Не получилось скачать EasyTier: " + ex.Message, "#FF5E62");
+                            Toast("Не получилось установить игровую сеть — попробуй позже", true);
+                        }));
+                    }
+                });
+            }
+            else
+            {
+                if (El("LanOverlay").Visibility == Visibility.Visible) CloseOverlay("Lan");
+                lanTimer.Stop(); lanCode = null;
+                LanShowRoom(false, false);
+                btn.Visibility = Visibility.Collapsed;
+                ThreadPool.QueueUserWorkItem(_ =>
+                {
+                    LanEt.Stop(); LanEt.RemoveFirewall();
+                    try { if (System.IO.Directory.Exists(LanEt.Dir)) System.IO.Directory.Delete(LanEt.Dir, true); } catch { }
+                });
+                Toast("Игровая сеть выключена и удалена");
+            }
         }
 
         void OpenLan()
