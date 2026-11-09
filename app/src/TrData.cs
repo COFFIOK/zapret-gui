@@ -39,6 +39,7 @@ namespace ZapretCS
             { @"Ты вышел из комнаты", @"You left the room" },
             { @"Впиши ник", @"Enter a nickname" },
             { @"Бета-тестирование", @"Beta testing" },
+            { @"Бета «Игровая сеть»: проверка связи с другом — пинг, потери и скорость", @"Beta “Game network”: check the connection with a friend — ping, loss and speed" },
             { @"Проверить связь", @"Check connection" },
             { @"Проверить ещё раз", @"Check again" },
             { @"Проверяю пинг…", @"Checking ping…" },

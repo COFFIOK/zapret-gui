@@ -23,9 +23,7 @@ namespace ZapretCS
         public const string UpdateRepo = "COFFIOK/zapret-gui";
         // что нового в этой версии (показывается после обновления)
         static readonly string[] WhatsNew = {
-            "Компактный вид — кнопка в заголовке",
-            "«Мои сайты» можно свернуть в полоску справа",
-            "Бета: «Игровая сеть», как Хамачи — включается в Настройки → Вид"
+            "Бета «Игровая сеть»: проверка связи с другом — пинг, потери и скорость"
         };
         string UpdFlag { get { return System.IO.Path.Combine(GuiDir, "updated.flag"); } }
         bool updDoneShown;
