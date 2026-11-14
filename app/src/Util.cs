@@ -20,6 +20,23 @@ namespace ZapretCS
             try { File.AppendAllText(FilePath, "[" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "] " + msg + Environment.NewLine, Encoding.UTF8); }
             catch { }
         }
+
+        // ошибка, которую можно пережить, но знать о ней нужно (видна в gui-error.log и в «журнале» из чата).
+        // Одна и та же ошибка из одного места пишется не чаще раза в 10 минут — чтобы фоновые опросы не забили журнал.
+        static readonly Dictionary<string, DateTime> lastErr = new Dictionary<string, DateTime>();
+        public static void Err(string where, Exception ex)
+        {
+            if (ex == null) return;
+            string msg = where + ": " + ex.GetType().Name + ": " + ex.Message;
+            lock (lastErr)
+            {
+                DateTime t;
+                if (lastErr.TryGetValue(msg, out t) && DateTime.UtcNow - t < TimeSpan.FromMinutes(10)) return;
+                if (lastErr.Count > 200) lastErr.Clear();
+                lastErr[msg] = DateTime.UtcNow;
+            }
+            Write(msg);
+        }
     }
 
     // Настройки хранятся в том же gui-settings.json, что и у старого приложения

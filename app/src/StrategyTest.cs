@@ -379,7 +379,7 @@ namespace ZapretCS
                 var dl = res.SelectMany(r => r.Details.Where(d => d.Diag.Length > 0).Select(d => r.Name + " / " + d.Name + ": " + d.Diag)).Take(6).ToList();
                 if (dl.Count > 0) Log.Write("TEST DIAG:\r\n  " + string.Join("\r\n  ", dl));
             }
-            catch { }
+            catch (Exception logEx) { Log.Err("test diag", logEx); }
             // сохранить результаты как обычный тест
             try
             {
@@ -393,7 +393,7 @@ namespace ZapretCS
                 if (res.Count > 0) { lines.Add(""); lines.Add("Best config: " + res[0].File); }
                 File.WriteAllLines(System.IO.Path.Combine(dir, "test_results_" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + ".txt"), lines, new UTF8Encoding(false));
             }
-            catch { }
+            catch (Exception logEx) { Log.Err("test save", logEx); }
             // вернуть zapret как был до теста
             State = "x";
             if (testWasOn) { State = "off"; StartZapret(); } else { visAt = 0; Mon.Wake(); }

@@ -85,8 +85,8 @@ namespace ZapretCS
             Btn("UninstGo").Content = Translate.T("Удаляю…");
             string home = HomeDir, root = ZapretCore.Root, strategy = S.Str("strategy");
             bool rootInside = ZapretInsideHome;
-            try { StopTg(); } catch { }
-            try { LanEt.Stop(); LanEt.RemoveFirewall(); } catch { }
+            try { StopTg(); } catch (Exception logEx) { Log.Err("uninstall tg", logEx); }
+            try { LanEt.Stop(); LanEt.RemoveFirewall(); } catch (Exception logEx) { Log.Err("uninstall lan", logEx); }
             string kept = null;
             Background(() =>
             {
@@ -109,18 +109,18 @@ namespace ZapretCS
 
                 UnStatus("Убираю службы, задачи и ярлыки…");
                 // служба zapret и драйвер WinDivert указывали на удаляемую папку — убираем
-                foreach (var sv in new[] { "zapret", "WinDivert", "WinDivert14" }) { Run("sc.exe", "stop " + sv); Run("sc.exe", "delete " + sv); }
-                Run("netsh.exe", "advfirewall firewall delete rule name=\"Zapret Telegram proxy\"");
-                foreach (var tn in new[] { "ZapretGUI", "ZapretGUI Autostart", "ZapretCS GUI", "ZapretCS Autostart", "ZapretCS Dev" }) DeleteTask(tn);
+                foreach (var sv in new[] { "zapret", "WinDivert", "WinDivert14" }) { WinTasks.Run("sc.exe", "stop " + sv); WinTasks.Run("sc.exe", "delete " + sv); }
+                WinTasks.Run("netsh.exe", "advfirewall firewall delete rule name=\"Zapret Telegram proxy\"");
+                foreach (var tn in new[] { "ZapretGUI", "ZapretGUI Autostart", "ZapretCS GUI", "ZapretCS Autostart", "ZapretCS Dev" }) WinTasks.Delete(tn);
                 foreach (var l in new[] {
                     System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "Zapret.lnk"),
                     System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "Zapret.lnk") })
                     try { File.Delete(l); } catch { }
-                try { Registry.CurrentUser.DeleteSubKeyTree(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\ZapretGUI", false); } catch { }
+                try { Registry.CurrentUser.DeleteSubKeyTree(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\ZapretGUI", false); } catch (Exception logEx) { Log.Err("uninstall registry", logEx); }
 
                 // zapret снаружи папки Zapret при полном удалении тоже убираем
                 if (!keep && !rootInside && !string.IsNullOrEmpty(root) && Directory.Exists(root) && File.Exists(System.IO.Path.Combine(root, "bin\\winws.exe")))
-                    try { Directory.Delete(root, true); } catch { }
+                    try { Directory.Delete(root, true); } catch (Exception logEx) { Log.Err("uninstall folder", logEx); }
                 UnStatus("Готово, закрываю Zapret…");
             }, err =>
             {

@@ -21,10 +21,7 @@ namespace ZapretCS
         string UpdFile { get { return System.IO.Path.Combine(ZapretCore.Utils, "check_updates.enabled"); } }
         string IpsetFile { get { return System.IO.Path.Combine(ZapretCore.Lists, "ipset-all.txt"); } }
 
-        // Пока C#-версия тестовая, её задачи Windows называются иначе, чтобы не трогать задачи старой версии
-        static bool IsTestBuild { get { return Process.GetCurrentProcess().ProcessName.Equals("ZapretCS", StringComparison.OrdinalIgnoreCase); } }
-        static string TaskName { get { return IsTestBuild ? "ZapretCS GUI" : "ZapretGUI"; } }
-        static string AutoRunTaskName { get { return IsTestBuild ? "ZapretCS Autostart" : "ZapretGUI Autostart"; } }
+        // задачи Планировщика Windows (запуск без запроса прав, автозапуск) — в WinTasks.cs
 
         void WireSettings()
         {
@@ -47,9 +44,9 @@ namespace ZapretCS
             Background(() =>
             {
                 // запуск без запроса прав включён всегда
-                try { EnableNoPrompt(); } catch (Exception ex) { Log.Write("noprompt: " + ex.Message); }
-                hasAuto = TaskExists(AutoRunTaskName);
-                if (hasAuto) { try { EnableAutoRun(); } catch { } }   // путь мог поменяться
+                try { WinTasks.EnableNoPrompt(); } catch (Exception ex) { Log.Write("noprompt: " + ex.Message); }
+                hasAuto = WinTasks.Exists(WinTasks.AutoRunName);
+                if (hasAuto) { try { WinTasks.EnableAutoRun(); } catch (Exception logEx) { Log.Err("autorun refresh", logEx); } }   // путь мог поменяться
             }, err => { loading = true; E<CheckBox>("AutoRunToggle").IsChecked = hasAuto; loading = false; });
             FillAccents();
             loading = false;
@@ -103,8 +100,8 @@ namespace ZapretCS
             E<CheckBox>("WinToggle").Click += (s, e) => Safe(() => { S.Set("showWindow", E<CheckBox>("WinToggle").IsChecked == true); S.Save(); MarkChanged(); });
             E<CheckBox>("AutoRunToggle").Click += (s, e) => Safe(() =>
             {
-                if (E<CheckBox>("AutoRunToggle").IsChecked == true) { EnableAutoRun(); Toast("Готово: Zapret будет запускаться вместе с Windows"); }
-                else { DeleteTask(AutoRunTaskName); Toast("Автозапуск выключен"); }
+                if (E<CheckBox>("AutoRunToggle").IsChecked == true) { WinTasks.EnableAutoRun(); Toast("Готово: Zapret будет запускаться вместе с Windows"); }
+                else { WinTasks.Delete(WinTasks.AutoRunName); Toast("Автозапуск выключен"); }
             });
 
             // открыть/закрыть панель
@@ -226,43 +223,5 @@ namespace ZapretCS
             return true;
         }
 
-        // ---- задачи Планировщика Windows (запуск без запроса прав и автозапуск) ----
-        static int Run(string exe, string args)
-        {
-            try
-            {
-                using (var p = Process.Start(new ProcessStartInfo(exe, args) { CreateNoWindow = true, UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true }))
-                { p.StandardOutput.ReadToEnd(); p.WaitForExit(15000); return p.ExitCode; }
-            }
-            catch { return -1; }
-        }
-        static bool TaskExists(string name) { return Run("schtasks.exe", "/query /tn \"" + name + "\"") == 0; }
-        static void DeleteTask(string name) { if (TaskExists(name)) Run("schtasks.exe", "/delete /tn \"" + name + "\" /f"); }
-        static void RegisterTask(string name, string args, bool atLogon, string description)
-        {
-            string exe = Process.GetCurrentProcess().MainModule.FileName;
-            string user = System.Security.Principal.WindowsIdentity.GetCurrent().Name;
-            string trigger = atLogon ? "<Triggers><LogonTrigger><Enabled>true</Enabled><UserId>" + SecurityElement.Escape(user) + "</UserId><Delay>PT5S</Delay></LogonTrigger></Triggers>" : "";
-            string xml = "<?xml version=\"1.0\" encoding=\"UTF-16\"?>\r\n" +
-                "<Task version=\"1.2\" xmlns=\"http://schemas.microsoft.com/windows/2004/02/mit/task\">" +
-                "<RegistrationInfo><Description>" + SecurityElement.Escape(description) + "</Description></RegistrationInfo>" + trigger +
-                "<Principals><Principal id=\"Author\"><UserId>" + SecurityElement.Escape(user) + "</UserId><LogonType>InteractiveToken</LogonType><RunLevel>HighestAvailable</RunLevel></Principal></Principals>" +
-                "<Settings><MultipleInstancesPolicy>" + (args.Length == 0 ? "Parallel" : "IgnoreNew") + "</MultipleInstancesPolicy><DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries><StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>" +
-                "<ExecutionTimeLimit>PT0S</ExecutionTimeLimit><Priority>4</Priority></Settings>" +
-                "<Actions Context=\"Author\"><Exec><Command>" + SecurityElement.Escape(exe) + "</Command>" + (args.Length > 0 ? "<Arguments>" + SecurityElement.Escape(args) + "</Arguments>" : "") +
-                "<WorkingDirectory>" + SecurityElement.Escape(System.IO.Path.GetDirectoryName(exe)) + "</WorkingDirectory></Exec></Actions></Task>";
-            // файл задачи кладём в защищённую папку: из %TEMP% его могла бы подменить другая программа
-            string dir = Sec.TempDir("task");
-            string tmp = System.IO.Path.Combine(dir, "task.xml");
-            File.WriteAllText(tmp, xml, Encoding.Unicode);
-            try { if (Run("schtasks.exe", "/create /tn \"" + name + "\" /xml \"" + tmp + "\" /f") != 0) throw new Exception("не удалось создать задачу Windows"); }
-            finally { try { Directory.Delete(dir, true); } catch { } }
-        }
-        void EnableNoPrompt()
-        {
-            // пересоздаём всегда (в фоне): у старых версий задача запускала PowerShell
-            RegisterTask(TaskName, "", false, "Запуск приложения Zapret без запроса прав администратора");
-        }
-        void EnableAutoRun() { RegisterTask(AutoRunTaskName, "-AutoStart -Tray", true, "Запуск Zapret вместе с Windows"); }
     }
 }

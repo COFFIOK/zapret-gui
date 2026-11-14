@@ -84,7 +84,7 @@ namespace ZapretCS
                 }
                 AssignProcessToJobObject(handle, p.Handle);
             }
-            catch { }
+            catch (Exception logEx) { Log.Err("lan job", logEx); }
         }
     }
 
@@ -118,7 +118,7 @@ namespace ZapretCS
                         System.Net.Sockets.TcpClient c;
                         try { c = l.AcceptTcpClient(); } catch { return; }
                         if (Interlocked.Increment(ref active) > 3) { Interlocked.Decrement(ref active); try { c.Close(); } catch { } continue; }
-                        ThreadPool.QueueUserWorkItem(_ => { try { Handle(c); } catch { } finally { Interlocked.Decrement(ref active); try { c.Close(); } catch { } } });
+                        ThreadPool.QueueUserWorkItem(_ => { try { Handle(c); } catch (Exception logEx) { Log.Err("lan speed", logEx); } finally { Interlocked.Decrement(ref active); try { c.Close(); } catch { } } });
                     }
                 }) { IsBackground = true, Name = "lan-speed" }.Start();
             }
@@ -321,11 +321,11 @@ namespace ZapretCS
                     Run("netsh", "advfirewall firewall add rule name=\"Zapret LAN\" dir=in action=allow remoteip=10.126.126.0/24 enable=yes profile=any", 8000);
                     Run("netsh", "advfirewall firewall add rule name=\"Zapret LAN\" dir=in action=allow program=\"" + Core + "\" enable=yes profile=any", 8000);
                 }
-                catch { }
+                catch (Exception logEx) { Log.Err("lan firewall", logEx); }
             });
         }
 
-        public static void RemoveFirewall() { try { Run("netsh", "advfirewall firewall delete rule name=\"Zapret LAN\"", 8000); } catch { } }
+        public static void RemoveFirewall() { try { Run("netsh", "advfirewall firewall delete rule name=\"Zapret LAN\"", 8000); } catch (Exception logEx) { Log.Err("lan firewall remove", logEx); } }
 
         static string Run(string exe, string args, int ms)
         {
@@ -427,7 +427,7 @@ namespace ZapretCS
             beta.Click += (s, e) => Safe(() => SetBeta(beta.IsChecked == true));
 
             // выход из Zapret — сеть выключается (закрытие в трей сеть не трогает)
-            Win.Closed += (s, e) => { try { LanSpeed.StopServe(); LanEt.Stop(); } catch { } };
+            Win.Closed += (s, e) => { try { LanSpeed.StopServe(); LanEt.Stop(); } catch (Exception logEx) { Log.Err("lan stop", logEx); } };
             LanStatus(LanEt.Installed ? "Готово к подключению" : "EasyTier скачается при первом подключении (≈30 МБ)", "#8A90A0");
             LanShowRoom(false, false);
         }
@@ -478,7 +478,7 @@ namespace ZapretCS
                 ThreadPool.QueueUserWorkItem(_ =>
                 {
                     LanEt.Stop(); LanEt.RemoveFirewall();
-                    try { if (System.IO.Directory.Exists(LanEt.Dir)) System.IO.Directory.Delete(LanEt.Dir, true); } catch { }
+                    try { if (System.IO.Directory.Exists(LanEt.Dir)) System.IO.Directory.Delete(LanEt.Dir, true); } catch (Exception logEx) { Log.Err("lan cleanup", logEx); }
                 });
                 Toast("Игровая сеть выключена и удалена");
             }
@@ -586,7 +586,7 @@ namespace ZapretCS
             ThreadPool.QueueUserWorkItem(_ =>
             {
                 List<LanPeer> list = null;
-                try { list = LanEt.Peers(); } catch { }
+                try { list = LanEt.Peers(); } catch (Exception logEx) { Log.Err("lan peers", logEx); }
                 Win.Dispatcher.BeginInvoke(new Action(() => { lanPolling = false; if (lanCode != null) LanRender(list); }));
             });
         }

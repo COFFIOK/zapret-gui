@@ -21,7 +21,13 @@ namespace ZapretCS
     partial class MainUi
     {
         public static MainUi Current;
-        public const string AppVersion = "2.3.1";
+        // версия берётся из src\AssemblyInfo.cs — менять её только там (это делает build-release.cmd)
+        public static readonly string AppVersion = ReadAppVersion();
+        static string ReadAppVersion()
+        {
+            var v = typeof(MainUi).Assembly.GetName().Version;
+            return v.Major + "." + v.Minor + "." + Math.Max(0, v.Build);
+        }
 
         public readonly string GuiDir, HomeDir;
         public readonly bool InHome;
@@ -151,7 +157,6 @@ namespace ZapretCS
                 {
                     icoDec = BitmapDecoder.Create(ms, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
                     Win.Icon = icoDec.Frames.OrderByDescending(f => f.PixelWidth).First();
-                    E<Image>("TitleLogo").Source = Win.Icon;
                 }
             }
             catch (Exception ex) { Log.Write("icon: " + ex.Message); }
@@ -160,7 +165,7 @@ namespace ZapretCS
         // ---- заполнение начальных значений ----
         void Fill()
         {
-            Tb("TitleVer").Text = "v" + ZapretCore.LocalVersion + (IsTestBuild ? "  ·  тест" : "");
+            Tb("TitleVer").Text = "v" + AppVersion + (WinTasks.IsTestBuild ? "  ·  тест" : "");
             var box = E<ComboBox>("StrategyBox");
             foreach (var b in ZapretCore.Strategies())
                 box.Items.Add(new ComboBoxItem { Content = System.IO.Path.GetFileNameWithoutExtension(b), Tag = b });

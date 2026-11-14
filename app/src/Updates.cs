@@ -314,7 +314,7 @@ namespace ZapretCS
                     r0.UserAgent = "ZapretGUI"; r0.AllowAutoRedirect = false;
                     using (var resp = r0.GetResponse()) { var m = Regex.Match(resp.Headers["Location"] ?? "", "/tag/([^/?#]+)"); if (m.Success) tag = m.Groups[1].Value; }
                 }
-                catch { }
+                catch (Exception logEx) { Log.Err("zapret update tag", logEx); }
                 if (!Sec.SafeTag(tag)) throw new Exception("странное имя версии zapret: " + tag);
                 string tmp = Sec.TempDir("zapret");
                 string zip = System.IO.Path.Combine(tmp, "zapret-" + tag + ".zip");

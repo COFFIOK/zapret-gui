@@ -46,8 +46,8 @@ namespace ZapretCS
         {
             if (S.Str("statsConsent", "") != "yes" || S.Bool("statsSent")) return;
             int sites = 0, groups = 0;
-            try { var g = ReadUserGroups(); sites = g.Total; groups = g.Count; } catch { }
-            string gm = "", gt, gu; try { ZapretCore.ReadGame(out gm, out gt, out gu); } catch { }
+            try { var g = ReadUserGroups(); sites = g.Total; groups = g.Count; } catch (Exception logEx) { Log.Err("stats sites", logEx); }
+            string gm = "", gt, gu; try { ZapretCore.ReadGame(out gm, out gt, out gu); } catch (Exception logEx) { Log.Err("stats game", logEx); }
             var os = Environment.OSVersion.Version;
             var body = new Dictionary<string, object> {
                 { "id", InstallId() }, { "v", AppVersion },

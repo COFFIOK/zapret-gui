@@ -124,7 +124,7 @@ namespace ZapretCS
             Tb("ShareTitle").Text = Translate.T("Код готов");
             Tb("ShareSub").Text = Translate.T("Отправь его другу — он нажмёт «Ввести код» в своём Zapret.");
             Tb("ShareCodeText").Text = pretty;
-            try { Clipboard.SetText(pretty); } catch { }
+            try { Clipboard.SetText(pretty); } catch (Exception logEx) { Log.Err("clipboard", logEx); }
             Tb("ShareCodeInfo").Text = Translate.T("Код уже скопирован · " + Plural(n) + " · работает 30 дней");
             Btn("ShareGo").Content = Translate.T("Готово");
             var card = El("ShareCodeCard");
@@ -225,7 +225,7 @@ namespace ZapretCS
             Tb("SharePasteList").MouseLeftButtonUp += (s, e) => Safe(() => PasteList(true));
             El("ShareCodeCard").MouseLeftButtonUp += (s, e) => Safe(() =>
             {
-                try { Clipboard.SetText(Tb("ShareCodeText").Text); } catch { }
+                try { Clipboard.SetText(Tb("ShareCodeText").Text); } catch (Exception logEx) { Log.Err("clipboard", logEx); }
                 Anim.D(A("ShareCodeScale"), Anim.SX, 1, 380, 0.9, ease: Anim.Back());
                 Anim.D(A("ShareCodeScale"), Anim.SY, 1, 380, 0.9, ease: Anim.Back());
                 Toast("Код скопирован");

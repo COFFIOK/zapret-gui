@@ -526,13 +526,13 @@
         <!-- Заголовок -->
         <Grid x:Name="TitleBar" Grid.Row="0" Background="Transparent" Margin="20,0,10,0">
           <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-            <!-- логотип приложения с точкой состояния (зелёная — zapret работает) -->
+            <!-- точка состояния (цветная — zapret работает); логотип убран, без него заголовок чище -->
             <Grid Width="24" Height="24" Margin="0,0,10,0" VerticalAlignment="Center">
-              <Image x:Name="TitleLogo" Width="24" Height="24" RenderOptions.BitmapScalingMode="HighQuality"/>
               <Rectangle x:Name="TitleDot" Width="8" Height="8" Fill="#5A6070" Stroke="#121419" StrokeThickness="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-1,-1"/>
             </Grid>
             <TextBlock Text="ZAPRET" Style="{StaticResource PxText}" FontSize="22.22" VerticalAlignment="Center" Margin="0,0,0,2"/>
-            <TextBlock x:Name="TitleVer" Text="" Foreground="{StaticResource Muted}" FontSize="12" Margin="10,1,0,0" VerticalAlignment="Center"/>
+            <!-- версия приложения; 11.11 — ровно 1 пиксель шрифта = 1 пиксель экрана, цифры остаются чёткими -->
+            <TextBlock x:Name="TitleVer" Text="" Style="{StaticResource PxText}" Foreground="{StaticResource Muted}" FontSize="11.11" Margin="10,3,0,0" VerticalAlignment="Center"/>
           </StackPanel>
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
             <Button x:Name="CompactBtn" Style="{StaticResource TitleBtn}" Margin="0,0,4,0" ToolTip="Компактный вид">
@@ -957,10 +957,10 @@
                           <CheckBox x:Name="AutoRunToggle" Grid.Column="1" Style="{StaticResource Toggle}" VerticalAlignment="Center" Margin="10,0,0,0"/>
                         </Grid>
                         <Grid>
-                          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="170"/></Grid.ColumnDefinitions>
-                          <StackPanel VerticalAlignment="Center">
+                          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="200"/></Grid.ColumnDefinitions>
+                          <StackPanel VerticalAlignment="Center" Margin="0,0,10,0">
                             <TextBlock Text="Кнопка ✕" FontSize="13"/>
-                            <TextBlock Text="что делать при закрытии окна" Foreground="{StaticResource Muted}" FontSize="11"/>
+                            <TextBlock Text="что делать при закрытии окна" Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap"/>
                           </StackPanel>
                           <ComboBox x:Name="CloseBox" Grid.Column="1" VerticalAlignment="Center">
                             <ComboBoxItem Tag="ask">Спрашивать</ComboBoxItem>
@@ -1016,7 +1016,7 @@
                             <TextBlock FontSize="13"><Run Text="&#xE968;" FontFamily="Segoe MDL2 Assets" Foreground="#3DDC97"/><Run Text="  Бета-тестирование"/></TextBlock>
                             <Border Background="#FFB547" Padding="5,0,5,1" Margin="8,0,0,0" VerticalAlignment="Center"><TextBlock Text="бета" FontSize="10" FontWeight="SemiBold" Foreground="#121419"/></Border>
                           </StackPanel>
-                          <TextBlock Text="новые функции до релиза. Сейчас: «Игровая сеть» — играть с друзьями по локальной сети, как в Хамачи. Может работать нестабильно" Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                          <TextBlock Text="новые функции до релиза" Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"/>
                         </StackPanel>
                         <CheckBox x:Name="BetaToggle" Grid.Column="1" Style="{StaticResource Toggle}" VerticalAlignment="Center"/>
                       </Grid>

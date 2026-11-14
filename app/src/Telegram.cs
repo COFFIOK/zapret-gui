@@ -96,7 +96,7 @@ namespace ZapretCS
         Dictionary<string, object> TgConfig()
         {
             try { return new JavaScriptSerializer().DeserializeObject(File.ReadAllText(TgCfg, Encoding.UTF8)) as Dictionary<string, object>; }
-            catch { return null; }
+            catch (Exception logEx) { Log.Err("tg config", logEx); return null; }
         }
         void SaveTgConfig(Dictionary<string, object> c)
         {
@@ -344,7 +344,7 @@ namespace ZapretCS
         }
         static void RunHidden(string exe, string args)
         {
-            try { using (var p = Process.Start(new ProcessStartInfo(exe, args) { CreateNoWindow = true, UseShellExecute = false })) p.WaitForExit(8000); } catch { }
+            try { using (var p = Process.Start(new ProcessStartInfo(exe, args) { CreateNoWindow = true, UseShellExecute = false })) p.WaitForExit(8000); } catch (Exception logEx) { Log.Err("tg run", logEx); }
         }
         static string LanIp()
         {

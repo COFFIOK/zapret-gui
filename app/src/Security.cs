@@ -58,7 +58,7 @@ namespace ZapretCS
                 foreach (var d in Directory.GetDirectories(root))
                     try { if (Directory.GetLastWriteTimeUtc(d) < DateTime.UtcNow.AddHours(-6)) Directory.Delete(d, true); } catch { }
             }
-            catch { }
+            catch (Exception logEx) { Log.Err("clean temp", logEx); }
         }
 
         // имя версии из GitHub попадает в адреса и имена папок — пропускаем только безопасные символы

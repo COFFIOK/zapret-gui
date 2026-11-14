@@ -5,12 +5,13 @@
 //   POST /t/ping   один раз от установки, если человек согласился (случайный номер, версии, настройки)
 //   POST /t/ev     событие (включил zapret, тест, поделился кодом…)
 //   POST /t/err    ошибка приложения (без путей и имени пользователя)
-//   GET  /stats?k=СЕКРЕТ                                              ->  страница статистики
+//   GET  /stats  (форма ключа) -> POST /stats                          ->  страница статистики
 //   POST /chat/send, /chat/get                                        ->  чат пользователя с автором (по случайному номеру установки)
-//   GET  /chat/threads.json?k=, /chat/thread.json?k=&id=              ->  для автора: список чатов / переписка
-//   POST /chat/reply?k=, /chat/set?k=, /chat/ban?k=                   ->  ответить / закрыть, удалить чат / заблокировать
+//   GET  /chat/threads.json, /chat/thread.json?id=                    ->  для автора: список чатов / переписка
+//   POST /chat/reply, /chat/set, /chat/ban                            ->  ответить / закрыть, удалить чат / заблокировать
 //   POST /chat/img?id=, GET /chat/img/КЛЮЧ?id=                        ->  картинки в чате (хранятся 120 дней в KV)
-//   GET  /stats.json?k=СЕКРЕТ                                         ->  то же в JSON (для приложения Zapret Stats)
+//   GET  /stats.json                                                  ->  то же в JSON (для приложения Zapret Stats)
+//   Все запросы автора (кроме формы /stats) — с заголовком X-Zapret-Key: СЕКРЕТ
 // IP-адреса нигде не сохраняются.
 
 const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // без 0/O, 1/I/L — чтобы не путать
@@ -378,6 +379,23 @@ async function statsData(env) {
     chatUnread: (await db.prepare(`SELECT COALESCE(SUM(dev_unread), 0) n FROM chat_threads`).first())?.n ?? 0 };
 }
 
+// ключ автора — только в заголовке X-Zapret-Key (адреса с ?k= попадают в логи и историю, поэтому больше не принимаются)
+function isAuthor(req, env) {
+  return !!(env.STATS && env.STATS_KEY && same(req.headers.get('x-zapret-key') || '', env.STATS_KEY));
+}
+
+function loginPage(wrong) {
+  const html = `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Zapret · статистика</title>
+<style>body{background:#16181d;color:#e6e8ee;font:15px system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0}
+form{background:#1f2229;padding:28px;border-radius:10px;display:flex;flex-direction:column;gap:12px;min-width:280px}
+input,button{font:inherit;padding:10px 12px;border-radius:6px;border:1px solid #333845;background:#14161b;color:inherit}
+button{background:#b18cff;color:#16181d;border:0;font-weight:600;cursor:pointer}.e{color:#ff5e62;margin:0}</style></head>
+<body><form method="post" action="/stats"><b>Статистика Zapret</b>${wrong ? '<p class="e">Неверный ключ</p>' : ''}
+<input type="password" name="k" placeholder="ключ" autocomplete="current-password" autofocus required><button type="submit">Открыть</button></form></body></html>`;
+  return new Response(html, { status: wrong ? 403 : 200, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex',
+    'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'" } });
+}
+
 async function statsPage(env) {
   const d = await statsData(env);
   const dMax = Math.max(1, ...d.daily.map(r => r.n));
@@ -448,13 +466,18 @@ export default {
 
     if (req.method === 'POST' && url.pathname.startsWith('/t/')) return telemetry(req, env, url.pathname);
 
-    if (req.method === 'GET' && url.pathname === '/stats') {
-      if (!env.STATS || !env.STATS_KEY || !same(url.searchParams.get('k') || '', env.STATS_KEY)) return json({ error: 'not found' }, 404);
-      return statsPage(env);
+    // страница статистики в браузере: ключ вводится в форму и уходит в теле POST, а не в адресе
+    if (url.pathname === '/stats' && (req.method === 'GET' || req.method === 'POST')) {
+      if (!env.STATS || !env.STATS_KEY) return json({ error: 'not found' }, 404);
+      if (req.method === 'GET') return loginPage(false);
+      if (await tooMany(req, 'login', 5)) return json({ error: 'slow down' }, 429);
+      let k = '';
+      try { k = String((await req.formData()).get('k') || ''); } catch { }
+      return same(k, env.STATS_KEY) ? statsPage(env) : loginPage(true);
     }
     if (req.method === 'POST' && url.pathname === '/chat/send') return chatSend(req, env);
     if (req.method === 'POST' && url.pathname === '/chat/get') return chatGet(req, env);
-    const authed = () => env.STATS && env.STATS_KEY && same(url.searchParams.get('k') || '', env.STATS_KEY);
+    const authed = () => isAuthor(req, env);
     if (req.method === 'POST' && url.pathname === '/chat/img') return chatImgUpload(req, env, url, authed());
     const im = url.pathname.match(/^\/chat\/img\/([a-z0-9]{20})$/);
     if (req.method === 'GET' && im) return chatImgGet(env, url, im[1], authed());
@@ -464,7 +487,7 @@ export default {
     if (dev) return authed() ? dev() : json({ error: 'not found' }, 404);
 
     if (req.method === 'GET' && url.pathname === '/stats.json') {
-      if (!env.STATS || !env.STATS_KEY || !same(url.searchParams.get('k') || '', env.STATS_KEY)) return json({ error: 'not found' }, 404);
+      if (!isAuthor(req, env)) return json({ error: 'not found' }, 404);
       return json(await statsData(env));
     }
 

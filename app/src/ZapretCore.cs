@@ -77,7 +77,7 @@ namespace ZapretCS
                     if (m.Success) { LocalVersion = m.Groups[1].Value; break; }
                 }
             }
-            catch { }
+            catch (Exception logEx) { Log.Err("zapret version", logEx); }
         }
 
         // ---- стратегии: все .bat, кроме service*, в «человеческом» порядке ----
@@ -93,7 +93,7 @@ namespace ZapretCS
                     r.Add(n);
                 }
             }
-            catch { }
+            catch (Exception logEx) { Log.Err("strategies", logEx); }
             return r.OrderBy(n => Regex.Replace(n, @"\d+", m => m.Value.PadLeft(8, '0')), StringComparer.OrdinalIgnoreCase).ToList();
         }
 
@@ -179,7 +179,7 @@ namespace ZapretCS
             if (args != null)
             {
                 PrepareUserLists();
-                try { Process.Start(new ProcessStartInfo("netsh.exe", "interface tcp set global timestamps=enabled") { CreateNoWindow = true, UseShellExecute = false }); } catch { }
+                try { Process.Start(new ProcessStartInfo("netsh.exe", "interface tcp set global timestamps=enabled") { CreateNoWindow = true, UseShellExecute = false }); } catch (Exception logEx) { Log.Err("tcp timestamps", logEx); }
                 var psi = new ProcessStartInfo(Path.Combine(Root, "bin\\winws.exe"), args)
                 { WorkingDirectory = Path.Combine(Root, "bin"), UseShellExecute = false, CreateNoWindow = true };
                 Process.Start(psi);
@@ -254,7 +254,7 @@ namespace ZapretCS
             string svc = ZapretCore.ServiceState(), svcName = null;
             if (svc == "Running")
             {
-                try { using (var k = Registry.LocalMachine.OpenSubKey("System\\CurrentControlSet\\Services\\zapret")) if (k != null) svcName = k.GetValue("zapret-discord-youtube") as string; } catch { }
+                try { using (var k = Registry.LocalMachine.OpenSubKey("System\\CurrentControlSet\\Services\\zapret")) if (k != null) svcName = k.GetValue("zapret-discord-youtube") as string; } catch (Exception logEx) { Log.Err("service name", logEx); }
             }
             var tgp = Process.GetProcessesByName("TgWsProxy_windows"); bool tg = tgp.Length > 0; foreach (var p in tgp) p.Dispose();
             bool conn = false;
@@ -262,7 +262,7 @@ namespace ZapretCS
             {
                 if (tick++ % 5 == 0 && TgCfgPath != null)
                 {
-                    try { var m = Regex.Match(File.ReadAllText(TgCfgPath), "\"port\"\\s*:\\s*(\\d+)"); if (m.Success) tgPort = int.Parse(m.Groups[1].Value); } catch { }
+                    try { var m = Regex.Match(File.ReadAllText(TgCfgPath), "\"port\"\\s*:\\s*(\\d+)"); if (m.Success) tgPort = int.Parse(m.Groups[1].Value); } catch (Exception logEx) { Log.Err("tg port", logEx); }
                 }
                 // клиент Telegram держит соединение с прокси на этом компьютере
                 bool hasClient = false;

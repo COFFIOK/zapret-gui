@@ -1,5 +1,5 @@
 // Zapret Stats — личное приложение автора: анонимная статистика Zapret GUI · by COFFIOK
-// Берёт данные с сервера (GET /stats.json?k=КЛЮЧ). Ключ хранится в %AppData%\ZapretStats, зашифрован Windows (DPAPI).
+// Берёт данные с сервера (GET /stats.json, ключ — в заголовке X-Zapret-Key). Ключ хранится в %AppData%\ZapretStats, зашифрован Windows (DPAPI).
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -23,7 +23,7 @@ using System.Windows.Threading;
 [assembly: AssemblyTitle("Zapret Stats")]
 [assembly: AssemblyProduct("Zapret Stats")]
 [assembly: AssemblyCompany("COFFIOK")]
-[assembly: AssemblyVersion("1.2.0.0")]
+[assembly: AssemblyVersion("1.3.0.0")]
 
 namespace ZapretStats
 {
@@ -94,8 +94,9 @@ namespace ZapretStats
         public static string UploadImg(string key, string id, byte[] jpg)
         {
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-            var req = (HttpWebRequest)WebRequest.Create(Server + "/chat/img?id=" + id + "&k=" + Uri.EscapeDataString(key));
-            req.Method = "POST"; req.ContentType = "image/jpeg"; req.UserAgent = "ZapretStats/1.2"; req.Timeout = 60000; req.ReadWriteTimeout = 60000;
+            var req = (HttpWebRequest)WebRequest.Create(Server + "/chat/img?id=" + id);
+            req.Headers["X-Zapret-Key"] = key;
+            req.Method = "POST"; req.ContentType = "image/jpeg"; req.UserAgent = "ZapretStats/1.3"; req.Timeout = 60000; req.ReadWriteTimeout = 60000;
             req.ContentLength = jpg.Length;
             using (var st = req.GetRequestStream()) st.Write(jpg, 0, jpg.Length);
             using (var r = req.GetResponse())
@@ -108,8 +109,9 @@ namespace ZapretStats
         public static byte[] GetImg(string key, string img)
         {
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-            var req = (HttpWebRequest)WebRequest.Create(Server + "/chat/img/" + img + "?k=" + Uri.EscapeDataString(key));
-            req.UserAgent = "ZapretStats/1.2"; req.Timeout = 30000; req.ReadWriteTimeout = 30000;
+            var req = (HttpWebRequest)WebRequest.Create(Server + "/chat/img/" + img);
+            req.Headers["X-Zapret-Key"] = key;
+            req.UserAgent = "ZapretStats/1.3"; req.Timeout = 30000; req.ReadWriteTimeout = 30000;
             using (var r = req.GetResponse())
             using (var ms = new MemoryStream()) { r.GetResponseStream().CopyTo(ms); return ms.ToArray(); }
         }
@@ -118,8 +120,10 @@ namespace ZapretStats
         static Dictionary<string, object> Call(string key, string path, string query, string postJson)
         {
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-            var req = (HttpWebRequest)WebRequest.Create(Server + path + "?k=" + Uri.EscapeDataString(key) + (query ?? ""));
-            req.UserAgent = "ZapretStats/1.2"; req.Timeout = 20000; req.ReadWriteTimeout = 20000;
+            // ключ — в заголовке, а не в адресе (адреса попадают в логи)
+            var req = (HttpWebRequest)WebRequest.Create(Server + path + (string.IsNullOrEmpty(query) ? "" : "?" + query.TrimStart('&')));
+            req.Headers["X-Zapret-Key"] = key;
+            req.UserAgent = "ZapretStats/1.3"; req.Timeout = 20000; req.ReadWriteTimeout = 20000;
             if (postJson != null)
             {
                 req.Method = "POST"; req.ContentType = "application/json; charset=utf-8";
@@ -256,7 +260,8 @@ namespace ZapretStats
             btns.Children.Add(PxButton("ОБНОВИТЬ", true, () => Refresh(true)));
             btns.Children.Add(PxButton("В БРАУЗЕРЕ", false, () =>
             {
-                try { System.Diagnostics.Process.Start(Api.Server + "/stats?k=" + Uri.EscapeDataString(key ?? "")); } catch { }
+                // ключ вводится на странице, в историю браузера не попадает
+                try { System.Diagnostics.Process.Start(Api.Server + "/stats"); } catch { }
             }));
             btns.Children.Add(PxButton("КЛЮЧ", false, () => { if (AskKey()) Refresh(true); }));
             Grid.SetColumn(btns, 2);

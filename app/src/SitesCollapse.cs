@@ -87,7 +87,7 @@ namespace ZapretCS
                 var bg = BuiltinGroups();
                 foreach (var k in bg.Keys) if (bg[k].Count > 0) colors.Add(GroupColor(k, true));
             }
-            catch { }
+            catch (Exception logEx) { Log.Err("group colors", logEx); }
             var sd = E<StackPanel>("StripDots"); var fd = E<StackPanel>("FootDots");
             sd.Children.Clear(); fd.Children.Clear();
             for (int i = 0; i < colors.Count && i < 9; i++)

@@ -173,7 +173,7 @@ namespace ZapretCS
             ThreadPool.QueueUserWorkItem(_ =>
             {
                 Dictionary<string, object> d = null;
-                try { d = ChatPost("/chat/get", body); } catch { }
+                try { d = ChatPost("/chat/get", body); } catch (Exception logEx) { Log.Err("chat get", logEx); }
                 Win.Dispatcher.BeginInvoke(new Action(() =>
                 {
                     fbLoading = false;
@@ -426,7 +426,7 @@ namespace ZapretCS
                     using (var r = req.GetResponse())
                     using (var ms = new MemoryStream()) { r.GetResponseStream().CopyTo(ms); data = ms.ToArray(); }
                 }
-                catch { }
+                catch (Exception logEx) { Log.Err("chat image", logEx); }
                 Win.Dispatcher.BeginInvoke(new Action(() =>
                 {
                     if (data == null) { wait.Text = Translate.T("картинка недоступна"); return; }
@@ -451,7 +451,7 @@ namespace ZapretCS
                 if (!File.Exists(f)) File.WriteAllBytes(f, data);
                 System.Diagnostics.Process.Start(f);
             }
-            catch { }
+            catch (Exception logEx) { Log.Err("chat image open", logEx); }
         }
 
         void FbStatus(string text, bool error)

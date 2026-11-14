@@ -59,7 +59,7 @@ namespace ZapretCS
             { @"Компактный вид — кнопка в заголовке", @"Compact view — button in the title bar" },
             { @"«Мои сайты» можно свернуть в полоску справа", @"“My sites” can be folded into a strip on the right" },
             { @"Бета: «Игровая сеть», как Хамачи — включается в Настройки → Вид", @"Beta: “Game network”, like Hamachi — turn on in Settings → Appearance" },
-            { @"новые функции до релиза. Сейчас: «Игровая сеть» — играть с друзьями по локальной сети, как в Хамачи. Может работать нестабильно", @"new features before release. Now: “Game network” — play with friends over a local network, like Hamachi. May be unstable" },
+            { @"новые функции до релиза", @"new features before release" },
             { @"Игровая сеть (бета) включена — значок в заголовке", @"Game network (beta) is on — icon in the title bar" },
             { @"Устанавливаю игровую сеть…", @"Installing the game network…" },
             { @"Устанавливаю игровую сеть (бета)…", @"Installing the game network (beta)…" },
