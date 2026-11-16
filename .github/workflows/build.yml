@@ -53,7 +53,7 @@ jobs:
           Get-FileHash out\ZapretSetup.exe -Algorithm SHA256 | Format-List
 
       - name: Самопроверка интерфейса
-        shell: powershell
+        shell: pwsh
         run: |
           $dir = Join-Path $pwd 'selftest'
           $p = Start-Process app\out\ZapretSelfTest.exe -ArgumentList '-selftest', "`"$dir`"" -Wait -PassThru
