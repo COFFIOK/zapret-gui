@@ -44,6 +44,13 @@ namespace ZapretCS
         readonly string dir;
         readonly List<string> lines = new List<string>();
         readonly HashSet<string> seen = new HashSet<string>();
+        readonly List<string> info = new List<string>();
+        static string Path2(DependencyObject d, DependencyObject stop)
+        {
+            var parts = new List<string>();
+            while (d != null && d != stop) { var f = d as FrameworkElement; parts.Add(d.GetType().Name + (f != null && !string.IsNullOrEmpty(f.Name) ? "#" + f.Name : "") + (f != null && f.ClipToBounds ? "(clip)" : "") + (f != null ? "[" + f.ActualWidth.ToString("0") + "]" : "")); d = VisualTreeHelper.GetParent(d); }
+            return string.Join(" < ", parts);
+        }
         public int Count;
         Window win;
         string lang = "ru";
@@ -63,7 +70,7 @@ namespace ZapretCS
         {
             var head = new List<string> { "Zapret GUI " + MainUi.AppVersion + " — самопроверка интерфейса " + DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
                 Count == 0 ? "Проблем не найдено." : "Найдено проблем: " + Count, "" };
-            File.WriteAllLines(Path.Combine(dir, "report.txt"), head.Concat(lines), new UTF8Encoding(true));
+            File.WriteAllLines(Path.Combine(dir, "report.txt"), head.Concat(lines).Concat(info.Count > 0 ? new[] { "", "Подробности:" }.Concat(info) : info), new UTF8Encoding(true));
         }
 
         string FontUri()
@@ -165,6 +172,12 @@ namespace ZapretCS
                 {
                     cb.SelectedIndex = i;
                     cb.UpdateLayout(); win.UpdateLayout();
+                    if (Environment.GetEnvironmentVariable("ZAPRET_SELFTEST_VERBOSE") == "1")
+                        foreach (var t in Walk(cb).OfType<TextBlock>())
+                        {
+                            var c = LayoutInformation.GetLayoutClip(t);
+                            info.Add("  " + cb.Name + "[" + i + "] tb='" + t.Text + "' vis=" + t.IsVisible + " w=" + t.ActualWidth.ToString("0.0") + " des=" + t.DesiredSize.Width.ToString("0.0") + " clip=" + (c == null ? "-" : c.Bounds.ToString()) + " cbw=" + cb.ActualWidth.ToString("0.0") + " cbclip=" + (LayoutInformation.GetLayoutClip(cb) == null ? "-" : LayoutInformation.GetLayoutClip(cb).Bounds.ToString()) + " path=" + Path2(t, cb));
+                        }
                     CheckTexts(scene + " · список " + (string.IsNullOrEmpty(cb.Name) ? "" : cb.Name), cb);
                 }
                 cb.SelectedIndex = keep;
@@ -188,9 +201,19 @@ namespace ZapretCS
                         new Typeface(tb.FontFamily, tb.FontStyle, tb.FontWeight, tb.FontStretch), tb.FontSize, Brushes.Black,
                         null, TextOptions.GetTextFormattingMode(tb), dpi);
                     double need = ft.WidthIncludingTrailingWhitespace + tb.Padding.Left + tb.Padding.Right;
-                    // проблема — только если не хватает заметно и WPF действительно обрезает этот текст
-                    if (need > tb.ActualWidth + 2.5 && LayoutInformation.GetLayoutClip(tb) != null)
-                    { Problem(scene, "«" + text + "» не помещается: нужно " + (int)need + " px, есть " + (int)tb.ActualWidth + Where(tb)); continue; }
+                    // WPF обрезает текст «изнутри»: элемент остаётся во всю ширину, но видимая область (layout clip) уже.
+                    // Проблема — если заметная часть текста не попадает в видимую область.
+                    var own = LayoutInformation.GetLayoutClip(tb);
+                    double visible = own != null ? Math.Min(own.Bounds.Right, tb.ActualWidth) : tb.ActualWidth;
+                    if (need > visible + 2.5)
+                    { Problem(scene, "«" + text + "» не помещается: нужно " + (int)need + " px, видно " + (int)visible + Where(tb)); continue; }
+                }
+                else
+                {
+                    // текст с переносом: обрезан снизу собственной видимой областью
+                    var own = LayoutInformation.GetLayoutClip(tb);
+                    if (own != null && own.Bounds.Bottom < tb.ActualHeight - 2.5 && tb.DesiredSize.Height > own.Bounds.Bottom + 2.5)
+                    { Problem(scene, "«" + text + "» обрезан по высоте: видно " + (int)own.Bounds.Bottom + " px из " + (int)tb.ActualHeight + Where(tb)); continue; }
                 }
                 // 2) текст обрезан родительским элементом (поле списка, рамка фиксированного размера)
                 var rect = new Rect(0, 0, tb.ActualWidth, tb.ActualHeight);
