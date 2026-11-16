@@ -1,4 +1,4 @@
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+﻿<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Zapret" Width="920" Height="660" WindowStyle="None" AllowsTransparency="True"
         Background="Transparent" ResizeMode="CanMinimize" WindowStartupLocation="CenterScreen"
@@ -957,7 +957,7 @@
                           <CheckBox x:Name="AutoRunToggle" Grid.Column="1" Style="{StaticResource Toggle}" VerticalAlignment="Center" Margin="10,0,0,0"/>
                         </Grid>
                         <Grid>
-                          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="200"/></Grid.ColumnDefinitions>
+                          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="170"/></Grid.ColumnDefinitions>
                           <StackPanel VerticalAlignment="Center" Margin="0,0,10,0">
                             <TextBlock Text="Кнопка ✕" FontSize="13"/>
                             <TextBlock Text="что делать при закрытии окна" Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap"/>
