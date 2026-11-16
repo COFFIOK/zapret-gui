@@ -28,4 +28,6 @@ rem ярлыки «Zapret Dev» на рабочем столе и в меню «
 for %%I in ("..\ZapretDev.exe") do (set "EXE=%%~fI" & set "ROOT=%%~dpI")
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$ws = New-Object -ComObject WScript.Shell; foreach ($d in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'))) { $l = $ws.CreateShortcut((Join-Path $d 'Zapret Dev.lnk')); $l.TargetPath = '%EXE%'; $l.WorkingDirectory = '%ROOT%'; $l.IconLocation = '%EXE%,0'; $l.Description = 'Zapret Dev'; $l.Save() }"
 echo Shortcuts: Desktop + Start menu "Zapret Dev"
+rem Windows кэширует значки ярлыков по пути к файлу — обновляем кэш, чтобы сразу был виден новый значок
+ie4uinit.exe -show >nul 2>&1
 start "" "%EXE%"
