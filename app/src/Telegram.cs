@@ -24,7 +24,7 @@ namespace ZapretCS
     partial class MainUi
     {
         string TgDir, TgExe, TgData, TgCfg;
-        const string TgUrl = "https://github.com/Flowseal/tg-ws-proxy/releases/latest/download/TgWsProxy_windows.exe";
+        const string TgRepo = "Flowseal/tg-ws-proxy";   // скачивается через GitHub.cs с проверкой SHA-256
         string tgState = "off", tgPrevState;
         long tgVisAt;
         bool? tgConnShown; long tgConnShownAt; bool tgIsConnected;
@@ -167,7 +167,11 @@ namespace ZapretCS
             string part = TgExe + ".part";
             new Thread(() =>
             {
-                try { Net.Download(TgUrl, part, (got, total) => { Interlocked.Exchange(ref tgDlGot, got); Interlocked.Exchange(ref tgDlTotal, total); }); }
+                try
+                {
+                    var a = GitHub.Latest(TgRepo).Need(n => n.Equals("TgWsProxy_windows.exe", StringComparison.OrdinalIgnoreCase), "tg-ws-proxy для Windows");
+                    GitHub.Fetch(a, part, (got, total) => { Interlocked.Exchange(ref tgDlGot, got); Interlocked.Exchange(ref tgDlTotal, total); });
+                }
                 catch (Exception ex) { tgDlError = ex.Message; }
                 tgDlDone = true;
             }) { IsBackground = true }.Start();

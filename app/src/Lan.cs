@@ -189,40 +189,20 @@ namespace ZapretCS
         // скачать последнюю версию для Windows x64 с GitHub (вызывать в фоне); вернёт версию
         public static string Install(Action<string> progress)
         {
-            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             progress("Ищу последнюю версию EasyTier…");
-            string json;
-            using (var wc = new WebClient())
-            {
-                wc.Headers[HttpRequestHeader.UserAgent] = "ZapretGUI";
-                wc.Encoding = Encoding.UTF8;
-                json = wc.DownloadString("https://api.github.com/repos/EasyTier/EasyTier/releases/latest");
-            }
-            var rel = new JavaScriptSerializer().DeserializeObject(json) as Dictionary<string, object>;
-            string tag = Convert.ToString(rel["tag_name"]);
-            string url = null, digest = null;
-            foreach (var a in (IEnumerable)rel["assets"])
-            {
-                var d = a as Dictionary<string, object>;
-                string n = Convert.ToString(d["name"]);
-                if (n.StartsWith("easytier-windows-x86_64", StringComparison.OrdinalIgnoreCase) && n.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
-                {
-                    url = Convert.ToString(d["browser_download_url"]);
-                    object dg; if (d.TryGetValue("digest", out dg) && dg is string && ((string)dg).StartsWith("sha256:")) digest = ((string)dg).Substring(7).ToLowerInvariant();
-                    break;
-                }
-            }
-            if (url == null) throw new Exception("в релизе " + tag + " нет сборки для Windows x64");
+            // последний релиз через API GitHub; SHA-256 архива обязательна (GitHub.cs)
+            var rel = GitHub.Latest("EasyTier/EasyTier");
+            var asset = rel.Need(n => n.StartsWith("easytier-windows-x86_64", StringComparison.OrdinalIgnoreCase) && n.EndsWith(".zip", StringComparison.OrdinalIgnoreCase), "сборки для Windows x64");
+            string tag = rel.Tag;
 
             Directory.CreateDirectory(Dir);
             string zip = Path.Combine(Dir, "easytier.zip.part");
             long last = 0;
-            Net.Download(url, zip, (got, total) =>
+            GitHub.Fetch(asset, zip, (got, total) =>
             {
                 if (total <= 0 || got - last < 300000 && got != total) return;
                 last = got; progress("Скачиваю EasyTier " + tag + " · " + (int)(100 * got / total) + "%");
             });
-            if (digest != null && Sec.Sha256(zip) != digest) { try { File.Delete(zip); } catch { } throw new Exception("скачанный файл не совпадает с релизом (контрольная сумма)"); }
             progress("Распаковываю…");
             Stop();
             using (var z = ZipFile.OpenRead(zip))

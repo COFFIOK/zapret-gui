@@ -23,6 +23,17 @@ namespace ZapretCS
             Tray = args.Any(a => a.Equals("-Tray", StringComparison.OrdinalIgnoreCase));
             AutoStart = args.Any(a => a.Equals("-AutoStart", StringComparison.OrdinalIgnoreCase));
 
+            // самопроверка интерфейса (build-release.cmd и автосборка на GitHub): -selftest <папка для отчёта>
+            int st = Array.FindIndex(args, a => a.Equals("-selftest", StringComparison.OrdinalIgnoreCase));
+            if (st >= 0)
+            {
+                string outDir = Path.GetFullPath(st + 1 < args.Length ? args[st + 1] : Path.Combine(dir, "selftest"));
+                Directory.CreateDirectory(outDir);
+                Log.FilePath = Path.Combine(outDir, "selftest-error.log");
+                new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+                return MainUi.SelfTest(outDir);
+            }
+
             // одна копия: повторный запуск просто показывает уже открытое окно
             bool created;
             string id = System.Diagnostics.Process.GetCurrentProcess().ProcessName.Equals("ZapretCS", StringComparison.OrdinalIgnoreCase) ? "ZapretCS" : "Zapret2";

@@ -1,0 +1,73 @@
+# Автосборка Zapret GUI на чистой Windows-машине GitHub.
+# Запускается при каждой отправке кода: собирает приложение, Zapret Stats и установщик,
+# прогоняет самопроверку интерфейса и выкладывает результат во вкладку Actions → «Artifacts».
+# Релизы не создаёт: их собирает и подписывает автор (build-release.cmd), ключ подписи на GitHub не хранится.
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Приложение (csc из .NET Framework)
+        shell: cmd
+        run: call app\build.cmd
+
+      - name: Zapret Stats
+        shell: cmd
+        run: |
+          cd stats
+          call compile-stats.cmd
+          type build.log
+          findstr /c:"BUILD OK" build.log
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: installer/stub/go.mod
+          cache: false
+
+      - name: Заглушка установщика (Go)
+        shell: pwsh
+        run: |
+          go install github.com/akavel/rsrc@v0.10.2
+          Set-Location installer/stub
+          & "$(go env GOPATH)\bin\rsrc.exe" -arch amd64 -manifest setup.manifest -ico ..\..\app\zapret.ico -o rsrc_windows_amd64.syso
+          $env:GOOS = 'windows'; $env:GOARCH = 'amd64'; $env:CGO_ENABLED = '0'
+          go build -trimpath -ldflags "-s -w -H windowsgui" -o ..\stub.exe .
+
+      - name: Установщик
+        shell: powershell
+        run: |
+          $v = (Select-String -Path app\src\AssemblyInfo.cs -Pattern 'AssemblyVersion\("(\d+\.\d+\.\d+)').Matches[0].Groups[1].Value
+          .\installer\pack.ps1 -Version $v -Exe app\out\Zapret.exe -Ico app\zapret.ico -Font app\ui\ZPixel.ttf -Stub installer\stub.exe -Out out\ZapretSetup.exe
+          Get-FileHash out\ZapretSetup.exe -Algorithm SHA256 | Format-List
+
+      - name: Самопроверка интерфейса
+        shell: powershell
+        run: |
+          $dir = Join-Path $pwd 'selftest'
+          $p = Start-Process app\out\ZapretSelfTest.exe -ArgumentList '-selftest', "`"$dir`"" -Wait -PassThru
+          if (Test-Path "$dir\report.txt") { Get-Content "$dir\report.txt" -Encoding UTF8 }
+          if (Test-Path "$dir\selftest-error.log") { Get-Content "$dir\selftest-error.log" -Encoding UTF8 }
+          if ($p.ExitCode -ne 0) { Write-Host "::warning::Самопроверка нашла проблемы: $($p.ExitCode) — отчёт и скриншоты в артефакте"; exit 1 }
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zapret-gui-${{ github.sha }}
+          if-no-files-found: ignore
+          path: |
+            app/out/Zapret.exe
+            out/ZapretSetup.exe
+            stats/ZapretStats.exe
+            selftest/

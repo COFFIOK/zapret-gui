@@ -1,7 +1,12 @@
 // Zapret (C#) — перевод интерфейса на английский (при русском языке ничего не делает)
+// Сами переводы — в lang\en.json (встроен в программу как ресурс en.json): их можно править без знания C#.
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Reflection;
+using System.Text;
 using System.Text.RegularExpressions;
+using System.Web.Script.Serialization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -14,14 +19,14 @@ namespace ZapretCS
     {
         public static bool En;
         static Dictionary<string, string> exact;
+        static List<KeyValuePair<Regex, string>> patterns;
         static readonly Regex cyr = new Regex("[А-Яа-яЁё]");
 
         public static void Init(MainUi ui)
         {
             En = ui.S.Str("lang", "ru") == "en";
             if (!En) return;
-            exact = new Dictionary<string, string>(StringComparer.Ordinal);
-            for (int i = 0; i < Pairs.GetLength(0); i++) exact[Pairs[i, 0]] = Pairs[i, 1];
+            Load();
             ui.Win.Title = "Zapret";
             Tree(ui.Win);
             // всплывающие списки и подсказки появляются позже — проверяем раз в 2 с, только когда окно активно
@@ -35,12 +40,37 @@ namespace ZapretCS
             if (!En || string.IsNullOrEmpty(s) || !cyr.IsMatch(s)) return s;
             string v;
             if (exact.TryGetValue(s, out v)) return v;
-            for (int i = 0; i < Rx.GetLength(0); i++)
-            {
-                var m = Regex.Match(s, Rx[i, 0]);
-                if (m.Success) return Regex.Replace(s, Rx[i, 0], Rx[i, 1]);
-            }
+            foreach (var p in patterns)
+                if (p.Key.IsMatch(s)) return p.Key.Replace(s, p.Value);
             return s;
+        }
+
+        // переводы из встроенного lang\en.json: {"exact": {"рус": "eng"}, "patterns": [["шаблон", "замена"], ...]}
+        static void Load()
+        {
+            if (exact != null) return;
+            exact = new Dictionary<string, string>(StringComparer.Ordinal);
+            patterns = new List<KeyValuePair<Regex, string>>();
+            try
+            {
+                string json;
+                using (var s = Assembly.GetExecutingAssembly().GetManifestResourceStream("en.json"))
+                using (var r = new StreamReader(s, Encoding.UTF8)) json = r.ReadToEnd();
+                var ser = new JavaScriptSerializer { MaxJsonLength = 16 * 1024 * 1024 };
+                var doc = (Dictionary<string, object>)ser.DeserializeObject(json);
+                foreach (var kv in (Dictionary<string, object>)doc["exact"]) exact[kv.Key] = Convert.ToString(kv.Value);
+                foreach (object[] p in (object[])doc["patterns"])
+                    patterns.Add(new KeyValuePair<Regex, string>(new Regex(Convert.ToString(p[0]), RegexOptions.Compiled), Convert.ToString(p[1])));
+            }
+            catch (Exception ex) { Log.Err("translate", ex); }
+        }
+
+        // для самопроверки: английский без настроек приложения
+        public static void InitForTest(Window w)
+        {
+            En = true;
+            Load();
+            Tree(w);
         }
 
         // обход всего дерева окна: тексты, подписи кнопок, подсказки

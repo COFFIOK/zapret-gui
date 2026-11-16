@@ -58,29 +58,19 @@ namespace ZapretCS
         static string LatestTagRaw(string repo, out string exeUrl)
         {
             exeUrl = null;
-            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             try
             {
-                using (var wc = new WebClient())
-                {
-                    wc.Headers.Add("User-Agent", "ZapretGUI");
-                    var j = (System.Collections.Generic.Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(wc.DownloadString("https://api.github.com/repos/" + repo + "/releases/latest"));
-                    var assets = j["assets"] as object[];
-                    if (assets != null)
-                        foreach (System.Collections.Generic.Dictionary<string, object> a in assets)
-                            if (((string)a["name"]).EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
-                            {
-                                exeUrl = (string)a["browser_download_url"];
-                                // GitHub сообщает SHA-256 файла — сверим после скачивания
-                                object dg; if (a.TryGetValue("digest", out dg) && dg is string && ((string)dg).StartsWith("sha256:")) appUpdDigest = ((string)dg).Substring(7).ToLowerInvariant();
-                                break;
-                            }
-                    return (string)j["tag_name"];
-                }
+                // обычный путь: API GitHub — заодно получаем SHA-256 установщика
+                var rel = GitHub.Latest(repo);
+                var a = rel.Find(n => n.Equals("ZapretSetup.exe", StringComparison.OrdinalIgnoreCase));
+                if (a != null) { exeUrl = a.Url; appUpdDigest = a.Sha256; }
+                return rel.Tag;
             }
-            catch
+            catch (Exception apiErr)
             {
-                // запасной путь: тег по переадресации страницы последнего релиза
+                // API не ответил (лимит запросов и т.п.): узнаём версию по переадресации страницы, чтобы хотя бы показать,
+                // что вышло обновление. Скачать его без проверки всё равно не дадим — см. StartAppDownload.
+                Log.Err("update api", apiErr);
                 var r = (HttpWebRequest)WebRequest.Create("https://github.com/" + repo + "/releases/latest");
                 r.UserAgent = "ZapretGUI"; r.AllowAutoRedirect = false;
                 using (var resp = r.GetResponse())
@@ -155,12 +145,28 @@ namespace ZapretCS
             var tick = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
             tick.Tick += (s, e) => ShowProgress(Interlocked.Read(ref got), Interlocked.Read(ref total), 0.9);
             tick.Start();
+            string url = appUpdUrl, tag = appUpdTag;
             Background(() =>
             {
-                Net.Download(appUpdUrl, file, (g, t) => { Interlocked.Exchange(ref got, g); Interlocked.Exchange(ref total, t); });
-                // проверка: это программа, и она совпадает с тем, что выложено в релизе
+                // без способа проверить файл не скачиваем: нужна подпись автора или хотя бы сумма из API GitHub
+                if (!Signature.Configured && string.IsNullOrEmpty(digest))
+                {
+                    var rel = GitHub.Latest(UpdateRepo);
+                    var a = rel.Need(n => n.Equals("ZapretSetup.exe", StringComparison.OrdinalIgnoreCase), "установщика");
+                    if (rel.Tag != tag || string.IsNullOrEmpty(a.Sha256)) throw new Exception("не удалось проверить обновление — попробуй чуть позже");
+                    digest = a.Sha256;
+                }
+                Net.Download(url, file, (g, t) => { Interlocked.Exchange(ref got, g); Interlocked.Exchange(ref total, t); });
+                // проверка: это программа, она совпадает с релизом на GitHub и подписана автором
                 if (!Sec.LooksLikeExe(file)) throw new Exception("скачанный файл повреждён");
-                if (digest != null && Sec.Sha256(file) != digest) throw new Exception("файл не совпадает с релизом на GitHub (контрольная сумма)");
+                if (!string.IsNullOrEmpty(digest) && Sec.Sha256(file) != digest) throw new Exception("файл не совпадает с релизом на GitHub (контрольная сумма)");
+                if (Signature.Configured)
+                {
+                    byte[] sig;
+                    try { sig = GitHub.FetchSmall(url + ".sig", 4096); }
+                    catch (Exception ex) { throw new Exception("у обновления нет подписи автора — не устанавливаю", ex); }
+                    if (!Signature.Verify(file, sig)) throw new Exception("подпись обновления не совпадает — не устанавливаю");
+                }
             }, err =>
             {
                 tick.Stop();
@@ -307,19 +313,13 @@ namespace ZapretCS
             tick.Start();
             Background(() =>
             {
-                // точный тег — по переадресации страницы последнего релиза
-                try
-                {
-                    var r0 = (HttpWebRequest)WebRequest.Create("https://github.com/Flowseal/zapret-discord-youtube/releases/latest");
-                    r0.UserAgent = "ZapretGUI"; r0.AllowAutoRedirect = false;
-                    using (var resp = r0.GetResponse()) { var m = Regex.Match(resp.Headers["Location"] ?? "", "/tag/([^/?#]+)"); if (m.Success) tag = m.Groups[1].Value; }
-                }
-                catch (Exception logEx) { Log.Err("zapret update tag", logEx); }
-                if (!Sec.SafeTag(tag)) throw new Exception("странное имя версии zapret: " + tag);
+                // последний релиз через API GitHub: точный тег и SHA-256 архива; без них не обновляем
+                var rel = GitHub.Latest("Flowseal/zapret-discord-youtube");
+                var asset = rel.Need(n => n.StartsWith("zapret-discord-youtube-", StringComparison.OrdinalIgnoreCase) && n.EndsWith(".zip", StringComparison.OrdinalIgnoreCase), "архива zapret");
+                tag = rel.Tag;
                 string tmp = Sec.TempDir("zapret");
                 string zip = System.IO.Path.Combine(tmp, "zapret-" + tag + ".zip");
-                Net.Download("https://github.com/Flowseal/zapret-discord-youtube/releases/download/" + tag + "/zapret-discord-youtube-" + tag + ".zip", zip,
-                    (g, t) => { Interlocked.Exchange(ref got, g); Interlocked.Exchange(ref total, t); });
+                GitHub.Fetch(asset, zip, (g, t) => { Interlocked.Exchange(ref got, g); Interlocked.Exchange(ref total, t); });
                 phase = 1;
                 // распаковываем рядом с zapret (в защищённую папку), а не во временную папку пользователя
                 string ex = System.IO.Path.Combine(parent, ".unpack-" + Guid.NewGuid().ToString("N").Substring(0, 10));
