@@ -4,3 +4,4 @@ installer/launcher/*.syso
 app/out/
 selftest/
 out/
+devtool/build-devtool.log

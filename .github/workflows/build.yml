@@ -31,6 +31,10 @@ jobs:
           type build.log
           findstr /c:"BUILD OK" build.log
 
+      - name: Пульт разработчика (ZapretDev.exe)
+        shell: cmd
+        run: call devtool\build-devtool.cmd ci
+
       - uses: actions/setup-go@v5
         with:
           go-version-file: installer/stub/go.mod
@@ -70,4 +74,5 @@ jobs:
             app/out/Zapret.exe
             out/ZapretSetup.exe
             stats/ZapretStats.exe
+            ZapretDev.exe
             selftest/

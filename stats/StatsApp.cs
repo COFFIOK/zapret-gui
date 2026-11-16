@@ -20,10 +20,12 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 
+#if !DEVTOOL   // внутри ZapretDev.exe свои сведения о программе
 [assembly: AssemblyTitle("Zapret Stats")]
 [assembly: AssemblyProduct("Zapret Stats")]
 [assembly: AssemblyCompany("COFFIOK")]
 [assembly: AssemblyVersion("1.3.0.0")]
+#endif
 
 namespace ZapretStats
 {
@@ -300,7 +302,7 @@ namespace ZapretStats
             else { if (last != null) Render(last); sv.ScrollToTop(); }
         }
 
-        static UIElement PixelZ()
+        internal static UIElement PixelZ()
         {
             // буква Z из клеток 5x5
             string[] m = { "#####", "...#.", "..#..", ".#...", "#####" };
@@ -315,7 +317,7 @@ namespace ZapretStats
             return c;
         }
 
-        static Button PxButton(string text, bool primary, Action click)
+        internal static Button PxButton(string text, bool primary, Action click)
         {
             var b = new Button { Content = text, Margin = new Thickness(8, 0, 0, 0), Cursor = Cursors.Hand, Focusable = false };
             var fg = primary ? C.Bg : C.Text;
