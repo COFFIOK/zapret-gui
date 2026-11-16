@@ -6,8 +6,8 @@ set FW=%WINDIR%\Microsoft.NET\Framework64\v4.0.30319
 if not exist "%FW%\csc.exe" set FW=%WINDIR%\Microsoft.NET\Framework\v4.0.30319
 set FONT=..\ui\ZPixel.ttf
 if not exist "%FONT%" set FONT=..\app\ui\ZPixel.ttf
-set ICO=..\zapret.ico
-if not exist "%ICO%" set ICO=..\app\zapret.ico
+rem свой значок Zapret Dev (янтарный «Z_»), чтобы не путать с Zapret
+set ICO=dev.ico
 "%FW%\csc.exe" /nologo /target:winexe /optimize+ /utf8output /codepage:65001 /define:DEVTOOL /main:ZapretDevTool.Program ^
   /out:..\ZapretDev.exe /win32icon:%ICO% ^
   /lib:"%FW%\WPF" ^
