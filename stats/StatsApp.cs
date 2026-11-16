@@ -219,7 +219,12 @@ namespace ZapretStats
             Background = C.Bg; Foreground = C.Text; FontFamily = C.Body; FontSize = 13.5;
             UseLayoutRounding = true; SnapsToDevicePixels = true;
             TextOptions.SetTextFormattingMode(this, TextFormattingMode.Display);
+#if DEVTOOL
+            // значок Zapret Dev — прямо из программы (через Windows пришёл бы старый значок из её кэша)
+            try { Icon = System.Windows.Media.Imaging.BitmapFrame.Create(Assembly.GetExecutingAssembly().GetManifestResourceStream("dev.ico")); } catch { }
+#else
             try { Icon = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(System.Drawing.Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location).Handle, Int32Rect.Empty, System.Windows.Media.Imaging.BitmapSizeOptions.FromEmptyOptions()); } catch { }
+#endif
 
             var root = new DockPanel();
             root.Children.Add(TopBar());

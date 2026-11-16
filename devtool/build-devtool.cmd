@@ -13,7 +13,7 @@ set ICO=dev.ico
   /lib:"%FW%\WPF" ^
   /r:PresentationFramework.dll /r:PresentationCore.dll /r:WindowsBase.dll /r:System.Xaml.dll ^
   /r:System.Drawing.dll /r:System.Web.Extensions.dll /r:System.Security.dll /r:System.Core.dll ^
-  /resource:%FONT%,ZPixel.ttf ^
+  /resource:%FONT%,ZPixel.ttf /resource:dev.ico,dev.ico ^
   *.cs ..\stats\StatsApp.cs ..\stats\ChatView.cs > build-devtool.log 2>&1
 if errorlevel 1 (
   type build-devtool.log
@@ -26,7 +26,7 @@ echo BUILD OK: ZapretDev.exe
 if "%1"=="ci" exit /b 0
 rem ярлыки «Zapret Dev» на рабочем столе и в меню «Пуск» — открывать как обычное приложение
 for %%I in ("..\ZapretDev.exe") do (set "EXE=%%~fI" & set "ROOT=%%~dpI")
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$ws = New-Object -ComObject WScript.Shell; foreach ($d in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'))) { $l = $ws.CreateShortcut((Join-Path $d 'Zapret Dev.lnk')); $l.TargetPath = '%EXE%'; $l.WorkingDirectory = '%ROOT%'; $l.IconLocation = '%EXE%,0'; $l.Description = 'Zapret Dev'; $l.Save() }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ws = New-Object -ComObject WScript.Shell; foreach ($d in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'))) { $l = $ws.CreateShortcut((Join-Path $d 'Zapret Dev.lnk')); $l.TargetPath = '%EXE%'; $l.WorkingDirectory = '%ROOT%'; $l.IconLocation = '%~dp0dev.ico,0'; $l.Description = 'Zapret Dev'; $l.Save() }"
 echo Shortcuts: Desktop + Start menu "Zapret Dev"
 rem Windows кэширует значки ярлыков по пути к файлу — обновляем кэш, чтобы сразу был виден новый значок
 ie4uinit.exe -show >nul 2>&1
