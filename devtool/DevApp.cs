@@ -35,9 +35,32 @@ namespace ZapretDevTool
             var app = new Application { ShutdownMode = ShutdownMode.OnMainWindowClose };
             app.DispatcherUnhandledException += (s, e) => { MessageBox.Show(e.Exception.Message, "Zapret Dev"); e.Handled = true; };
             C.LoadFont();
-            ZapretStats.MainWin.DevRoot = AppDomain.CurrentDomain.BaseDirectory.TrimEnd('\\');
+            string root = FindRoot();
+            if (root == null) return 0;
+            ZapretStats.MainWin.DevRoot = root;
             app.Run(new ZapretStats.MainWin());
             return 0;
+        }
+
+        // где лежит папка ZapretDev: рядом с программой, в ZapretDev рядом с ней, запомненная — или спрашиваем один раз
+        static string FindRoot()
+        {
+            string exeDir = AppDomain.CurrentDomain.BaseDirectory.TrimEnd('\\');
+            string saved = Path.Combine(C.Dir, "devroot.txt");
+            var cands = new List<string> { exeDir, Path.Combine(exeDir, "ZapretDev") };
+            try { if (File.Exists(saved)) cands.Insert(0, File.ReadAllText(saved).Trim()); } catch { }
+            foreach (var c in cands)
+                if (!string.IsNullOrEmpty(c) && File.Exists(Path.Combine(c, "compile.cmd")) && Directory.Exists(Path.Combine(c, "src"))) return Remember(saved, c);
+            MessageBox.Show("Покажи, где папка ZapretDev: выбери в ней файл compile.cmd.\nЭто нужно один раз — дальше Zapret Dev запомнит.", "Zapret Dev");
+            var dlg = new Microsoft.Win32.OpenFileDialog { Title = "Выбери compile.cmd в папке ZapretDev", Filter = "compile.cmd|compile.cmd", InitialDirectory = exeDir };
+            if (dlg.ShowDialog() != true) return null;
+            return Remember(saved, Path.GetDirectoryName(dlg.FileName));
+        }
+
+        static string Remember(string file, string root)
+        {
+            try { File.WriteAllText(file, root); } catch { }
+            return root;
         }
     }
 
@@ -172,15 +195,22 @@ namespace ZapretDevTool
             return sp;
         }
 
-        string lastKeyView;
+        string lastKeyView, autoTried;
         void UpdateKey()
         {
             string file = UsbKey.Find();
             if (signer != null && (file == null || !string.Equals(file, signerFile, StringComparison.OrdinalIgnoreCase)))
             {
                 LockKey();
-                Log("Флешку вынули — ключ закрыт.");
+                Log("Флешку-ключ вынули — ключ закрыт.");
             }
+            // флешка без пароля открывается сама, как только её вставили
+            if (signer == null && file != null && autoTried != file)
+            {
+                autoTried = file;
+                try { OpenWith(file, ""); Log("Флешка-ключ " + Path.GetPathRoot(file) + " принята."); } catch { }
+            }
+            if (file == null) autoTried = null;
             string pub = KeyInfo.ReadModulus(P("src\\ReleaseKey.cs"));
             string view = (file ?? "") + "|" + (signer != null) + "|" + pub;
             if (view == lastKeyView) return;
@@ -191,31 +221,36 @@ namespace ZapretDevTool
             {
                 string mine = Convert.ToBase64String(signer.ExportParameters(false).Modulus);
                 bool match = mine == pub;
-                keyState.Text = match ? "✓ Ключ открыт — можно собирать релиз" : "⚠ Ключ открыт, но НЕ совпадает с ключом в программе";
+                keyState.Text = match ? "✓ Флешка-ключ вставлена — можно собирать релиз" : "⚠ Это флешка с другим ключом";
                 keyState.Foreground = match ? C.Accent : C.Red;
-                keyHint.Text = "Флешка: " + Path.GetPathRoot(signerFile) + " · отпечаток " + KeyInfo.Fingerprint(mine) +
-                    (match ? "" : " · в src\\ReleaseKey.cs отпечаток " + KeyInfo.Fingerprint(pub)) + ". Вынешь флешку — ключ закроется.";
-                keyBtns.Children.Add(Btn("ЗАКРЫТЬ КЛЮЧ", false, () => { LockKey(); lastKeyView = null; UpdateKey(); Log("Ключ закрыт."); }));
-                keyBtns.Children.Add(Btn("РЕЗЕРВНАЯ КОПИЯ", false, BackupKey));
-                if (!match) keyBtns.Children.Add(Btn("ЗАПИСАТЬ ЭТОТ КЛЮЧ В ПРОГРАММУ", false, () => ReplaceProgramKey(signer.ExportParameters(false))));
+                keyHint.Text = "Флешка " + Path.GetPathRoot(signerFile) + (match ? ". Вынешь — ключ закроется." :
+                    ". Ключ на ней не совпадает с ключом в программе — подпись не пройдёт проверку. Если это твоя новая флешка-ключ, нажми «Использовать эту флешку».");
+                if (!match) keyBtns.Children.Add(Btn("ИСПОЛЬЗОВАТЬ ЭТУ ФЛЕШКУ", true, () => ReplaceProgramKey(signer.ExportParameters(false))));
+                keyBtns.Children.Add(Btn("КОПИЯ НА ВТОРУЮ ФЛЕШКУ", false, BackupKey));
             }
             else if (file != null)
             {
-                keyState.Text = "Флешка с ключом найдена (" + Path.GetPathRoot(file) + ")";
+                keyState.Text = "Флешка-ключ " + Path.GetPathRoot(file) + " защищена паролем";
                 keyState.Foreground = C.Text;
-                keyHint.Text = "Введи пароль, чтобы открыть ключ. Ключ в программе: отпечаток " + KeyInfo.Fingerprint(pub) + ".";
-                keyBtns.Children.Add(Btn("ОТКРЫТЬ КЛЮЧ", true, UnlockKey));
+                keyHint.Text = "Введи пароль, чтобы открыть ключ.";
+                keyBtns.Children.Add(Btn("ВВЕСТИ ПАРОЛЬ", true, UnlockKey));
             }
             else
             {
-                keyState.Text = "Вставь флешку с ключом";
+                keyState.Text = "Флешка-ключ не вставлена";
                 keyState.Foreground = C.Muted;
-                keyHint.Text = string.IsNullOrEmpty(pub)
-                    ? "Ключа ещё нет. Вставь флешку и создай ключ — он запишется на флешку под паролем."
-                    : "Ключ в программе: отпечаток " + KeyInfo.Fingerprint(pub) + ". Нет ключа на флешке? Перенеси его из резервной копии release-key-BACKUP.xml или со старого места.";
-                keyBtns.Children.Add(Btn("ПЕРЕНЕСТИ КЛЮЧ НА ФЛЕШКУ", !string.IsNullOrEmpty(pub), ImportKey));
-                keyBtns.Children.Add(Btn("СОЗДАТЬ НОВЫЙ КЛЮЧ", string.IsNullOrEmpty(pub), CreateKey));
+                keyHint.Text = "Вставь флешку-ключ. Ещё нет такой? Вставь любую флешку и нажми «Сделать флешку ключом».";
+                keyBtns.Children.Add(Btn("СДЕЛАТЬ ФЛЕШКУ КЛЮЧОМ", true, MakeKeyDrive));
+                keyBtns.Children.Add(Btn("ИЗ РЕЗЕРВНОЙ КОПИИ", false, ImportKey));
             }
+        }
+
+        void OpenWith(string file, string pw)
+        {
+            string xml = UsbKey.Open(file, pw);
+            var rsa = new RSACryptoServiceProvider { PersistKeyInCsp = false };
+            rsa.FromXmlString(xml);
+            LockKey(); signer = rsa; signerFile = file; lastKeyView = null;
         }
 
         void LockKey()
@@ -236,30 +271,31 @@ namespace ZapretDevTool
                 try
                 {
                     string xml = UsbKey.Open(file, pw);
-                    var rsa = new RSACryptoServiceProvider { PersistKeyInCsp = false };
-                    rsa.FromXmlString(xml);
-                    Dispatcher.BeginInvoke(new Action(() => { LockKey(); signer = rsa; signerFile = file; lastKeyView = null; UpdateKey(); Log("Ключ открыт."); }));
+                    Dispatcher.BeginInvoke(new Action(() => { OpenWith(file, pw); UpdateKey(); Log("Ключ открыт."); }));
                 }
                 catch (Exception ex) { Log("Не открылся: " + ex.Message); }
                 finally { busy = false; }
             }) { IsBackground = true }.Start();
         }
 
+        // пароль по желанию: пустой — флешка открывается сама; null — отмена
         string AskNewPassword()
         {
-            string a = PasswordDialog.Ask(owner, "Пароль для ключа", "Придумай пароль для ключа на флешке (от 8 символов).\nЗапиши его: без пароля ключ не открыть.");
+            string a = PasswordDialog.Ask(owner, "Пароль флешки-ключа",
+                "Пароль — по желанию.\nОставь пустым — флешка будет приниматься сама, как только её вставишь.\nС паролем — даже потерянной флешкой никто не подпишет обновление.", true);
             if (a == null) return null;
-            if (a.Length < 8) { MessageBox.Show(owner, "Слишком короткий пароль — нужно хотя бы 8 символов.", "Zapret Dev"); return null; }
-            string b = PasswordDialog.Ask(owner, "Пароль для ключа", "Повтори пароль:");
+            if (a.Length == 0) return "";
+            if (a.Length < 6) { MessageBox.Show(owner, "Пароль короче 6 символов — придумай подлиннее или оставь пустым.", "Zapret Dev"); return null; }
+            string b = PasswordDialog.Ask(owner, "Пароль флешки-ключа", "Повтори пароль:", false);
             if (b == null) return null;
             if (a != b) { MessageBox.Show(owner, "Пароли не совпали.", "Zapret Dev"); return null; }
             return a;
         }
 
-        void SaveToUsb(string xml, string sourceNote)
+        void SaveToUsb(string xml, string sourceNote, Action onSaved = null)
         {
-            string drive = UsbKey.FirstRemovable();
-            if (drive == null) { MessageBox.Show(owner, "Вставь флешку — ключ запишется на неё.", "Zapret Dev"); return; }
+            string drive = DrivePicker.Pick(owner);
+            if (drive == null) return;
             string pw = AskNewPassword();
             if (pw == null) return;
             string file = Path.Combine(drive, UsbKey.Folder, UsbKey.FileName);
@@ -272,7 +308,9 @@ namespace ZapretDevTool
                 {
                     UsbKey.Save(file, xml, pw);
                     UsbKey.Open(file, pw);   // сразу проверяем, что открывается
-                    Log("Ключ записан на флешку " + drive + " (" + sourceNote + "). Сделай вторую копию: кнопка «Резервная копия» после открытия ключа.");
+                    autoTried = null;
+                    if (onSaved != null) Dispatcher.Invoke(onSaved);
+                    Log("Флешка " + drive + " теперь ключ (" + sourceNote + ")." + (pw.Length == 0 ? " Пароля нет — она будет приниматься сама." : "") + " Советую сделать копию на вторую флешку.");
                 }
                 catch (Exception ex) { Log("Не записался: " + ex.Message); }
                 finally { busy = false; Dispatcher.BeginInvoke(new Action(() => { lastKeyView = null; UpdateKey(); })); }
@@ -316,19 +354,36 @@ namespace ZapretDevTool
                 Log("Файл " + plainFile + " хранит ключ открытым текстом. Когда убедишься, что ключ на флешке открывается, удали этот файл.");
         }
 
-        void CreateKey()
+        void MakeKeyDrive()
         {
             string pub = KeyInfo.ReadModulus(P("src\\ReleaseKey.cs"));
-            if (!string.IsNullOrEmpty(pub) &&
-                MessageBox.Show(owner, "В программе уже записан ключ " + KeyInfo.Fingerprint(pub) + ".\n\nНовый ключ заменит его. Делай это, только если старый ключ потерян и релизов, подписанных им, ещё не было — иначе установленные копии не примут обновление.\n\nСоздать новый ключ?",
-                    "Zapret Dev", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-            if (UsbKey.FirstRemovable() == null) { MessageBox.Show(owner, "Вставь флешку — ключ запишется на неё.", "Zapret Dev"); return; }
+            // ключ, созданный раньше sign-keygen.cmd, если он ещё лежит на компьютере и совпадает с программой
+            string dpapi = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ZapretGUI-sign", "release-key.dpapi");
+            if (File.Exists(dpapi))
+            {
+                try
+                {
+                    string old = Encoding.UTF8.GetString(ProtectedData.Unprotect(File.ReadAllBytes(dpapi), null, DataProtectionScope.CurrentUser));
+                    using (var r = new RSACryptoServiceProvider { PersistKeyInCsp = false })
+                    {
+                        r.FromXmlString(old);
+                        if (Convert.ToBase64String(r.ExportParameters(false).Modulus) == pub) { SaveToUsb(old, "ключ с этого компьютера"); return; }
+                    }
+                }
+                catch { }
+            }
+            // новый ключ; открытый — в программу (до первого подписанного релиза это безопасно)
             using (var rsa = new RSACryptoServiceProvider(3072) { PersistKeyInCsp = false })
             {
                 string xml = rsa.ToXmlString(true);
-                KeyInfo.WriteReleaseKey(P("src\\ReleaseKey.cs"), rsa.ExportParameters(false));
-                Log("Новый ключ " + KeyInfo.Fingerprint(Convert.ToBase64String(rsa.ExportParameters(false).Modulus)) + " записан в src\\ReleaseKey.cs.");
-                SaveToUsb(xml, "новый ключ");
+                var pubKey = rsa.ExportParameters(false);
+                // открытый ключ — в программу только после того, как флешка записана
+                SaveToUsb(xml, "новый ключ", () =>
+                {
+                    KeyInfo.WriteReleaseKey(P("src\\ReleaseKey.cs"), pubKey);
+                    lastKeyView = null;
+                    Log("Открытый ключ " + KeyInfo.Fingerprint(Convert.ToBase64String(pubKey.Modulus)) + " записан в src\\ReleaseKey.cs — нажми «Собрать», чтобы он попал в приложение.");
+                });
             }
         }
 
@@ -544,14 +599,16 @@ namespace ZapretDevTool
         }
     }
 
-    // окно ввода пароля
+    // окно ввода пароля; allowEmpty — пустой пароль допустим (вернёт ""), отмена — null
     static class PasswordDialog
     {
-        public static string Ask(Window owner, string title, string text)
+        public static string Ask(Window owner, string title, string text) { return Ask(owner, title, text, false); }
+
+        public static string Ask(Window owner, string title, string text, bool allowEmpty)
         {
             var w = new Window
             {
-                Title = title, Owner = owner, Width = 420, SizeToContent = SizeToContent.Height, ResizeMode = ResizeMode.NoResize,
+                Title = title, Owner = owner, Width = 440, SizeToContent = SizeToContent.Height, ResizeMode = ResizeMode.NoResize,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner, Background = C.Card, Foreground = C.Text, FontFamily = C.Body, FontSize = 13.5, ShowInTaskbar = false
             };
             var sp = new StackPanel { Margin = new Thickness(20) };
@@ -559,15 +616,50 @@ namespace ZapretDevTool
             var pb = new PasswordBox { FontSize = 15, Padding = new Thickness(6, 4, 6, 4), Background = C.Bg, Foreground = C.Text, BorderBrush = C.Line, BorderThickness = new Thickness(2), CaretBrush = C.Text };
             sp.Children.Add(pb);
             string result = null;
+            Action ok = () => { if (allowEmpty || pb.Password.Length > 0) { result = pb.Password; w.Close(); } };
             var row = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 14, 0, 0) };
             row.Children.Add(ZapretStats.MainWin.PxButton("ОТМЕНА", false, () => w.Close()));
-            row.Children.Add(ZapretStats.MainWin.PxButton("OK", true, () => { result = pb.Password; w.Close(); }));
+            row.Children.Add(ZapretStats.MainWin.PxButton(allowEmpty ? "ДАЛЬШЕ" : "OK", true, ok));
             sp.Children.Add(row);
-            pb.KeyDown += (s, e) => { if (e.Key == Key.Enter) { result = pb.Password; w.Close(); } else if (e.Key == Key.Escape) w.Close(); };
+            pb.KeyDown += (s, e) => { if (e.Key == Key.Enter) ok(); else if (e.Key == Key.Escape) w.Close(); };
             w.Content = sp;
             w.Loaded += (s, e) => pb.Focus();
             w.ShowDialog();
-            return string.IsNullOrEmpty(result) ? null : result;
+            return result;
+        }
+    }
+
+    // выбор флешки, которая станет ключом
+    static class DrivePicker
+    {
+        public static string Pick(Window owner)
+        {
+            var drives = new List<DriveInfo>();
+            foreach (var d in DriveInfo.GetDrives())
+                try { if (d.DriveType == DriveType.Removable && d.IsReady) drives.Add(d); } catch { }
+            if (drives.Count == 0) { MessageBox.Show(owner, "Не вижу ни одной флешки. Вставь флешку и нажми ещё раз.", "Zapret Dev"); return null; }
+            var w = new Window
+            {
+                Title = "Какую флешку сделать ключом?", Owner = owner, Width = 440, SizeToContent = SizeToContent.Height, ResizeMode = ResizeMode.NoResize,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner, Background = C.Card, Foreground = C.Text, FontFamily = C.Body, FontSize = 13.5, ShowInTaskbar = false
+            };
+            var sp = new StackPanel { Margin = new Thickness(20) };
+            sp.Children.Add(new TextBlock { Text = "На флешку запишется папка ZapretKey с ключом. Остальные файлы на ней не тронутся.", TextWrapping = TextWrapping.Wrap, Foreground = C.Muted, Margin = new Thickness(0, 0, 0, 12) });
+            string result = null;
+            foreach (var d in drives)
+            {
+                var drive = d;
+                string label = "";
+                try { label = drive.VolumeLabel; } catch { }
+                string text = drive.Name.TrimEnd('\\') + "  " + (string.IsNullOrEmpty(label) ? "Флешка" : label) + "  ·  " + (drive.TotalSize / 1073741824.0).ToString("0.#") + " ГБ";
+                var b = ZapretStats.MainWin.PxButton(text, false, () => { result = drive.RootDirectory.FullName; w.Close(); });
+                b.Margin = new Thickness(0, 0, 0, 8); b.HorizontalAlignment = HorizontalAlignment.Stretch;
+                sp.Children.Add(b);
+            }
+            sp.Children.Add(ZapretStats.MainWin.PxButton("ОТМЕНА", false, () => w.Close()));
+            w.Content = sp;
+            w.ShowDialog();
+            return result;
         }
     }
 }
