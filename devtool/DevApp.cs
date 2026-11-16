@@ -465,11 +465,19 @@ namespace ZapretDevTool
             var sw = Stopwatch.StartNew();
             var psi = new ProcessStartInfo("cmd.exe", "/c \"\"" + P("compile.cmd") + "\"\"") { WorkingDirectory = root, UseShellExecute = false, CreateNoWindow = true };
             using (var p = Process.Start(psi)) p.WaitForExit();
-            string bl = File.Exists(P("build.log")) ? File.ReadAllText(P("build.log"), Encoding.Default) : "";
+            string bl = File.Exists(P("build.log")) ? ReadLog(P("build.log")) : "";
             foreach (var line in bl.Split('\n').Select(l => l.TrimEnd()).Where(l => l.Length > 0 && !l.Contains("build start"))) Log("  " + line);
             bool ok = bl.Contains("BUILD OK");
             Log(ok ? "Собрано за " + sw.Elapsed.TotalSeconds.ToString("0.0") + " с" : "НЕ СОБРАЛОСЬ — ошибки выше");
             return ok;
+        }
+
+        // build.log пишет csc с /utf8output (UTF-8), а echo из cmd — в кодировке Windows: пробуем UTF-8, иначе — системная
+        static string ReadLog(string file)
+        {
+            byte[] b = File.ReadAllBytes(file);
+            try { return new UTF8Encoding(false, true).GetString(b); }
+            catch (DecoderFallbackException) { return Encoding.Default.GetString(b); }
         }
 
         int SelfTest()
