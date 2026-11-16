@@ -24,6 +24,8 @@ foreach ($k in $files.Keys) {
 $tpl = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'setup-template.ps1'))
 if ($tpl -notmatch '__PAYLOAD__' -or $tpl -notmatch '__VERSION__') { throw 'в setup-template.ps1 нет меток __PAYLOAD__ / __VERSION__' }
 $script = $tpl.Replace('__PAYLOAD__', $sb.ToString()).Replace('__VERSION__', $Version)
+# место под подпись автора: Zapret Dev впишет её вместо нулей (см. Signature в app\src\GitHub.cs)
+$script = $script.TrimEnd() + "`r`n# ZSIG:" + ('0' * 512) + "`r`n"
 
 # синтаксис скрипта установщика — до упаковки
 $errs = $null

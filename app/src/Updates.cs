@@ -160,8 +160,9 @@ namespace ZapretCS
                 // проверка: это программа, она совпадает с релизом на GitHub и подписана автором
                 if (!Sec.LooksLikeExe(file)) throw new Exception("скачанный файл повреждён");
                 if (!string.IsNullOrEmpty(digest) && Sec.Sha256(file) != digest) throw new Exception("файл не совпадает с релизом на GitHub (контрольная сумма)");
-                if (Signature.Configured)
+                if (Signature.Configured && !Signature.VerifyEmbedded(file))
                 {
+                    // релиз старого вида: подпись отдельным файлом рядом с установщиком
                     byte[] sig;
                     try { sig = GitHub.FetchSmall(url + ".sig", 4096); }
                     catch (Exception ex) { throw new Exception("у обновления нет подписи автора — не устанавливаю", ex); }

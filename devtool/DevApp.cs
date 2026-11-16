@@ -557,22 +557,46 @@ namespace ZapretDevTool
                     foreach (var l in (o + "\n" + e).Split('\n').Select(x => x.TrimEnd()).Where(x => x.Length > 0)) Log("  " + l);
                     if (p.ExitCode != 0 || !File.Exists(outExe)) { Log("Установщик не собрался."); return; }
                 }
-                // 5. подпись и проверка тем же способом, что в приложении (Signature.Verify)
+                // 5. подпись вшивается в сам установщик: вместо 512 нулей после "# ZSIG:" в конце скрипта
+                //    (приложение проверяет так же — Signature.VerifyEmbedded в app\src\GitHub.cs)
+                byte[] data = File.ReadAllBytes(outExe);
+                int slot = FindSigSlot(data);
+                if (slot < 0) { Log("В установщике нет места под подпись (installer\\pack.ps1 старый?)."); return; }
+                for (int i = 0; i < SigSlotLen; i++) data[slot + i] = (byte)'0';
                 byte[] hash;
-                using (var sha = SHA256.Create()) hash = sha.ComputeHash(File.ReadAllBytes(outExe));
+                using (var sha = SHA256.Create()) hash = sha.ComputeHash(data);
                 byte[] sig = rsa.SignHash(hash, CryptoConfig.MapNameToOID("SHA256"));
+                string sigText = Convert.ToBase64String(sig);
+                if (sigText.Length != SigSlotLen) { Log("Подпись неожиданной длины — релиз не готов."); return; }
                 using (var check = new RSACryptoServiceProvider { PersistKeyInCsp = false })
                 {
                     check.ImportParameters(new RSAParameters { Modulus = Convert.FromBase64String(pub), Exponent = rsa.ExportParameters(false).Exponent });
                     if (!check.VerifyHash(hash, CryptoConfig.MapNameToOID("SHA256"), sig)) { Log("Подпись не проверилась — релиз не готов."); return; }
                 }
-                File.WriteAllText(outExe + ".sig", Convert.ToBase64String(sig), new UTF8Encoding(false));
-                Log("Подписано: release\\ZapretSetup.exe.sig");
-                Log("release\\ZapretSetup.exe · " + (new FileInfo(outExe).Length / 1048576.0).ToString("0.00") + " МБ · SHA-256 " + string.Concat(hash.Select(b => b.ToString("x2"))));
+                Encoding.ASCII.GetBytes(sigText, 0, SigSlotLen, data, slot);
+                File.WriteAllBytes(outExe, data);
+                if (File.Exists(outExe + ".sig")) File.Delete(outExe + ".sig");
+                byte[] fileHash;
+                using (var sha = SHA256.Create()) fileHash = sha.ComputeHash(data);
+                Log("Подписано: подпись вшита в release\\ZapretSetup.exe");
+                Log("release\\ZapretSetup.exe · " + (data.Length / 1048576.0).ToString("0.00") + " МБ · SHA-256 " + string.Concat(fileHash.Select(b => b.ToString("x2"))));
                 NotesFile(v, true);
                 lastBuiltVersion = v;
-                Log("ГОТОВО: Zapret GUI v" + v + ". Дальше — «Новый релиз на GitHub»: приложи ОБА файла (ZapretSetup.exe и ZapretSetup.exe.sig).");
+                Log("ГОТОВО: Zapret GUI v" + v + ". Дальше — «Новый релиз на GitHub»: приложи release\\ZapretSetup.exe.");
             });
+        }
+
+        const int SigSlotLen = 512;
+        static int FindSigSlot(byte[] d)
+        {
+            byte[] m = Encoding.ASCII.GetBytes("# ZSIG:");
+            for (int i = d.Length - m.Length - SigSlotLen; i >= 0; i--)
+            {
+                int j = 0;
+                while (j < m.Length && d[i + j] == m[j]) j++;
+                if (j == m.Length) return i + m.Length;
+            }
+            return -1;
         }
 
         void OpenGitHubRelease()
@@ -588,7 +612,7 @@ namespace ZapretDevTool
             }
             Open("https://github.com/" + Repo + "/releases/new?tag=v" + Uri.EscapeDataString(v) + "&target=main&title=" + Uri.EscapeDataString("Zapret GUI v" + v) + "&body=" + Uri.EscapeDataString(body));
             if (File.Exists(P("release\\ZapretSetup.exe"))) Process.Start("explorer.exe", "/select,\"" + P("release\\ZapretSetup.exe") + "\"");
-            Log("Открыл страницу релиза v" + v + ". Перетащи в неё ZapretSetup.exe и ZapretSetup.exe.sig из открывшейся папки.");
+            Log("Открыл страницу релиза v" + v + ". Перетащи в неё ZapretSetup.exe из открывшейся папки.");
         }
 
         // ---------- версии: поставить любую версию Zapret GUI или zapret ----------

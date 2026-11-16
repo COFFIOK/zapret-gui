@@ -121,10 +121,44 @@ namespace ZapretCS
         }
     }
 
-    // проверка подписи автора: RSA-3072, PKCS#1 v1.5, SHA-256 от всего файла установщика
+    // проверка подписи автора: RSA-3072, PKCS#1 v1.5, SHA-256.
+    // Подпись вшита в конец установщика строкой-комментарием "# ZSIG:<512 символов base64>";
+    // подписывается весь файл, в котором на месте этих 512 символов стоят нули.
+    // Старый вариант — отдельный файл ZapretSetup.exe.sig (подпись всего файла).
     static class Signature
     {
+        public const string Mark = "# ZSIG:";
+        public const int SlotLen = 512;
+
         public static bool Configured { get { return !string.IsNullOrEmpty(ReleaseKey.Modulus); } }
+
+        // начало места под подпись (после метки) или -1
+        public static int FindSlot(byte[] d)
+        {
+            byte[] m = Encoding.ASCII.GetBytes(Mark);
+            for (int i = d.Length - m.Length - SlotLen; i >= 0; i--)
+            {
+                int j = 0;
+                while (j < m.Length && d[i + j] == m[j]) j++;
+                if (j == m.Length) return i + m.Length;
+            }
+            return -1;
+        }
+
+        public static bool VerifyEmbedded(string file)
+        {
+            if (!Configured) return false;
+            byte[] d = File.ReadAllBytes(file);
+            int s = FindSlot(d);
+            if (s < 0) return false;
+            byte[] sig;
+            try { sig = Convert.FromBase64String(Encoding.ASCII.GetString(d, s, SlotLen)); }
+            catch { return false; }
+            for (int i = 0; i < SlotLen; i++) d[s + i] = (byte)'0';
+            byte[] hash;
+            using (var sha = SHA256.Create()) hash = sha.ComputeHash(d);
+            return Check(hash, sig);
+        }
 
         public static bool Verify(string file, byte[] sigFile)
         {
@@ -135,6 +169,11 @@ namespace ZapretCS
             byte[] hash;
             using (var sha = SHA256.Create())
             using (var fs = File.OpenRead(file)) hash = sha.ComputeHash(fs);
+            return Check(hash, sig);
+        }
+
+        static bool Check(byte[] hash, byte[] sig)
+        {
             using (var rsa = new RSACryptoServiceProvider())
             {
                 rsa.PersistKeyInCsp = false;
