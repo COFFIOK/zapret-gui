@@ -292,9 +292,23 @@ namespace ZapretCS
             });
         }
 
-        bool zuRunning;
-        void StartZapretUpdate(string tag)
+        // запрос от второго запуска «Zapret.exe -InstallZapret версия», когда окно уже открыто
+        void CheckInstallRequest()
         {
+            string f = System.IO.Path.Combine(GuiDir, "install-zapret.request");
+            if (!File.Exists(f)) return;
+            string tag = "";
+            try { tag = File.ReadAllText(f).Trim(); File.Delete(f); } catch (Exception logEx) { Log.Err("install request", logEx); }
+            if (Regex.IsMatch(tag, @"^[0-9A-Za-z._-]{1,40}$")) After(300, () => Safe(() => StartZapretUpdate(tag, true)));
+        }
+
+        bool zuRunning;
+        void StartZapretUpdate(string tag) { StartZapretUpdate(tag, false); }
+
+        // exact — поставить именно эту версию (в том числе более старую); так её ставит Zapret Dev: Zapret.exe -InstallZapret 1.10.3
+        void StartZapretUpdate(string tag, bool exact)
+        {
+            if (exact && tag == ZapretCore.LocalVersion) { Toast("zapret " + tag + " уже установлен"); return; }
             if (ZapretCore.ServiceState() != null) { Toast("zapret установлен как служба Windows. Удали службу через service.bat, потом обнови здесь.", true); return; }
             if (zuRunning) return;
             zuRunning = true;
@@ -314,7 +328,7 @@ namespace ZapretCS
             Background(() =>
             {
                 // последний релиз через API GitHub: точный тег и SHA-256 архива; без них не обновляем
-                var rel = GitHub.Latest("Flowseal/zapret-discord-youtube");
+                var rel = exact ? GitHub.ByTag("Flowseal/zapret-discord-youtube", tag) : GitHub.Latest("Flowseal/zapret-discord-youtube");
                 var asset = rel.Need(n => n.StartsWith("zapret-discord-youtube-", StringComparison.OrdinalIgnoreCase) && n.EndsWith(".zip", StringComparison.OrdinalIgnoreCase), "архива zapret");
                 tag = rel.Tag;
                 string tmp = Sec.TempDir("zapret");

@@ -106,7 +106,7 @@ namespace ZapretCS
             timer.Tick += (s, e) => { try { RefreshState(); } catch (Exception ex) { Log.Write("refresh: " + ex); } };
             // повторный запуск (ярлык, меню «Пуск») — сразу показываем это окно
             System.Threading.ThreadPool.RegisterWaitForSingleObject(Program.ShowEvent,
-                (st, to) => Win.Dispatcher.BeginInvoke(new Action(() => Safe(ShowFromTray))), null, -1, false);
+                (st, to) => Win.Dispatcher.BeginInvoke(new Action(() => Safe(() => { ShowFromTray(); CheckInstallRequest(); }))), null, -1, false);
 
             Win.Loaded += (s, e) =>
             {
@@ -121,6 +121,7 @@ namespace ZapretCS
                 if (Program.AutoStart && State == "off") StartZapret();
                 if (S.Bool("autoStartOnce")) { S.Set("autoStartOnce", false); S.Save(); if (State == "off") StartZapret(); }
                 if (!Program.Tray) After(450, () => Safe(ShowUpdatedIfNeeded));
+                if (Program.InstallZapret != null) { string want = Program.InstallZapret; Program.InstallZapret = null; After(900, () => Safe(() => StartZapretUpdate(want, true))); }
                 if (folderCount > 1 && !File.Exists(UpdFlag)) Toast("Использую " + System.IO.Path.GetFileName(ZapretCore.Root) + ". Найдено папок zapret: " + folderCount + ".");
                 if (Program.Tray)
                 {

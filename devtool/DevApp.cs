@@ -107,6 +107,7 @@ namespace ZapretDevTool
             body.Children.Add(Card("Ключ подписи", KeyPanel()));
             body.Children.Add(Card("Разработка", DevPanel()));
             body.Children.Add(Card("Релиз", ReleasePanel()));
+            body.Children.Add(Card("Версии", VersionsPanel()));
             Children.Add(new ScrollViewer { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Focusable = false });
 
             Loaded += (s, e) =>
@@ -119,6 +120,7 @@ namespace ZapretDevTool
                 usbTimer.Tick += (s2, e2) => UpdateKey();
                 usbTimer.Start();
                 CheckCi();
+                LoadVersions();
                 var ci = new DispatcherTimer { Interval = TimeSpan.FromMinutes(2) };
                 ci.Tick += (s2, e2) => CheckCi();
                 ci.Start();
@@ -587,6 +589,177 @@ namespace ZapretDevTool
             Open("https://github.com/" + Repo + "/releases/new?tag=v" + Uri.EscapeDataString(v) + "&target=main&title=" + Uri.EscapeDataString("Zapret GUI v" + v) + "&body=" + Uri.EscapeDataString(body));
             if (File.Exists(P("release\\ZapretSetup.exe"))) Process.Start("explorer.exe", "/select,\"" + P("release\\ZapretSetup.exe") + "\"");
             Log("Открыл страницу релиза v" + v + ". Перетащи в неё ZapretSetup.exe и ZapretSetup.exe.sig из открывшейся папки.");
+        }
+
+        // ---------- версии: поставить любую версию Zapret GUI или zapret ----------
+        class Rel { public string Tag, Date, Url, Sha; }
+        const string ZapretRepo = "Flowseal/zapret-discord-youtube";
+        readonly WrapPanel guiChips = new WrapPanel(), zapChips = new WrapPanel();
+        readonly TextBlock installedInfo = new TextBlock(), verHint = new TextBlock();
+        List<Rel> guiRels = new List<Rel>(), zapRels = new List<Rel>();
+        string guiSel, zapSel;
+
+        UIElement VersionsPanel()
+        {
+            var sp = new StackPanel();
+            installedInfo.FontSize = 13.5; installedInfo.TextWrapping = TextWrapping.Wrap;
+            verHint.FontSize = 12; verHint.Foreground = C.Muted; verHint.TextWrapping = TextWrapping.Wrap; verHint.Margin = new Thickness(0, 4, 0, 12);
+            sp.Children.Add(installedInfo); sp.Children.Add(verHint);
+            sp.Children.Add(new TextBlock { Text = "Zapret GUI", FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 6) });
+            guiChips.Margin = new Thickness(-8, 0, 0, 6); sp.Children.Add(guiChips);
+            sp.Children.Add(Row(Btn("УСТАНОВИТЬ ВЫБРАННЫЙ ZAPRET GUI", true, InstallGui)));
+            sp.Children.Add(new TextBlock { Text = "zapret (Flowseal)", FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 16, 0, 6) });
+            zapChips.Margin = new Thickness(-8, 0, 0, 6); sp.Children.Add(zapChips);
+            sp.Children.Add(Row(Btn("УСТАНОВИТЬ ВЫБРАННЫЙ ZAPRET", true, InstallZapret), Btn("ОБНОВИТЬ СПИСКИ", false, LoadVersions)));
+            return sp;
+        }
+
+        // установленный Zapret GUI — из записи в «Приложениях» Windows
+        static string InstalledDir(out string guiVer)
+        {
+            guiVer = null;
+            try
+            {
+                using (var k = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\ZapretGUI"))
+                {
+                    if (k == null) return null;
+                    guiVer = Convert.ToString(k.GetValue("DisplayVersion"));
+                    return Convert.ToString(k.GetValue("InstallLocation"));
+                }
+            }
+            catch { return null; }
+        }
+
+        static string InstalledZapret(string dir)
+        {
+            if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir)) return null;
+            var v = Directory.GetDirectories(dir, "zapret-discord-youtube*").Select(d => Regex.Match(Path.GetFileName(d), @"(\d+(\.\d+)+)")).Where(m => m.Success).Select(m => m.Groups[1].Value).LastOrDefault();
+            return v;
+        }
+
+        void ShowInstalled()
+        {
+            string gv; string dir = InstalledDir(out gv);
+            string zv = InstalledZapret(dir);
+            installedInfo.Text = dir == null ? "Zapret GUI не установлен на этом компьютере" : "Установлено: Zapret GUI " + (gv ?? "?") + " · zapret " + (zv ?? "?");
+            verHint.Text = dir == null
+                ? "zapret поставится в тестовую копию (out\\ZapretCS.exe). Zapret GUI можно установить любой версии ниже."
+                : "Папка: " + dir + ". zapret ставится через само приложение — сайты и настройки перенесутся, Zapret перезапустится.";
+            Chips(guiChips, guiRels, guiSel, gv, t => { guiSel = t; ShowInstalled(); }, File.Exists(P("release\\ZapretSetup.exe")));
+            Chips(zapChips, zapRels, zapSel, zv, t => { zapSel = t; ShowInstalled(); }, false);
+        }
+
+        void Chips(WrapPanel panel, List<Rel> rels, string sel, string installed, Action<string> pick, bool withLocal)
+        {
+            panel.Children.Clear();
+            if (withLocal) panel.Children.Add(Chip("Свежая сборка", sel == "local", () => pick("local")));
+            foreach (var r in rels)
+            {
+                var rr = r;
+                string v = r.Tag.TrimStart('v');
+                panel.Children.Add(Chip(v + (v == installed ? " ✓" : ""), sel == r.Tag, () => pick(rr.Tag)));
+            }
+            if (rels.Count == 0) panel.Children.Add(new TextBlock { Text = "загружаю список с GitHub…", Foreground = C.Muted, Margin = new Thickness(8, 4, 0, 4) });
+        }
+
+        Button Chip(string text, bool on, Action click)
+        {
+            var b = ZapretStats.MainWin.PxButton(text, on, click);
+            b.Margin = new Thickness(8, 0, 0, 8);
+            return b;
+        }
+
+        void LoadVersions()
+        {
+            ShowInstalled();
+            new Thread(() =>
+            {
+                List<Rel> g = null, z = null;
+                try { g = Releases(Repo, n => n.Equals("ZapretSetup.exe", StringComparison.OrdinalIgnoreCase), 12); } catch (Exception ex) { Log("Список версий Zapret GUI не загрузился: " + ex.Message); }
+                try { z = Releases(ZapretRepo, n => n.StartsWith("zapret-discord-youtube-", StringComparison.OrdinalIgnoreCase) && n.EndsWith(".zip", StringComparison.OrdinalIgnoreCase), 12); } catch (Exception ex) { Log("Список версий zapret не загрузился: " + ex.Message); }
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (g != null) guiRels = g;
+                    if (z != null) zapRels = z;
+                    ShowInstalled();
+                }));
+            }) { IsBackground = true }.Start();
+        }
+
+        static List<Rel> Releases(string repo, Func<string, bool> asset, int max)
+        {
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+            var res = new List<Rel>();
+            using (var wc = new WebClient())
+            {
+                wc.Headers[HttpRequestHeader.UserAgent] = "ZapretDev";
+                wc.Encoding = Encoding.UTF8;
+                var arr = new JavaScriptSerializer().DeserializeObject(wc.DownloadString("https://api.github.com/repos/" + repo + "/releases?per_page=30")) as object[];
+                if (arr == null) return res;
+                foreach (Dictionary<string, object> r in arr)
+                {
+                    if (r.ContainsKey("draft") && r["draft"] is bool && (bool)r["draft"]) continue;
+                    var a = (r["assets"] as object[] ?? new object[0]).Cast<Dictionary<string, object>>().FirstOrDefault(x => asset(Convert.ToString(x["name"])));
+                    if (a == null) continue;
+                    object dg; string sha = null;
+                    if (a.TryGetValue("digest", out dg) && dg is string && ((string)dg).StartsWith("sha256:")) sha = ((string)dg).Substring(7).ToLowerInvariant();
+                    res.Add(new Rel { Tag = Convert.ToString(r["tag_name"]), Date = Convert.ToString(r["published_at"]), Url = Convert.ToString(a["browser_download_url"]), Sha = sha });
+                    if (res.Count >= max) break;
+                }
+            }
+            return res;
+        }
+
+        void InstallGui()
+        {
+            if (guiSel == null) { Log("Выбери версию Zapret GUI."); return; }
+            if (guiSel == "local")
+            {
+                if (!File.Exists(P("release\\ZapretSetup.exe"))) { Log("Свежей сборки нет — нажми «Собрать релиз»."); return; }
+                Log("Запускаю установщик свежей сборки…");
+                Open(P("release\\ZapretSetup.exe"));
+                return;
+            }
+            var rel = guiRels.FirstOrDefault(r => r.Tag == guiSel);
+            if (rel == null) return;
+            Run("Установка Zapret GUI " + rel.Tag, () =>
+            {
+                string file = Download(rel, "ZapretSetup-" + rel.Tag + ".exe");
+                if (file == null) return;
+                Log("Запускаю установщик " + rel.Tag + " — подтверди запрос Windows.");
+                Process.Start(new ProcessStartInfo(file) { UseShellExecute = true });
+            });
+        }
+
+        // скачать файл релиза с проверкой SHA-256 (как в приложении)
+        string Download(Rel rel, string name)
+        {
+            if (string.IsNullOrEmpty(rel.Sha)) { Log("GitHub не сообщил контрольную сумму " + rel.Tag + " — без проверки не скачиваю."); return null; }
+            var u = new Uri(rel.Url);
+            if (u.Scheme != "https" || u.Host != "github.com") { Log("Странный адрес файла: " + rel.Url); return null; }
+            string dir = Path.Combine(Path.GetTempPath(), "ZapretDev");
+            Directory.CreateDirectory(dir);
+            string file = Path.Combine(dir, name);
+            Log("Скачиваю " + rel.Tag + "…");
+            using (var wc = new WebClient()) { wc.Headers[HttpRequestHeader.UserAgent] = "ZapretDev"; wc.DownloadFile(rel.Url, file); }
+            string got;
+            using (var sha = SHA256.Create()) using (var fs = File.OpenRead(file)) got = string.Concat(sha.ComputeHash(fs).Select(b => b.ToString("x2")));
+            if (got != rel.Sha) { try { File.Delete(file); } catch { } Log("Файл не совпал с релизом (контрольная сумма) — удалил."); return null; }
+            Log("Скачано и проверено: " + file);
+            return file;
+        }
+
+        void InstallZapret()
+        {
+            if (zapSel == null) { Log("Выбери версию zapret."); return; }
+            string gv; string dir = InstalledDir(out gv);
+            string exe = dir != null ? Path.Combine(dir, "app", "Zapret.exe") : null;
+            if (exe == null || !File.Exists(exe)) exe = P("out\\ZapretCS.exe");
+            if (!File.Exists(exe)) { Log("Не нашёл ни установленный Zapret GUI, ни тестовую копию — сначала собери."); return; }
+            string tag = zapSel;
+            Log("zapret " + tag + " поставит " + (exe.EndsWith("ZapretCS.exe") ? "тестовая копия" : "установленный Zapret GUI") + " — подтверди запрос Windows. Сайты и настройки перенесутся.");
+            try { Process.Start(new ProcessStartInfo(exe, "-InstallZapret " + tag) { UseShellExecute = true }); }
+            catch (Exception ex) { Log("Не запустился: " + ex.Message); }
         }
 
         // ---------- автосборка на GitHub ----------

@@ -13,6 +13,7 @@ namespace ZapretCS
         public static Mutex InstMutex;
         public static EventWaitHandle ShowEvent;
         public static bool Tray, AutoStart;
+        public static string InstallZapret;   // -InstallZapret <версия> — поставить выбранную версию zapret (Zapret Dev)
         [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool AllowSetForegroundWindow(int pid);
 
         [STAThread]
@@ -34,6 +35,9 @@ namespace ZapretCS
                 return MainUi.SelfTest(outDir);
             }
 
+            int iz = Array.FindIndex(args, a => a.Equals("-InstallZapret", StringComparison.OrdinalIgnoreCase));
+            if (iz >= 0 && iz + 1 < args.Length && System.Text.RegularExpressions.Regex.IsMatch(args[iz + 1], @"^[0-9A-Za-z._-]{1,40}$")) InstallZapret = args[iz + 1];
+
             // одна копия: повторный запуск просто показывает уже открытое окно
             bool created;
             string id = System.Diagnostics.Process.GetCurrentProcess().ProcessName.Equals("ZapretCS", StringComparison.OrdinalIgnoreCase) ? "ZapretCS" : "Zapret2";
@@ -46,6 +50,8 @@ namespace ZapretCS
                 {
                     // разрешаем уже открытому окну выйти на передний план (иначе Windows только мигнёт значком)
                     try { AllowSetForegroundWindow(-1); } catch { }
+                    // уже открытое окно поставит выбранную версию zapret (см. MainUi.CheckInstallRequest)
+                    if (InstallZapret != null) try { File.WriteAllText(Path.Combine(dir, "install-zapret.request"), InstallZapret); } catch { }
                     ShowEvent.Set(); return 0;
                 }
             }

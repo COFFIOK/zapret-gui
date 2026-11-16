@@ -40,7 +40,16 @@ namespace ZapretCS
     static class GitHub
     {
         // последний релиз репозитория; без ответа API — ошибка (скачивать вслепую не будем)
-        public static GhRelease Latest(string repo)
+        public static GhRelease Latest(string repo) { return Get(repo, "latest"); }
+
+        // релиз с конкретным тегом (установка выбранной версии из Zapret Dev)
+        public static GhRelease ByTag(string repo, string tag)
+        {
+            if (!Sec.SafeTag(tag)) throw new Exception("странное имя версии: " + tag);
+            return Get(repo, "tags/" + Uri.EscapeDataString(tag));
+        }
+
+        static GhRelease Get(string repo, string which)
         {
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             string json;
@@ -50,13 +59,13 @@ namespace ZapretCS
                 {
                     wc.Headers[HttpRequestHeader.UserAgent] = "ZapretGUI";
                     wc.Encoding = Encoding.UTF8;
-                    json = wc.DownloadString("https://api.github.com/repos/" + repo + "/releases/latest");
+                    json = wc.DownloadString("https://api.github.com/repos/" + repo + "/releases/" + which);
                 }
             }
             catch (WebException ex)
             {
                 var r = ex.Response as HttpWebResponse;
-                if (r != null && (int)r.StatusCode == 404) throw new Exception("у " + repo + " пока нет релизов");
+                if (r != null && (int)r.StatusCode == 404) throw new Exception(which == "latest" ? "у " + repo + " пока нет релизов" : "у " + repo + " нет версии " + which.Substring(5));
                 throw new Exception("GitHub сейчас не отвечает — попробуй чуть позже", ex);
             }
             var rel = new JavaScriptSerializer().DeserializeObject(json) as Dictionary<string, object>;
