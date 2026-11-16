@@ -46,7 +46,7 @@ namespace ZapretStats
             toggle.Text = "показать закрытые"; toggle.Margin = new Thickness(0); toggle.VerticalAlignment = VerticalAlignment.Center;
             DockPanel.SetDock(toggle, Dock.Right);
             lh.Children.Add(toggle);
-            listHead.FontFamily = C.Pixel; listHead.FontSize = 14; listHead.Foreground = C.Muted; listHead.Text = "ЧАТЫ";
+            listHead.FontFamily = C.Body; listHead.FontWeight = FontWeights.SemiBold; listHead.FontSize = 12; listHead.Foreground = C.Muted; listHead.Text = "ЧАТЫ";
             lh.Children.Add(listHead);
             DockPanel.SetDock(lh, Dock.Top);
             left.Children.Add(lh);
@@ -163,7 +163,7 @@ namespace ZapretStats
             right.Children.Add(new TextBlock { Text = Short(J.S(J.Get(t, "last"))), Foreground = C.Muted, FontSize = 11, HorizontalAlignment = HorizontalAlignment.Right });
             if (unread > 0)
                 right.Children.Add(new Border { Background = C.Accent, Padding = new Thickness(6, 1, 6, 1), Margin = new Thickness(0, 6, 0, 0), HorizontalAlignment = HorizontalAlignment.Right,
-                    Child = new TextBlock { Text = unread.ToString(), Foreground = C.Bg, FontFamily = C.Pixel, FontSize = 12 } });
+                    Child = new TextBlock { Text = unread.ToString(), Foreground = C.Bg, FontFamily = C.Body, FontWeight = FontWeights.Bold, FontSize = 11 } });
             Grid.SetColumn(right, 1); g.Children.Add(right);
             var item = new Border
             {
@@ -259,7 +259,7 @@ namespace ZapretStats
                     SetThreadStatus(id, "delete");
             }));
             top.Children.Add(btns);
-            var name = new TextBlock { Text = ThreadName(t), FontFamily = C.Pixel, FontSize = 18, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
+            var name = new TextBlock { Text = ThreadName(t), FontFamily = C.Body, FontWeight = FontWeights.SemiBold, FontSize = 15, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
             top.Children.Add(name);
             convoHead.Children.Add(top);
             convoHead.Children.Add(new TextBlock

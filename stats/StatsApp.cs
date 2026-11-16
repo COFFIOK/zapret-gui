@@ -56,8 +56,13 @@ namespace ZapretStats
                 using (var ms = new MemoryStream()) { s.CopyTo(ms); data = ms.ToArray(); }
                 string dir = Path.Combine(Dir, "font");
                 Directory.CreateDirectory(dir);
-                string file = Path.Combine(dir, "ZPixel.ttf");
+                // имя файла зависит от содержимого: Windows кэширует шрифты по пути, и старая версия не «залипнет»
+                string hash;
+                using (var sha = SHA256.Create()) hash = string.Concat(sha.ComputeHash(data).Take(5).Select(x => x.ToString("x2")));
+                string file = Path.Combine(dir, "ZPixel-" + hash + ".ttf");
                 if (!File.Exists(file) || new FileInfo(file).Length != data.Length) File.WriteAllBytes(file, data);
+                foreach (var old in Directory.GetFiles(dir, "ZPixel*.ttf"))
+                    if (!string.Equals(old, file, StringComparison.OrdinalIgnoreCase)) try { File.Delete(old); } catch { }
                 Pixel = new FontFamily(new Uri(dir.TrimEnd('\\') + "\\"), "./#ZPixel");
             }
             catch { }
@@ -194,10 +199,17 @@ namespace ZapretStats
         bool loading;
         Dictionary<string, object> last;
         public string SampleFile, ShotFile;
+#if DEVTOOL
+        string tab = "dev";            // dev | stats | fb  (ZapretDev.exe: разработка + статистика + чаты)
+        public static string DevRoot;
+        UIElement devView;
+        FrameworkElement topBtns;
+#else
         string tab = "stats";          // stats | fb
+#endif
         long lastFresh = -1;
-        readonly TextBlock tabStats = new TextBlock(), tabFb = new TextBlock();
-        readonly Border tabStatsLine = new Border(), tabFbLine = new Border();
+        readonly TextBlock tabStats = new TextBlock(), tabFb = new TextBlock(), tabDev = new TextBlock();
+        readonly Border tabStatsLine = new Border(), tabFbLine = new Border(), tabDevLine = new Border();
 
         public MainWin()
         {
@@ -218,6 +230,11 @@ namespace ZapretStats
             BuildChatView();
             chatView.Visibility = Visibility.Collapsed;
             body.Children.Add(chatView);
+#if DEVTOOL
+            devView = new ZapretDevTool.DevView(this, DevRoot);
+            body.Children.Add(devView);
+            sv.Visibility = Visibility.Collapsed;
+#endif
             root.Children.Add(body);
             Content = root;
 
@@ -226,9 +243,15 @@ namespace ZapretStats
             {
                 if (SampleFile != null) { ShowSample(); return; }
                 key = Key.Load();
+#if DEVTOOL
+                // в пульте ключ статистики спрашиваем только при переходе на «Статистику» или «Чаты»
+                if (!string.IsNullOrEmpty(key)) { Refresh(false); timer.Start(); }
+                ShowTab();
+#else
                 if (string.IsNullOrEmpty(key) && !AskKey()) { Close(); return; }
                 Refresh(true);
                 timer.Start();
+#endif
             };
             KeyDown += (s, e) => { if (e.Key == System.Windows.Input.Key.F5) Refresh(true); };
         }
@@ -245,13 +268,20 @@ namespace ZapretStats
             var logo = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
             logo.Children.Add(PixelZ());
             var tt = new StackPanel { Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
-            tt.Children.Add(new TextBlock { Text = "ZAPRET STATS", FontFamily = C.Pixel, FontSize = 22, Foreground = C.Text });
+#if DEVTOOL
+            tt.Children.Add(new TextBlock { Text = "ZAPRET DEV", FontFamily = C.Pixel, FontSize = 22.22, Foreground = C.Text });
+#else
+            tt.Children.Add(new TextBlock { Text = "ZAPRET STATS", FontFamily = C.Pixel, FontSize = 22.22, Foreground = C.Text });
+#endif
             status.FontSize = 12; status.Foreground = C.Muted; status.Text = "загрузка…";
             tt.Children.Add(status);
             logo.Children.Add(tt);
             g.Children.Add(logo);
 
             var tabs = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(36, 0, 0, 0) };
+#if DEVTOOL
+            tabs.Children.Add(Tab(tabDev, tabDevLine, "РАЗРАБОТКА", "dev"));
+#endif
             tabs.Children.Add(Tab(tabStats, tabStatsLine, "СТАТИСТИКА", "stats"));
             tabs.Children.Add(Tab(tabFb, tabFbLine, "ЧАТЫ", "fb"));
             Grid.SetColumn(tabs, 1);
@@ -268,17 +298,26 @@ namespace ZapretStats
             btns.Children.Add(PxButton("КЛЮЧ", false, () => { if (AskKey()) Refresh(true); }));
             Grid.SetColumn(btns, 2);
             g.Children.Add(btns);
+#if DEVTOOL
+            topBtns = btns;
+#endif
             bar.Child = g;
             return bar;
         }
 
         UIElement Tab(TextBlock label, Border line, string text, string id)
         {
-            label.Text = text; label.FontFamily = C.Pixel; label.FontSize = 15;
+            label.Text = text; label.FontFamily = C.Body; label.FontSize = 13.5; label.FontWeight = FontWeights.SemiBold;
             line.Height = 4; line.Margin = new Thickness(0, 6, 0, 0);
             var sp = new StackPanel { Margin = new Thickness(0, 0, 26, 0), Cursor = Cursors.Hand, Background = Brushes.Transparent };
             sp.Children.Add(label); sp.Children.Add(line);
-            sp.MouseLeftButtonUp += (s, e) => { tab = id; UpdateTabs(); ShowTab(); };
+            sp.MouseLeftButtonUp += (s, e) =>
+            {
+#if DEVTOOL
+                if (id != "dev" && string.IsNullOrEmpty(key)) { if (!AskKey()) return; Refresh(true); timer.Start(); }
+#endif
+                tab = id; UpdateTabs(); ShowTab();
+            };
             return sp;
         }
 
@@ -290,14 +329,25 @@ namespace ZapretStats
             tabFb.Foreground = tab == "fb" ? C.Text : (fresh > 0 ? C.Accent : C.Muted);
             tabStatsLine.Background = tab == "stats" ? C.Accent : Brushes.Transparent;
             tabFbLine.Background = tab == "fb" ? C.Accent : Brushes.Transparent;
+            tabDev.Foreground = tab == "dev" ? C.Text : C.Muted;
+            tabDevLine.Background = tab == "dev" ? C.Accent : Brushes.Transparent;
+#if DEVTOOL
+            Title = fresh > 0 ? "(" + fresh + ") Zapret Dev" : "Zapret Dev";
+#else
             Title = fresh > 0 ? "(" + fresh + ") Zapret Stats" : "Zapret Stats";
+#endif
         }
 
         void ShowTab()
         {
             var sv = content.Parent as ScrollViewer;
-            sv.Visibility = tab == "fb" ? Visibility.Collapsed : Visibility.Visible;
+            sv.Visibility = tab == "stats" ? Visibility.Visible : Visibility.Collapsed;
             chatView.Visibility = tab == "fb" ? Visibility.Visible : Visibility.Collapsed;
+#if DEVTOOL
+            devView.Visibility = tab == "dev" ? Visibility.Visible : Visibility.Collapsed;
+            if (topBtns != null) topBtns.Visibility = tab == "dev" ? Visibility.Collapsed : Visibility.Visible;
+            if (tab == "dev") return;
+#endif
             if (tab == "fb") { RenderThreads(); if (selId != null) LoadThread(selId, false); }
             else { if (last != null) Render(last); sv.ScrollToTop(); }
         }
@@ -335,7 +385,8 @@ namespace ZapretStats
             face.SetValue(Border.PaddingProperty, new Thickness(14, 7, 14, 7));
             var cp = new FrameworkElementFactory(typeof(TextBlock));
             cp.SetValue(TextBlock.TextProperty, text);
-            cp.SetValue(TextBlock.FontFamilyProperty, C.Pixel);
+            cp.SetValue(TextBlock.FontFamilyProperty, C.Body);
+            cp.SetValue(TextBlock.FontWeightProperty, FontWeights.SemiBold);
             cp.SetValue(TextBlock.FontSizeProperty, 13.0);
             cp.SetValue(TextBlock.ForegroundProperty, fg);
             face.AppendChild(cp);
@@ -364,7 +415,7 @@ namespace ZapretStats
                 Background = C.Bg, Foreground = C.Text, FontFamily = C.Body, ShowInTaskbar = !IsLoaded
             };
             var sp = new StackPanel { Margin = new Thickness(22) };
-            sp.Children.Add(new TextBlock { Text = "КЛЮЧ СТАТИСТИКИ", FontFamily = C.Pixel, FontSize = 18 });
+            sp.Children.Add(new TextBlock { Text = "КЛЮЧ СТАТИСТИКИ", FontFamily = C.Pixel, FontSize = 22.22 });
             sp.Children.Add(new TextBlock { Text = "Секрет STATS_KEY с сервера Cloudflare. Хранится только на этом компьютере в зашифрованном виде.", TextWrapping = TextWrapping.Wrap, Foreground = C.Muted, Margin = new Thickness(0, 6, 0, 14) });
             var pb = new PasswordBox { FontSize = 15, Padding = new Thickness(8, 6, 8, 6), Background = C.Card, Foreground = C.Text, BorderBrush = C.Line, BorderThickness = new Thickness(2), CaretBrush = C.Accent };
             sp.Children.Add(pb);
@@ -544,7 +595,7 @@ namespace ZapretStats
             return new Border
             {
                 Background = filled ? color : Brushes.Transparent, BorderBrush = color, BorderThickness = new Thickness(2), Padding = new Thickness(8, 2, 8, 2), Margin = new Thickness(0, 0, 8, 0),
-                Child = new TextBlock { Text = text, FontFamily = C.Pixel, FontSize = 12, Foreground = filled ? C.Bg : color }
+                Child = new TextBlock { Text = text, FontFamily = C.Body, FontWeight = FontWeights.Bold, FontSize = 11, Foreground = filled ? C.Bg : color }
             };
         }
 
@@ -593,7 +644,7 @@ namespace ZapretStats
 
         static TextBlock H(string text)
         {
-            return new TextBlock { Text = text.ToUpperInvariant(), FontFamily = C.Pixel, FontSize = 14, Foreground = C.Muted, Margin = new Thickness(0, 22, 0, 10) };
+            return new TextBlock { Text = text.ToUpperInvariant(), FontFamily = C.Body, FontWeight = FontWeights.SemiBold, FontSize = 12, Foreground = C.Muted, Margin = new Thickness(0, 22, 0, 10) };
         }
         static TextBlock Sub(string text)
         {
@@ -614,7 +665,7 @@ namespace ZapretStats
         static UIElement StatCard(string title, long value, string sub, bool warn = false)
         {
             var s = new StackPanel();
-            s.Children.Add(new TextBlock { Text = value.ToString("N0", CultureInfo.GetCultureInfo("ru-RU")), FontFamily = C.Pixel, FontSize = 32, Foreground = warn ? C.Red : C.Accent });
+            s.Children.Add(new TextBlock { Text = value.ToString("N0", CultureInfo.GetCultureInfo("ru-RU")), FontFamily = C.Pixel, FontSize = 33.33, Foreground = warn ? C.Red : C.Accent });
             s.Children.Add(new TextBlock { Text = title, Foreground = C.Text, Margin = new Thickness(0, 2, 0, 0) });
             if (sub != null) s.Children.Add(new TextBlock { Text = sub, Foreground = C.Muted, FontSize = 12 });
             return Panel(s, new Thickness(14, 10, 14, 12), null);

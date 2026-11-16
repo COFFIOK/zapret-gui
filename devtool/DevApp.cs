@@ -35,14 +35,17 @@ namespace ZapretDevTool
             var app = new Application { ShutdownMode = ShutdownMode.OnMainWindowClose };
             app.DispatcherUnhandledException += (s, e) => { MessageBox.Show(e.Exception.Message, "Zapret Dev"); e.Handled = true; };
             C.LoadFont();
-            app.Run(new DevWin(AppDomain.CurrentDomain.BaseDirectory.TrimEnd('\\')));
+            ZapretStats.MainWin.DevRoot = AppDomain.CurrentDomain.BaseDirectory.TrimEnd('\\');
+            app.Run(new ZapretStats.MainWin());
             return 0;
         }
     }
 
-    class DevWin : Window
+    // вкладка «Разработка» в окне Zapret Dev (рядом со «Статистикой» и «Чатами»)
+    class DevView : DockPanel
     {
         const string Repo = "COFFIOK/zapret-gui";
+        readonly Window owner;
         readonly string root;
         string P(string rel) { return Path.Combine(root, rel); }
 
@@ -55,36 +58,38 @@ namespace ZapretDevTool
         string signerFile;
         volatile bool busy;
         string lastBuiltVersion;
+        bool started;
 
-        public DevWin(string root)
+        public DevView(Window owner, string root)
         {
+            this.owner = owner;
             this.root = root;
-            Title = "Zapret Dev";
-            Width = 980; Height = 760; MinWidth = 820; MinHeight = 600;
-            WindowStartupLocation = WindowStartupLocation.CenterScreen;
-            Background = C.Bg; Foreground = C.Text; FontFamily = C.Body; FontSize = 13.5;
-            UseLayoutRounding = true; SnapsToDevicePixels = true;
-            TextOptions.SetTextFormattingMode(this, TextFormattingMode.Display);
-            try { Icon = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(System.Drawing.Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location).Handle, Int32Rect.Empty, System.Windows.Media.Imaging.BitmapSizeOptions.FromEmptyOptions()); } catch { }
-
-            var dock = new DockPanel();
-            var top = TopBar(); DockPanel.SetDock(top, Dock.Top); dock.Children.Add(top);
 
             log.IsReadOnly = true; log.FontFamily = C.Mono; log.FontSize = 12; log.Background = C.Card; log.Foreground = C.Text;
             log.BorderBrush = C.Line; log.BorderThickness = new Thickness(0, 2, 0, 0); log.Padding = new Thickness(16, 10, 16, 10);
-            log.VerticalScrollBarVisibility = ScrollBarVisibility.Auto; log.TextWrapping = TextWrapping.Wrap; log.Height = 230;
-            DockPanel.SetDock(log, Dock.Bottom); dock.Children.Add(log);
+            log.VerticalScrollBarVisibility = ScrollBarVisibility.Auto; log.TextWrapping = TextWrapping.Wrap; log.Height = 220;
+            DockPanel.SetDock(log, Dock.Bottom); Children.Add(log);
 
             var body = new StackPanel { Margin = new Thickness(24, 16, 24, 16) };
-            body.Children.Add(Card("КЛЮЧ ПОДПИСИ", KeyPanel()));
-            body.Children.Add(Card("РАЗРАБОТКА", DevPanel()));
-            body.Children.Add(Card("РЕЛИЗ", ReleasePanel()));
-            body.Children.Add(Card("СТАТИСТИКА И ЧАТЫ", Row(Btn("ОТКРЫТЬ ZAPRET STATS", false, () => new ZapretStats.MainWin().Show()))));
-            dock.Children.Add(new ScrollViewer { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Focusable = false });
-            Content = dock;
+            var info = new Grid { Margin = new Thickness(0, 0, 0, 12) };
+            info.ColumnDefinitions.Add(new ColumnDefinition());
+            info.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            appVer.Foreground = C.Muted; appVer.FontSize = 12.5; appVer.VerticalAlignment = VerticalAlignment.Center;
+            info.Children.Add(appVer);
+            ciState.FontSize = 12.5; ciState.Foreground = C.Muted; ciState.Cursor = Cursors.Hand; ciState.VerticalAlignment = VerticalAlignment.Center;
+            ciState.ToolTip = "Открыть автосборку на GitHub";
+            ciState.MouseLeftButtonUp += (s, e) => Open("https://github.com/" + Repo + "/actions");
+            Grid.SetColumn(ciState, 1); info.Children.Add(ciState);
+            body.Children.Add(info);
+            body.Children.Add(Card("Ключ подписи", KeyPanel()));
+            body.Children.Add(Card("Разработка", DevPanel()));
+            body.Children.Add(Card("Релиз", ReleasePanel()));
+            Children.Add(new ScrollViewer { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Focusable = false });
 
             Loaded += (s, e) =>
             {
+                if (started) return;
+                started = true;
                 if (!File.Exists(P("compile.cmd"))) Log("Не нашёл compile.cmd рядом с ZapretDev.exe — программа должна лежать в корне папки ZapretDev.");
                 ReadAppVersion();
                 UpdateKey();
@@ -96,37 +101,14 @@ namespace ZapretDevTool
                 ci.Start();
                 Log("Готов. Папка: " + root);
             };
-            Closed += (s, e) => LockKey();
+            owner.Closed += (s, e) => LockKey();
         }
 
         // ---------- оформление ----------
-        UIElement TopBar()
-        {
-            var bar = new Border { Background = C.Card, BorderBrush = C.Line, BorderThickness = new Thickness(0, 0, 0, 2), Padding = new Thickness(24, 14, 24, 14) };
-            var g = new Grid();
-            g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            g.ColumnDefinitions.Add(new ColumnDefinition());
-            var logo = new StackPanel { Orientation = Orientation.Horizontal };
-            logo.Children.Add(ZapretStats.MainWin.PixelZ());
-            var tt = new StackPanel { Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
-            tt.Children.Add(new TextBlock { Text = "ZAPRET DEV", FontFamily = C.Pixel, FontSize = 22, Foreground = C.Text });
-            appVer.FontSize = 12; appVer.Foreground = C.Muted;
-            tt.Children.Add(appVer);
-            logo.Children.Add(tt);
-            g.Children.Add(logo);
-            ciState.FontSize = 12.5; ciState.Foreground = C.Muted; ciState.VerticalAlignment = VerticalAlignment.Center;
-            ciState.HorizontalAlignment = HorizontalAlignment.Right; ciState.Cursor = Cursors.Hand; ciState.TextAlignment = TextAlignment.Right;
-            ciState.ToolTip = "Открыть автосборку на GitHub";
-            ciState.MouseLeftButtonUp += (s, e) => Open("https://github.com/" + Repo + "/actions");
-            Grid.SetColumn(ciState, 1); g.Children.Add(ciState);
-            bar.Child = g;
-            return bar;
-        }
-
         static UIElement Card(string title, UIElement content)
         {
             var sp = new StackPanel();
-            sp.Children.Add(new TextBlock { Text = title, FontFamily = C.Pixel, FontSize = 14, Foreground = C.Muted, Margin = new Thickness(0, 0, 0, 10) });
+            sp.Children.Add(new TextBlock { Text = title.ToUpperInvariant(), FontFamily = C.Body, FontWeight = FontWeights.SemiBold, FontSize = 12, Foreground = C.Muted, Margin = new Thickness(0, 0, 0, 10) });
             sp.Children.Add(content);
             return new Border { Background = C.Card, BorderBrush = C.Line, BorderThickness = new Thickness(2), Padding = new Thickness(18, 14, 18, 16), Margin = new Thickness(0, 0, 0, 14), Child = sp };
         }
@@ -245,7 +227,7 @@ namespace ZapretDevTool
         {
             string file = UsbKey.Find();
             if (file == null) { Log("Флешка с ключом не найдена."); return; }
-            string pw = PasswordDialog.Ask(this, "Пароль ключа", "Пароль от ключа на флешке:");
+            string pw = PasswordDialog.Ask(owner, "Пароль ключа", "Пароль от ключа на флешке:");
             if (pw == null) return;
             busy = true;
             Log("Открываю ключ…");
@@ -265,23 +247,23 @@ namespace ZapretDevTool
 
         string AskNewPassword()
         {
-            string a = PasswordDialog.Ask(this, "Пароль для ключа", "Придумай пароль для ключа на флешке (от 8 символов).\nЗапиши его: без пароля ключ не открыть.");
+            string a = PasswordDialog.Ask(owner, "Пароль для ключа", "Придумай пароль для ключа на флешке (от 8 символов).\nЗапиши его: без пароля ключ не открыть.");
             if (a == null) return null;
-            if (a.Length < 8) { MessageBox.Show(this, "Слишком короткий пароль — нужно хотя бы 8 символов.", "Zapret Dev"); return null; }
-            string b = PasswordDialog.Ask(this, "Пароль для ключа", "Повтори пароль:");
+            if (a.Length < 8) { MessageBox.Show(owner, "Слишком короткий пароль — нужно хотя бы 8 символов.", "Zapret Dev"); return null; }
+            string b = PasswordDialog.Ask(owner, "Пароль для ключа", "Повтори пароль:");
             if (b == null) return null;
-            if (a != b) { MessageBox.Show(this, "Пароли не совпали.", "Zapret Dev"); return null; }
+            if (a != b) { MessageBox.Show(owner, "Пароли не совпали.", "Zapret Dev"); return null; }
             return a;
         }
 
         void SaveToUsb(string xml, string sourceNote)
         {
             string drive = UsbKey.FirstRemovable();
-            if (drive == null) { MessageBox.Show(this, "Вставь флешку — ключ запишется на неё.", "Zapret Dev"); return; }
+            if (drive == null) { MessageBox.Show(owner, "Вставь флешку — ключ запишется на неё.", "Zapret Dev"); return; }
             string pw = AskNewPassword();
             if (pw == null) return;
             string file = Path.Combine(drive, UsbKey.Folder, UsbKey.FileName);
-            if (File.Exists(file) && MessageBox.Show(this, "На флешке " + drive + " уже есть ключ. Заменить его?", "Zapret Dev", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+            if (File.Exists(file) && MessageBox.Show(owner, "На флешке " + drive + " уже есть ключ. Заменить его?", "Zapret Dev", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
             busy = true;
             Log("Записываю ключ на флешку " + drive + "…");
             new Thread(() =>
@@ -315,7 +297,7 @@ namespace ZapretDevTool
             if (xml == null)
             {
                 var dlg = new Microsoft.Win32.OpenFileDialog { Title = "Где лежит release-key-BACKUP.xml?", Filter = "Ключ (*.xml)|*.xml|Все файлы|*.*" };
-                if (dlg.ShowDialog(this) != true) return;
+                if (dlg.ShowDialog(owner) != true) return;
                 xml = File.ReadAllText(dlg.FileName);
                 note = "из " + Path.GetFileName(dlg.FileName);
                 plainFile = dlg.FileName;
@@ -327,7 +309,7 @@ namespace ZapretDevTool
                 string mod = Convert.ToBase64String(rsa.ExportParameters(false).Modulus);
                 string pub = KeyInfo.ReadModulus(P("src\\ReleaseKey.cs"));
                 if (!string.IsNullOrEmpty(pub) && mod != pub &&
-                    MessageBox.Show(this, "Этот ключ (" + KeyInfo.Fingerprint(mod) + ") не совпадает с ключом в программе (" + KeyInfo.Fingerprint(pub) + ").\nВсё равно перенести?", "Zapret Dev", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+                    MessageBox.Show(owner, "Этот ключ (" + KeyInfo.Fingerprint(mod) + ") не совпадает с ключом в программе (" + KeyInfo.Fingerprint(pub) + ").\nВсё равно перенести?", "Zapret Dev", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
             }
             SaveToUsb(xml, note);
             if (plainFile != null)
@@ -338,9 +320,9 @@ namespace ZapretDevTool
         {
             string pub = KeyInfo.ReadModulus(P("src\\ReleaseKey.cs"));
             if (!string.IsNullOrEmpty(pub) &&
-                MessageBox.Show(this, "В программе уже записан ключ " + KeyInfo.Fingerprint(pub) + ".\n\nНовый ключ заменит его. Делай это, только если старый ключ потерян и релизов, подписанных им, ещё не было — иначе установленные копии не примут обновление.\n\nСоздать новый ключ?",
+                MessageBox.Show(owner, "В программе уже записан ключ " + KeyInfo.Fingerprint(pub) + ".\n\nНовый ключ заменит его. Делай это, только если старый ключ потерян и релизов, подписанных им, ещё не было — иначе установленные копии не примут обновление.\n\nСоздать новый ключ?",
                     "Zapret Dev", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-            if (UsbKey.FirstRemovable() == null) { MessageBox.Show(this, "Вставь флешку — ключ запишется на неё.", "Zapret Dev"); return; }
+            if (UsbKey.FirstRemovable() == null) { MessageBox.Show(owner, "Вставь флешку — ключ запишется на неё.", "Zapret Dev"); return; }
             using (var rsa = new RSACryptoServiceProvider(3072) { PersistKeyInCsp = false })
             {
                 string xml = rsa.ToXmlString(true);
@@ -352,7 +334,7 @@ namespace ZapretDevTool
 
         void ReplaceProgramKey(RSAParameters pub)
         {
-            if (MessageBox.Show(this, "Записать открытый ключ с флешки в src\\ReleaseKey.cs?\n\nДелай это, только если релизов со старым ключом ещё не было.", "Zapret Dev", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+            if (MessageBox.Show(owner, "Записать открытый ключ с флешки в src\\ReleaseKey.cs?\n\nДелай это, только если релизов со старым ключом ещё не было.", "Zapret Dev", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
             KeyInfo.WriteReleaseKey(P("src\\ReleaseKey.cs"), pub);
             Log("src\\ReleaseKey.cs обновлён. Пересобери приложение.");
             lastKeyView = null; UpdateKey();
@@ -362,9 +344,9 @@ namespace ZapretDevTool
         {
             if (signer == null) return;
             var dlg = new Microsoft.Win32.SaveFileDialog { Title = "Резервная копия ключа (зашифрована паролем)", FileName = "release-key.zkey", Filter = "Ключ Zapret (*.zkey)|*.zkey" };
-            if (dlg.ShowDialog(this) != true) return;
+            if (dlg.ShowDialog(owner) != true) return;
             if (dlg.FileName.IndexOf("OneDrive", StringComparison.OrdinalIgnoreCase) >= 0 &&
-                MessageBox.Show(this, "Это папка OneDrive — копия уйдёт в облако. Она зашифрована паролем, но надёжнее вторая флешка или менеджер паролей. Сохранить всё равно?", "Zapret Dev", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
+                MessageBox.Show(owner, "Это папка OneDrive — копия уйдёт в облако. Она зашифрована паролем, но надёжнее вторая флешка или менеджер паролей. Сохранить всё равно?", "Zapret Dev", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
             string pw = AskNewPassword();
             if (pw == null) return;
             UsbKey.Save(dlg.FileName, signer.ToXmlString(true), pw);
@@ -476,7 +458,7 @@ namespace ZapretDevTool
                 if (problems != 0)
                 {
                     bool go = false;
-                    Dispatcher.Invoke(new Action(() => go = MessageBox.Show(this, "Самопроверка нашла проблем: " + problems + ".\nСобрать релиз всё равно?", "Zapret Dev", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes));
+                    Dispatcher.Invoke(new Action(() => go = MessageBox.Show(owner, "Самопроверка нашла проблем: " + problems + ".\nСобрать релиз всё равно?", "Zapret Dev", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes));
                     if (!go) { Log("Остановлено после самопроверки."); return; }
                 }
                 // 4. установщик
@@ -557,7 +539,7 @@ namespace ZapretDevTool
                     }
                     catch { parts.Add(br + ": ?"); }
                 }
-                Dispatcher.BeginInvoke(new Action(() => ciState.Text = "Автосборка на GitHub\n" + string.Join("   ", parts)));
+                Dispatcher.BeginInvoke(new Action(() => ciState.Text = "Автосборка на GitHub   " + string.Join("   ", parts)));
             }) { IsBackground = true }.Start();
         }
     }
