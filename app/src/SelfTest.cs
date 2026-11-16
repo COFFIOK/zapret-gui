@@ -44,6 +44,13 @@ namespace ZapretCS
         readonly string dir;
         readonly List<string> lines = new List<string>();
         readonly HashSet<string> seen = new HashSet<string>();
+        readonly List<string> info = new List<string>();
+        static string Path2(DependencyObject d, DependencyObject stop)
+        {
+            var parts = new List<string>();
+            while (d != null && d != stop) { var f = d as FrameworkElement; parts.Add(d.GetType().Name + (f != null && !string.IsNullOrEmpty(f.Name) ? "#" + f.Name : "") + (f != null && f.ClipToBounds ? "(clip)" : "") + (f != null ? "[" + f.ActualWidth.ToString("0") + "]" : "")); d = VisualTreeHelper.GetParent(d); }
+            return string.Join(" < ", parts);
+        }
         public int Count;
         Window win;
         string lang = "ru";
@@ -63,7 +70,7 @@ namespace ZapretCS
         {
             var head = new List<string> { "Zapret GUI " + MainUi.AppVersion + " — самопроверка интерфейса " + DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
                 Count == 0 ? "Проблем не найдено." : "Найдено проблем: " + Count, "" };
-            File.WriteAllLines(Path.Combine(dir, "report.txt"), head.Concat(lines), new UTF8Encoding(true));
+            File.WriteAllLines(Path.Combine(dir, "report.txt"), head.Concat(lines).Concat(info.Count > 0 ? new[] { "", "Подробности:" }.Concat(info) : info), new UTF8Encoding(true));
         }
 
         string FontUri()
@@ -165,6 +172,12 @@ namespace ZapretCS
                 {
                     cb.SelectedIndex = i;
                     cb.UpdateLayout(); win.UpdateLayout();
+                    if (Environment.GetEnvironmentVariable("ZAPRET_SELFTEST_VERBOSE") == "1")
+                        foreach (var t in Walk(cb).OfType<TextBlock>())
+                        {
+                            var c = LayoutInformation.GetLayoutClip(t);
+                            info.Add("  " + cb.Name + "[" + i + "] tb='" + t.Text + "' vis=" + t.IsVisible + " w=" + t.ActualWidth.ToString("0.0") + " des=" + t.DesiredSize.Width.ToString("0.0") + " clip=" + (c == null ? "-" : c.Bounds.ToString()) + " cbw=" + cb.ActualWidth.ToString("0.0") + " cbclip=" + (LayoutInformation.GetLayoutClip(cb) == null ? "-" : LayoutInformation.GetLayoutClip(cb).Bounds.ToString()) + " path=" + Path2(t, cb));
+                        }
                     CheckTexts(scene + " · список " + (string.IsNullOrEmpty(cb.Name) ? "" : cb.Name), cb);
                 }
                 cb.SelectedIndex = keep;

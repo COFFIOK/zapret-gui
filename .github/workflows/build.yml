@@ -56,6 +56,7 @@ jobs:
         shell: pwsh
         run: |
           $dir = Join-Path $pwd 'selftest'
+          $env:ZAPRET_SELFTEST_VERBOSE = '1'
           $p = Start-Process app\out\ZapretSelfTest.exe -ArgumentList '-selftest', "`"$dir`"" -Wait -PassThru
           if (Test-Path "$dir\report.txt") { Get-Content "$dir\report.txt" -Encoding UTF8 }
           if (Test-Path "$dir\selftest-error.log") { Get-Content "$dir\selftest-error.log" -Encoding UTF8 }
