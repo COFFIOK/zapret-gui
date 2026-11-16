@@ -24,7 +24,7 @@ namespace ZapretCS
             Tray = args.Any(a => a.Equals("-Tray", StringComparison.OrdinalIgnoreCase));
             AutoStart = args.Any(a => a.Equals("-AutoStart", StringComparison.OrdinalIgnoreCase));
 
-            // самопроверка интерфейса (build-release.cmd и автосборка на GitHub): -selftest <папка для отчёта>
+            // самопроверка интерфейса (Zapret Dev и автосборка на GitHub): -selftest <папка для отчёта>
             int st = Array.FindIndex(args, a => a.Equals("-selftest", StringComparison.OrdinalIgnoreCase));
             if (st >= 0)
             {

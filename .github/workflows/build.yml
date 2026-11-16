@@ -1,7 +1,7 @@
 # Автосборка Zapret GUI на чистой Windows-машине GitHub.
-# Запускается при каждой отправке кода: собирает приложение, Zapret Stats и установщик,
+# Запускается при каждой отправке кода: собирает приложение, Zapret Dev и установщик,
 # прогоняет самопроверку интерфейса и выкладывает результат во вкладку Actions → «Artifacts».
-# Релизы не создаёт: их собирает и подписывает автор (build-release.cmd), ключ подписи на GitHub не хранится.
+# Релизы не создаёт: их собирает и подписывает автор (Zapret Dev → «Собрать релиз»), ключ подписи на GitHub не хранится.
 name: build
 
 on:
@@ -22,14 +22,6 @@ jobs:
       - name: Приложение (csc из .NET Framework)
         shell: cmd
         run: call app\build.cmd
-
-      - name: Zapret Stats
-        shell: cmd
-        run: |
-          cd stats
-          call compile-stats.cmd
-          type build.log
-          findstr /c:"BUILD OK" build.log
 
       - name: Пульт разработчика (ZapretDev.exe)
         shell: cmd
@@ -73,6 +65,5 @@ jobs:
           path: |
             app/out/Zapret.exe
             out/ZapretSetup.exe
-            stats/ZapretStats.exe
             ZapretDev.exe
             selftest/

@@ -1,6 +1,6 @@
 ﻿# Zapret GUI — упаковка установщика · by COFFIOK
 # [stub.exe][setup.ps1 c встроенными файлами][8 байт длины][ZSETUP01] -> ZapretSetup.exe
-# Используется build-release.ps1 (на компьютере автора) и автосборкой на GitHub.
+# Используется Zapret Dev («Собрать релиз») и автосборкой на GitHub.
 param(
     [Parameter(Mandatory = $true)][string]$Version,
     [Parameter(Mandatory = $true)][string]$Exe,

@@ -1,5 +1,5 @@
 // Zapret Setup — заглушка установщика · by COFFIOK
-// Скрипт установщика (setup.ps1) дописан в конец этого exe командой build-release.cmd:
+// Скрипт установщика (setup.ps1) дописан в конец этого exe (installer/pack.ps1):
 //   [exe-заглушка][setup.ps1][8 байт: длина скрипта, little-endian]["ZSETUP01"]
 // Заглушка достаёт скрипт во временный файл и запускает его через PowerShell.
 // Пересобирать заглушку нужно только при изменении этого файла (см. installer\stub\build-stub.sh).

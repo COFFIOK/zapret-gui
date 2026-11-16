@@ -5,7 +5,7 @@
   `[stub.exe][setup.ps1][8 байт длины, little-endian]["ZSETUP01"]`.
   Заглушка кладёт скрипт в `%SystemRoot%\Temp` и запускает его через PowerShell (`-Auto` — тихое обновление).
 - Сборка заглушки: `stub/build-stub.sh` (Go + `rsrc`). Готовый `stub.exe` в репозиторий не кладётся (`*.exe` в .gitignore).
-- `pack.ps1` — склейка установщика (используют и `build-release.cmd`, и автосборка `.github/workflows/build.yml`).
-- Релиз собирает и **подписывает** автор: `build-release.cmd` в рабочей папке ставит версию в `AssemblyInfo.cs`,
+- `pack.ps1` — склейка установщика (используют и Zapret Dev, и автосборка `.github/workflows/build.yml`).
+- Релиз собирает и **подписывает** автор: кнопка «Собрать релиз» в Zapret Dev ставит версию в `AssemblyInfo.cs`,
   собирает приложение, прогоняет самопроверку, склеивает установщик и кладёт рядом подпись `ZapretSetup.exe.sig`.
   Приложение (начиная с версии, где в `app/src/ReleaseKey.cs` есть ключ) не установит обновление без верной подписи.

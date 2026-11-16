@@ -21,7 +21,7 @@ namespace ZapretCS
     partial class MainUi
     {
         public static MainUi Current;
-        // версия берётся из src\AssemblyInfo.cs — менять её только там (это делает build-release.cmd)
+        // версия берётся из src\AssemblyInfo.cs — менять её только там (это делает Zapret Dev при сборке релиза)
         public static readonly string AppVersion = ReadAppVersion();
         static string ReadAppVersion()
         {
