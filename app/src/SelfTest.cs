@@ -183,10 +183,14 @@ namespace ZapretCS
                 // 1) строка без переноса шире своего места
                 if (tb.TextWrapping == TextWrapping.NoWrap && tb.Inlines.Count <= 1)
                 {
+                    // замер — в том же режиме, в котором WPF рисует текст в окне (Display/Ideal)
                     var ft = new FormattedText(tb.Text, CultureInfo.CurrentUICulture, tb.FlowDirection,
-                        new Typeface(tb.FontFamily, tb.FontStyle, tb.FontWeight, tb.FontStretch), tb.FontSize, Brushes.Black, dpi);
+                        new Typeface(tb.FontFamily, tb.FontStyle, tb.FontWeight, tb.FontStretch), tb.FontSize, Brushes.Black,
+                        null, TextOptions.GetTextFormattingMode(tb), dpi);
                     double need = ft.WidthIncludingTrailingWhitespace + tb.Padding.Left + tb.Padding.Right;
-                    if (need > tb.ActualWidth + 1.5) { Problem(scene, "«" + text + "» не помещается: нужно " + (int)need + " px, есть " + (int)tb.ActualWidth + Where(tb)); continue; }
+                    // проблема — только если не хватает заметно и WPF действительно обрезает этот текст
+                    if (need > tb.ActualWidth + 2.5 && LayoutInformation.GetLayoutClip(tb) != null)
+                    { Problem(scene, "«" + text + "» не помещается: нужно " + (int)need + " px, есть " + (int)tb.ActualWidth + Where(tb)); continue; }
                 }
                 // 2) текст обрезан родительским элементом (поле списка, рамка фиксированного размера)
                 var rect = new Rect(0, 0, tb.ActualWidth, tb.ActualHeight);
