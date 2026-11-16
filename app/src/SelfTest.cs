@@ -201,9 +201,19 @@ namespace ZapretCS
                         new Typeface(tb.FontFamily, tb.FontStyle, tb.FontWeight, tb.FontStretch), tb.FontSize, Brushes.Black,
                         null, TextOptions.GetTextFormattingMode(tb), dpi);
                     double need = ft.WidthIncludingTrailingWhitespace + tb.Padding.Left + tb.Padding.Right;
-                    // проблема — только если не хватает заметно и WPF действительно обрезает этот текст
-                    if (need > tb.ActualWidth + 2.5 && LayoutInformation.GetLayoutClip(tb) != null)
-                    { Problem(scene, "«" + text + "» не помещается: нужно " + (int)need + " px, есть " + (int)tb.ActualWidth + Where(tb)); continue; }
+                    // WPF обрезает текст «изнутри»: элемент остаётся во всю ширину, но видимая область (layout clip) уже.
+                    // Проблема — если заметная часть текста не попадает в видимую область.
+                    var own = LayoutInformation.GetLayoutClip(tb);
+                    double visible = own != null ? Math.Min(own.Bounds.Right, tb.ActualWidth) : tb.ActualWidth;
+                    if (need > visible + 2.5)
+                    { Problem(scene, "«" + text + "» не помещается: нужно " + (int)need + " px, видно " + (int)visible + Where(tb)); continue; }
+                }
+                else
+                {
+                    // текст с переносом: обрезан снизу собственной видимой областью
+                    var own = LayoutInformation.GetLayoutClip(tb);
+                    if (own != null && own.Bounds.Bottom < tb.ActualHeight - 2.5 && tb.DesiredSize.Height > own.Bounds.Bottom + 2.5)
+                    { Problem(scene, "«" + text + "» обрезан по высоте: видно " + (int)own.Bounds.Bottom + " px из " + (int)tb.ActualHeight + Where(tb)); continue; }
                 }
                 // 2) текст обрезан родительским элементом (поле списка, рамка фиксированного размера)
                 var rect = new Rect(0, 0, tb.ActualWidth, tb.ActualHeight);
