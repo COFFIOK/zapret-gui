@@ -20,12 +20,13 @@ namespace ZapretCS
 {
     class TestTarget { public string Name, Url, Ping, Group; }
     class SiteResult { public string Name, Group, Ping = "n/a", Diag = ""; public string[] Tokens; public bool IsUrl; }
-    class StratResult { public string Name, File, Badge, Note; public bool Failed, Apply; public int OK, Total, PingOK, PingTotal; public List<SiteResult> Details = new List<SiteResult>(); }
+    class StratResult { public string Name, File, Badge, Note; public bool Failed, Apply, Info; public int OK, Total, PingOK, PingTotal; public List<SiteResult> Details = new List<SiteResult>(); }
     class TestSync
     {
         public volatile int Done; public volatile string Current = "", Phase = ""; public volatile bool Finished, Cancel; public string Error;
         public readonly List<StratResult> Results = new List<StratResult>();
         public readonly List<string> RepairLog = new List<string>();
+        public volatile string Summary;
     }
 
     partial class MainUi
@@ -327,7 +328,7 @@ namespace ZapretCS
                 {
                     var r = sync.Results[testShown];
                     if (r.Apply) AddStrategyItem(r.File);
-                    E<Panel>("TestResults").Children.Insert(repairMode ? E<Panel>("TestResults").Children.Count : 0, ResultRow(r, false, 0));
+                    E<Panel>("TestResults").Children.Insert(repairMode ? E<Panel>("TestResults").Children.Count : 0, r.Info ? InfoRow(r) : ResultRow(r, false, 0));
                     testShown++;
                 }
             if (sync.Finished) { if (repairMode) FinishRepair(sync.Cancel); else FinishTest(sync.Cancel); }

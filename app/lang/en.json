@@ -420,9 +420,36 @@
   "Нужны группы с сайтами — по пингу собрать стратегию нельзя": "Pick groups with sites — ping-only targets can't be used",
   "Ни одна стратегия в тесте ничего не открыла — собирать не из чего": "No strategy opened anything in the test — nothing to build from",
   "сайты недоступны по адресу — собрать нельзя": "sites are blocked by address — can't build",
-  "zapret работает как служба. Удали службу в «Сервис и диагностика», чтобы собрать стратегию.": "zapret runs as a service. Remove the service in “Service & diagnostics” to build a strategy."
+  "zapret работает как служба. Удали службу в «Сервис и диагностика», чтобы собрать стратегию.": "zapret runs as a service. Remove the service in “Service & diagnostics” to build a strategy.",
+  "Нет адреса": "No address",
+  "Сертификат": "Certificate",
+  "100% по сайтам, которые вообще можно открыть": "100% of the sites that can be opened at all"
  },
  "patterns": [
+  [
+   "^Сборка · Z · проверяю адреса через защищённый DNS(.*)$",
+   "Build · Z · checking addresses via secure DNS$1"
+  ],
+  [
+   "^провайдер прячет адреса: (.+) — поможет защищённый DNS в Windows$",
+   "your ISP hides the addresses of: $1 — secure DNS in Windows will help"
+  ],
+  [
+   "^таких адресов нет совсем: (.+) — убери их из списка$",
+   "these addresses don't exist at all: $1 — remove them from the list"
+  ],
+  [
+   "^ошибка на стороне сайта: (.+)$",
+   "the site itself is misconfigured: $1"
+  ],
+  [
+   "^(.+?) уже открывает все доступные сайты — своя стратегия не нужна$",
+   "$1 already opens every reachable site — no need for your own strategy"
+  ],
+  [
+   "^100% по сайтам, которые вообще можно открыть · без (\\d+) недоступных по адресу$",
+   "100% of the sites that can be opened at all · $1 address-blocked skipped"
+  ],
   [
    "^Сборка · Z · финальная проверка \\((\\d+)\\)(.*)$",
    "Build · Z · final check ($1)$2"

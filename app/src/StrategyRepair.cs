@@ -117,13 +117,13 @@ namespace ZapretCS
             Anim.D(A("TestBarScale"), Anim.SX, 1, 400);
             List<StratResult> res; lock (sync.Results) res = sync.Results.ToList();
             var z = res.FirstOrDefault(r => r.Apply);
-            Tb("TestStatus").Text = Translate.T(cancelled ? "Сборка остановлена"
+            Tb("TestStatus").Text = Translate.T(cancelled ? "Сборка остановлена" : sync.Summary != null ? sync.Summary
                 : z != null ? "Готово · стратегия Z открывает " + z.OK + " из " + z.Total : "Собрать лучше готовых не получилось");
             if (sync.Error != null) Toast("Ошибка сборки: " + sync.Error, true);
             try { if (sync.RepairLog.Count > 0) Log.Write("Z BUILD:\r\n  " + string.Join("\r\n  ", sync.RepairLog)); } catch (Exception logEx) { Log.Err("z log", logEx); }
             State = "x";
             if (testWasOn) { State = "off"; StartZapret(); } else { visAt = 0; Mon.Wake(); }
-            if (!cancelled) Toast(z != null ? "Стратегия Z готова — нажми «Включить»" : "Лучшая готовая стратегия и так открывает больше — оставь её");
+            if (!cancelled) Toast(z != null ? "Стратегия Z готова — нажми «Включить»" : sync.Summary ?? "Лучшая готовая стратегия и так открывает больше — оставь её");
         }
 
         class Cand { public string Raw, What; public double Order; }
@@ -149,7 +149,8 @@ namespace ZapretCS
         static bool Unreachable(SiteResult d)
         {
             if (d.Tokens.Any(t => t.EndsWith(":OK"))) return false;
-            return Regex.IsMatch(d.Diag ?? "", "Could not resolve host|Connection timed out after|Failed to connect");
+            // не находится адрес, нет соединения, или у самого сайта неверный сертификат — это не обходится стратегией
+            return Regex.IsMatch(d.Diag ?? "", "Could not resolve host|Connection timed out after|Failed to connect|SEC_E_|certificate");
         }
         // точечные проверки (сайт, вид проверки) на уже запущенном winws; null — проверку остановили
         static bool[] Probe(List<TestTarget> fx, List<int[]> probes, int timeout)
@@ -295,6 +296,34 @@ namespace ZapretCS
                 note("лучшая готовая " + donors[0][1] + ": " + baseOk + "/" + totalT + dropNote);
                 if (totalT == 0) { Add(sync, new StratResult { Name = "Z", File = ZFile, Failed = true, Note = "сайты недоступны по адресу — собрать нельзя" }); return; }
                 var groups = fx.Select(t => t.Group).Distinct().ToList();
+                string bestName = ShortName(donors[0][0]);
+
+                // что недоступно не из-за DPI: адрес не находится (проверяем через защищённый DNS) или у сайта неверный сертификат
+                var noDns = Enumerable.Range(0, targets.Count).Where(i => (det0[i].Diag ?? "").Contains("Could not resolve host")).Select(i => targets[i]).ToList();
+                var badCert = Enumerable.Range(0, targets.Count).Where(i => Regex.IsMatch(det0[i].Diag ?? "", "SEC_E_|certificate") && !det0[i].Tokens.Any(t => t.EndsWith(":OK"))).Select(i => targets[i]).ToList();
+                var extra = new List<StratResult>();
+                if (noDns.Count > 0)
+                {
+                    sync.Current = "Z · проверяю адреса через защищённый DNS";
+                    var dnsRes = new int[noDns.Count];
+                    if (DohResolves("https://www.google.com") == 1)      // сам защищённый DNS доступен — иначе ничего не утверждаем
+                        System.Threading.Tasks.Parallel.For(0, noDns.Count, new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = 16 }, i => dnsRes[i] = DohResolves(noDns[i].Url));
+                    else for (int i = 0; i < dnsRes.Length; i++) dnsRes[i] = -1;
+                    var blocked = Enumerable.Range(0, noDns.Count).Where(i => dnsRes[i] == 1).Select(i => noDns[i].Name).ToList();
+                    var missing = Enumerable.Range(0, noDns.Count).Where(i => dnsRes[i] == 0).Select(i => noDns[i].Name).ToList();
+                    note("адрес не находится: " + string.Join(", ", noDns.Select(t => t.Name)) + " → через защищённый DNS находятся: " + (blocked.Count > 0 ? string.Join(", ", blocked) : "нет") + (dnsRes.Any(x => x < 0) ? " (проверка DNS не сработала)" : ""));
+                    if (blocked.Count > 0) extra.Add(new StratResult { Name = "DNS", File = ZFile, Info = true, Note = "провайдер прячет адреса: " + Short(blocked) + " — поможет защищённый DNS в Windows" });
+                    if (missing.Count > 0) extra.Add(new StratResult { Name = "Нет адреса", File = ZFile, Info = true, Note = "таких адресов нет совсем: " + Short(missing) + " — убери их из списка" });
+                }
+                if (badCert.Count > 0) extra.Add(new StratResult { Name = "Сертификат", File = ZFile, Info = true, Note = "ошибка на стороне сайта: " + Short(badCert.Select(t => t.Name).ToList()) });
+                if (baseOk >= totalT)
+                {
+                    sync.Summary = bestName + " уже открывает все доступные сайты — своя стратегия не нужна";
+                    Add(sync, new StratResult { Name = bestName, File = donors[0][1], OK = baseOk, Total = totalT, Details = detB, Note = "100% по сайтам, которые вообще можно открыть" + dropNote });
+                    foreach (var r in extra) Add(sync, r);
+                    sync.Done = total;
+                    return;
+                }
 
                 // 1. настройки из профилей лучших стратегий (обход сайтов, TCP 80/443)
                 var sets = new List<string[]>();     // [opts, откуда]
@@ -443,6 +472,7 @@ namespace ZapretCS
                     Add(sync, new StratResult { Name = "Z", File = ZFile, OK = okF, Total = tf, Details = dF, Badge = "собрано", Note = "лучшая готовая " + ShortName(donors[0][0]) + ": " + baseOk + "/" + totalT + dropNote, Apply = true });
                 }
                 else Add(sync, new StratResult { Name = "Z", File = ZFile, OK = okF, Total = tf, Details = dF, Note = "не лучше " + ShortName(donors[0][0]) + " (" + baseOk + "/" + totalT + ") — не сохранено" });
+                foreach (var r in extra) Add(sync, r);
                 var gsR = GroupScore(dF ?? detB, fx);
                 foreach (var g in groups)
                 {
@@ -453,6 +483,38 @@ namespace ZapretCS
             }
             catch (Exception ex) { sync.Error = ex.Message; }
             finally { KillWinws(); sync.Finished = true; }
+        }
+
+        // строка-пояснение в результатах: что мешает, кроме DPI (переносится по словам, без полосы и процентов)
+        UIElement InfoRow(StratResult r)
+        {
+            var b = new Border { Padding = new Thickness(14, 10, 14, 10), Background = Theme.B("#1E2129"), BorderThickness = new Thickness(2), BorderBrush = Theme.B("#3A3320"), Margin = new Thickness(0, 0, 0, 6) };
+            var tb = new TextBlock { TextWrapping = TextWrapping.Wrap, FontSize = 12.5, Foreground = Theme.B("#C9CCD6") };
+            tb.Inlines.Add(new System.Windows.Documents.Run(Translate.T(r.Name) + "  ") { FontWeight = FontWeights.SemiBold, Foreground = Theme.B("#FFB547") });
+            tb.Inlines.Add(new System.Windows.Documents.Run(Translate.T(r.Note)));
+            b.Child = tb;
+            return b;
+        }
+
+        static string Short(List<string> names) { return string.Join(", ", names.Take(4)) + (names.Count > 4 ? " и ещё " + (names.Count - 4) : ""); }
+
+        // 1 — адрес находится через защищённый DNS (значит, его прячет DNS провайдера), 0 — не находится и там, -1 — проверить не удалось
+        static int DohResolves(string url)
+        {
+            try
+            {
+                var psi = new ProcessStartInfo(CurlExe(), "-s -I -o NUL -m 6 --connect-timeout 4 --doh-url https://1.1.1.1/dns-query \"" + url + "\"")
+                { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
+                using (var p = Process.Start(psi))
+                {
+                    p.StandardOutput.ReadToEnd(); p.StandardError.ReadToEnd();
+                    if (!p.WaitForExit(10000)) { try { p.Kill(); } catch { } return -1; }
+                    if (p.ExitCode == 6) return 0;
+                    if (p.ExitCode == 2 || p.ExitCode == 4) return -1;      // нет поддержки DoH у этого curl
+                    return 1;
+                }
+            }
+            catch (Exception ex) { Log.Err("doh", ex); return -1; }
         }
 
         static void SaveAs(string root, string name, string fromFile, ZapretCore.BatCmd bat, string raw)
