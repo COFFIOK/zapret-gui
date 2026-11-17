@@ -18,7 +18,7 @@ namespace ZapretCS
 {
     partial class MainUi
     {
-        const int RepairBudget = 20;            // сколько вариантов пробуем на одну стратегию
+        const int RepairBudget = 24;            // сколько вариантов пробуем на одну стратегию
         bool repairMode;
         List<string> lastGroups;
         List<StratResult> lastResults;
@@ -124,31 +124,50 @@ namespace ZapretCS
             return up;
         }
 
-        // сколько проверок (HTTP / TLS 1.2 / TLS 1.3 по сайтам) прошло; -1 — winws не запустился с такими параметрами
-        static int Measure(string raw, string bin, List<TestTarget> targets, int timeout, ref bool first, out int total, out List<SiteResult> details)
+        // ---- быстрая починка ----
+        // 1) базовая проверка всех сайтов; сайты, недоступные по адресу (не находится адрес / нет соединения), отбрасываем — их никакая стратегия не починит
+        // 2) каждый вариант сначала проверяется быстро: только то, что сейчас НЕ открывается, плюс несколько уже работающих «контрольных» проверок
+        // 3) если вариант что-то починил и ничего не сломал — полная проверка всех сайтов на том же запуске winws (она же — повторное подтверждение)
+        const int Canaries = 6;
+
+        static int Score(List<SiteResult> det, out int total)
         {
-            total = 0; details = null;
-            string args = ZapretCore.ResolveArgs(raw);
-            if (args == null) return -1;
-            bool wasFirst = first;
-            bool up = StartWinws(bin, args, first); first = false;
-            if (!up) return -1;
-            int ok = 0;
+            int ok = 0; total = 0;
+            foreach (var r in det) foreach (var tk in r.Tokens) { if (!tk.Contains("UNSUP")) total++; if (tk.EndsWith(":OK")) ok++; }
+            return ok;
+        }
+        static bool Unreachable(SiteResult d)
+        {
+            if (d.Tokens.Any(t => t.EndsWith(":OK"))) return false;
+            return Regex.IsMatch(d.Diag ?? "", "Could not resolve host|Connection timed out after|Failed to connect");
+        }
+        // точечные проверки (сайт, вид проверки) на уже запущенном winws; null — проверку остановили
+        static bool[] Probe(List<TestTarget> fx, List<int[]> probes, int timeout)
+        {
+            var res = new bool[probes.Count];
+            System.Threading.Tasks.Parallel.For(0, probes.Count, new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = 48 }, i =>
+            {
+                if (abortChecks) return;
+                res[i] = Curl(fx[probes[i][0]].Url, probes[i][1], timeout)[0].EndsWith(":OK");
+            });
+            return abortChecks ? null : res;
+        }
+        static List<SiteResult> FullCheck(List<TestTarget> fx, int timeout, bool firstRun)
+        {
+            List<SiteResult> det = null;
             for (int attempt = 1; attempt <= 2; attempt++)
             {
-                details = RunChecks(targets, timeout);
-                if (abortChecks) return -1;
-                ok = 0; total = 0;
-                foreach (var r in details) foreach (var tk in r.Tokens) { if (!tk.Contains("UNSUP")) total++; if (tk.EndsWith(":OK")) ok++; }
-                if (ok > 0 || !wasFirst) break;
+                det = RunChecks(fx, timeout);
+                if (abortChecks) return null;
+                int t; if (Score(det, out t) > 0 || !firstRun) break;
                 Thread.Sleep(2000);    // первый запуск: драйвер WinDivert мог ещё не загрузиться
             }
-            return ok;
+            return det;
         }
 
         static void RepairWorker(TestSync sync, List<string[]> strategies, List<TestTarget> targets, string root, string bin, int timeout)
         {
-            ThreadPool.SetMinThreads(40, 40);
+            ThreadPool.SetMinThreads(56, 56);
             bool first = true; var rnd = new Random();
             try
             {
@@ -157,18 +176,34 @@ namespace ZapretCS
                 {
                     if (sync.Cancel) break;
                     index++;
-                    string shortName = ShortName(s[0]), file = s[1];
+                    string shortName = ShortName(s[0]), file = s[1], pos = " (" + index + " из " + strategies.Count + ")";
                     int doneAt = sync.Done;
+                    Action skip = () => sync.Done = doneAt + RepairBudget + 1;
                     var bat = ZapretCore.ReadBat(System.IO.Path.Combine(root, file));
-                    if (bat == null) { Add(sync, new StratResult { Name = shortName, File = file, Failed = true, Note = "не стратегия zapret" }); sync.Done = doneAt + RepairBudget + 1; continue; }
+                    if (bat == null) { Add(sync, new StratResult { Name = shortName, File = file, Failed = true, Note = "не стратегия zapret" }); skip(); continue; }
 
-                    sync.Current = shortName + " (" + index + " из " + strategies.Count + ") · проверяю как есть";
-                    int total; List<SiteResult> det;
-                    int baseOk = Measure(bat.Raw, bin, targets, timeout, ref first, out total, out det);
+                    // 1. как есть
+                    sync.Current = shortName + pos + " · проверяю как есть";
+                    string args0 = ZapretCore.ResolveArgs(bat.Raw);
+                    bool up0 = args0 != null && StartWinws(bin, args0, first); bool wasFirst = first; first = false;
                     if (sync.Cancel) break;
+                    if (!up0) { Add(sync, new StratResult { Name = shortName, File = file, Failed = true, Note = "не запустилась" }); skip(); continue; }
+                    var det0 = FullCheck(targets, timeout, wasFirst);
+                    if (det0 == null || sync.Cancel) break;
                     sync.Done++;
-                    if (baseOk < 0) { Add(sync, new StratResult { Name = shortName, File = file, Failed = true, Note = "не запустилась" }); sync.Done = doneAt + RepairBudget + 1; continue; }
-                    if (baseOk >= total) { Add(sync, new StratResult { Name = shortName, File = file, OK = baseOk, Total = total, Details = det, Note = "уже работает на 100%" }); sync.Done = doneAt + RepairBudget + 1; continue; }
+                    // недоступные по адресу сайты в починке не участвуют
+                    var fx = new List<TestTarget>(); var det = new List<SiteResult>(); int dropped = 0;
+                    for (int i = 0; i < targets.Count; i++) { if (Unreachable(det0[i])) dropped++; else { fx.Add(targets[i]); det.Add(det0[i]); } }
+                    string dropNote = dropped > 0 ? " · без " + dropped + " недоступных по адресу" : "";
+                    int total; int baseOk = Score(det, out total);
+                    if (total == 0) { Add(sync, new StratResult { Name = shortName, File = file, Details = det0, Note = "сайты недоступны по адресу — не чинится" }); skip(); continue; }
+                    if (baseOk >= total) { Add(sync, new StratResult { Name = shortName, File = file, OK = baseOk, Total = total, Details = det, Note = "уже работает на 100%" + dropNote }); skip(); continue; }
+
+                    // все проверки (сайт, вид) и что из них сейчас проходит
+                    var all = new List<int[]>(); var okNow = new Dictionary<string, bool>();
+                    for (int i = 0; i < fx.Count; i++)
+                        for (int k = 0; k < det[i].Tokens.Length; k++)
+                            if (!det[i].Tokens[k].Contains("UNSUP")) { all.Add(new[] { i, k }); okNow[i + ":" + k] = det[i].Tokens[k].EndsWith(":OK"); }
 
                     string best = bat.Raw; int bestOk = baseOk; var bestDet = det;
                     var tried = new HashSet<string> { best };
@@ -180,29 +215,38 @@ namespace ZapretCS
                         var c = cands[ci++];
                         if (!tried.Add(c.Raw)) continue;
                         used++; sync.Done++;
-                        sync.Current = shortName + " (" + index + " из " + strategies.Count + ") · вариант " + used + " из " + RepairBudget + " · сейчас " + bestOk + "/" + total;
-                        int t1; List<SiteResult> d1;
-                        int sc = Measure(c.Raw, bin, targets, timeout, ref first, out t1, out d1);
-                        if (sync.Cancel || sc <= bestOk) continue;
-                        // повторная проверка: случайная удача не считается
-                        int t2; List<SiteResult> d2;
-                        int sc2 = Measure(c.Raw, bin, targets, timeout, ref first, out t2, out d2);
-                        int conf = Math.Min(sc, sc2);
-                        if (sync.Cancel || conf <= bestOk) continue;
-                        best = c.Raw; bestOk = conf; bestDet = sc2 <= sc ? d2 : d1; steps.Add(c.What + " → " + conf + "/" + total);
+                        sync.Current = shortName + pos + " · вариант " + used + " из " + RepairBudget + " · сейчас " + bestOk + "/" + total;
+                        string args = ZapretCore.ResolveArgs(c.Raw);
+                        if (args == null || !StartWinws(bin, args, false) || sync.Cancel) continue;
+                        // 2. быстрая проверка
+                        var failing = all.Where(p => !okNow[p[0] + ":" + p[1]]).ToList();
+                        var canary = all.Where(p => okNow[p[0] + ":" + p[1]]).OrderBy(p => rnd.Next()).Take(Canaries).ToList();
+                        var q = Probe(fx, failing.Concat(canary).ToList(), Math.Min(timeout, 2));
+                        if (q == null) break;
+                        int fixedN = 0, broke = 0;
+                        for (int i = 0; i < q.Length; i++) { if (i < failing.Count) { if (q[i]) fixedN++; } else if (!q[i]) broke++; }
+                        if (fixedN == 0 || broke > 0) continue;
+                        // 3. полная проверка
+                        sync.Current = shortName + pos + " · вариант " + used + " из " + RepairBudget + " · полная проверка";
+                        var d = FullCheck(fx, timeout, false);
+                        if (d == null) break;
+                        int t2; int sc = Score(d, out t2);
+                        if (sc <= bestOk) continue;
+                        best = c.Raw; bestOk = sc; bestDet = d; steps.Add(c.What + " → " + sc + "/" + total);
+                        foreach (var p in all) okNow[p[0] + ":" + p[1]] = d[p[0]].Tokens[p[1]].EndsWith(":OK");
                         cands = Candidates(best, bin, rnd).Where(x => !tried.Contains(x.Raw)).ToList(); ci = 0;
                     }
-                    sync.Done = doneAt + RepairBudget + 1;
+                    skip();
                     if (bestOk > baseOk)
                     {
                         string nf = SaveFixed(root, file, bat, best);
-                        lock (sync.RepairLog) sync.RepairLog.Add(file + ": " + baseOk + "/" + total + " → " + bestOk + "/" + total + " → " + nf + " (" + string.Join("; ", steps) + ")");
-                        Add(sync, new StratResult { Name = ShortName(System.IO.Path.GetFileNameWithoutExtension(nf)), File = nf, OK = bestOk, Total = total, Details = bestDet, Badge = "починено", Note = "было " + baseOk + "/" + total, Apply = true });
+                        lock (sync.RepairLog) sync.RepairLog.Add(file + ": " + baseOk + "/" + total + " → " + bestOk + "/" + total + " → " + nf + " (" + string.Join("; ", steps) + ")" + dropNote);
+                        Add(sync, new StratResult { Name = ShortName(System.IO.Path.GetFileNameWithoutExtension(nf)), File = nf, OK = bestOk, Total = total, Details = bestDet, Badge = "починено", Note = "было " + baseOk + "/" + total + dropNote, Apply = true });
                     }
                     else
                     {
-                        lock (sync.RepairLog) sync.RepairLog.Add(file + ": " + baseOk + "/" + total + ", улучшить не удалось (вариантов: " + used + ")");
-                        Add(sync, new StratResult { Name = shortName, File = file, OK = baseOk, Total = total, Details = det, Note = sync.Cancel ? "остановлено" : "не удалось улучшить" });
+                        lock (sync.RepairLog) sync.RepairLog.Add(file + ": " + baseOk + "/" + total + ", улучшить не удалось (вариантов: " + used + ")" + dropNote);
+                        Add(sync, new StratResult { Name = shortName, File = file, OK = baseOk, Total = total, Details = det, Note = (sync.Cancel ? "остановлено" : "не удалось улучшить") + dropNote });
                     }
                 }
             }

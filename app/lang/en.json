@@ -420,9 +420,30 @@
   "Идёт починка стратегий…": "Repairing strategies…",
   "Нужны группы с сайтами — по пингу починка не работает": "Pick groups with sites — repair can't use ping-only targets",
   "Улучшить не получилось — попробуй другие стратегии": "Couldn't improve — try other strategies",
-  "zapret работает как служба. Удали службу в «Сервис и диагностика», чтобы чинить стратегии.": "zapret runs as a service. Remove the service in “Service & diagnostics” to repair strategies."
+  "zapret работает как служба. Удали службу в «Сервис и диагностика», чтобы чинить стратегии.": "zapret runs as a service. Remove the service in “Service & diagnostics” to repair strategies.",
+  "сайты недоступны по адресу — не чинится": "sites are blocked by address — can't repair"
  },
  "patterns": [
+  [
+   "^Починка · (.+?) \\((\\d+) из (\\d+)\\) · вариант (\\d+) из (\\d+) · полная проверка(.*)$",
+   "Repair · $1 ($2 of $3) · variant $4 of $5 · full check$6"
+  ],
+  [
+   "^было (\\d+/\\d+) · без (\\d+) недоступных по адресу$",
+   "was $1 · $2 address-blocked skipped"
+  ],
+  [
+   "^не удалось улучшить · без (\\d+) недоступных по адресу$",
+   "couldn't improve · $1 address-blocked skipped"
+  ],
+  [
+   "^уже работает на 100% · без (\\d+) недоступных по адресу$",
+   "already works 100% · $1 address-blocked skipped"
+  ],
+  [
+   "^остановлено · без (\\d+) недоступных по адресу$",
+   "stopped · $1 address-blocked skipped"
+  ],
   [
    "^(\\d+) стратегий × до (\\d+) вариантов · примерно (\\d+) мин$",
    "$1 strategies × up to $2 variants · about $3 min"

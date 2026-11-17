@@ -151,7 +151,7 @@ namespace ZapretCS
             }
             var groups = Picked(E<Panel>("GroupChips")); var strats = Picked(E<Panel>("StratChips"));
             int sites = TestTargets().Count(t => groups.Contains(t.Group));
-            int sec = (int)(strats.Count * (5 + Math.Ceiling(sites / 30.0)) * (repairMode ? RepairBudget + 2 : 1) + 3);
+            int sec = repairMode ? (int)(strats.Count * (RepairBudget * 4.5 + 3 * (5 + Math.Ceiling(sites / 45.0)))) : (int)(strats.Count * (5 + Math.Ceiling(sites / 30.0)) + 3);
             Tb("TestStatus").Text = Translate.T(strats.Count == 0 || sites == 0 ? "Выбери хотя бы одну группу и одну стратегию"
                 : repairMode ? strats.Count + " стратегий × до " + RepairBudget + " вариантов · примерно " + Math.Max(1, (int)Math.Round(sec / 60.0)) + " мин"
                 : strats.Count + " стратегий × " + sites + " сайтов · примерно " + Math.Max(1, (int)Math.Round(sec / 60.0)) + " мин");
@@ -258,13 +258,13 @@ namespace ZapretCS
                 if (t.Url != null) for (int k = 0; k < 3; k++) { int kk = k; jobs.Add(() => { var c = Curl(t.Url, kk, timeout); r.Tokens[kk] = c[0]; if (c[1].Length > 0) lock (r) r.Diag += (r.Diag.Length > 0 ? " | " : "") + c[1]; }); }
                 if (t.Ping != null) jobs.Add(() => r.Ping = PingHost(t.Ping));
             }
-            Parallel.ForEach(jobs, new ParallelOptions { MaxDegreeOfParallelism = 32 }, j => { if (!abortChecks) j(); });
+            Parallel.ForEach(jobs, new ParallelOptions { MaxDegreeOfParallelism = 48 }, j => { if (!abortChecks) j(); });
             foreach (var r in res) r.Tokens = r.Tokens.Where(x => x != null).ToArray();
             return res;
         }
         static void TestWorker(TestSync sync, List<string[]> strategies, List<TestTarget> targets, string bin, int timeout)
         {
-            ThreadPool.SetMinThreads(40, 40);
+            ThreadPool.SetMinThreads(56, 56);
             bool first = true;
             try
             {
