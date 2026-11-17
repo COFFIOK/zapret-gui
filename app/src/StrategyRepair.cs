@@ -319,7 +319,7 @@ namespace ZapretCS
                 if (baseOk >= totalT)
                 {
                     sync.Summary = bestName + " уже открывает все доступные сайты — своя стратегия не нужна";
-                    Add(sync, new StratResult { Name = bestName, File = donors[0][1], OK = baseOk, Total = totalT, Details = detB, Note = "100% по сайтам, которые вообще можно открыть" + dropNote });
+                    Add(sync, new StratResult { Name = bestName, File = donors[0][1], OK = baseOk, Total = totalT, Details = detB, Note = extra.Count > 0 ? "открывает всё доступное · остальное — ниже" : "открывает всё доступное" });
                     foreach (var r in extra) Add(sync, r);
                     sync.Done = total;
                     return;

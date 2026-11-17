@@ -423,7 +423,9 @@
   "zapret работает как служба. Удали службу в «Сервис и диагностика», чтобы собрать стратегию.": "zapret runs as a service. Remove the service in “Service & diagnostics” to build a strategy.",
   "Нет адреса": "No address",
   "Сертификат": "Certificate",
-  "100% по сайтам, которые вообще можно открыть": "100% of the sites that can be opened at all"
+  "100% по сайтам, которые вообще можно открыть": "100% of the sites that can be opened at all",
+  "открывает всё доступное · остальное — ниже": "opens everything reachable · the rest — below",
+  "открывает всё доступное": "opens everything reachable"
  },
  "patterns": [
   [
