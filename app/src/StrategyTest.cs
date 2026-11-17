@@ -20,13 +20,11 @@ namespace ZapretCS
 {
     class TestTarget { public string Name, Url, Ping, Group; }
     class SiteResult { public string Name, Group, Ping = "n/a", Diag = ""; public string[] Tokens; public bool IsUrl; }
-    class StratResult { public string Name, File, Badge, Note; public bool Failed, Apply, Info; public int OK, Total, PingOK, PingTotal; public List<SiteResult> Details = new List<SiteResult>(); }
+    class StratResult { public string Name, File; public bool Failed; public int OK, Total, PingOK, PingTotal; public List<SiteResult> Details = new List<SiteResult>(); }
     class TestSync
     {
         public volatile int Done; public volatile string Current = "", Phase = ""; public volatile bool Finished, Cancel; public string Error;
         public readonly List<StratResult> Results = new List<StratResult>();
-        public readonly List<string> RepairLog = new List<string>();
-        public volatile string Summary;
     }
 
     partial class MainUi
@@ -79,7 +77,6 @@ namespace ZapretCS
                 if (testing) { testSync.Cancel = true; rb.IsEnabled = false; rb.Content = Translate.T("Останавливаю…"); new Thread(AbortChecks) { IsBackground = true }.Start(); }
                 else if ((rb.Content as string) == Translate.T("Новый тест"))
                 {
-                    ExitRepairMode();
                     rb.Content = Translate.T("Запустить тест");
                     El("ResultsHead").Visibility = Visibility.Collapsed;
                     E<Panel>("TestResults").Children.Clear();
@@ -87,21 +84,15 @@ namespace ZapretCS
                     ((ScaleTransform)Win.FindName("TestBarScale")).ScaleX = 0;
                     FillTestSetup();
                 }
-                else if (repairMode) StartRepair();
                 else StartTest();
             });
-            Btn("FixBtn").Click += (s, e) => Safe(StartRepair);
             testTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
             testTimer.Tick += (s, e) => { try { TestTick(); } catch (Exception ex) { Log.Write("test: " + ex); } };
         }
 
         void OpenTest()
         {
-            if (!testing)
-            {
-                if (repairMode && (Btn("RunBtn").Content as string) != Translate.T("Новый тест")) { ExitRepairMode(); Btn("RunBtn").Content = Translate.T("Запустить тест"); }
-                FillTestSetup();
-            }
+            if (!testing) FillTestSetup();
             OpenOverlay("Test");
             Translate.Tree(El("TestOverlay"));
         }
@@ -170,8 +161,6 @@ namespace ZapretCS
                 if (a != null) strategies.Add(new[] { System.IO.Path.GetFileNameWithoutExtension(f), f, a });
             }
             if (strategies.Count == 0 || targets.Count == 0) return;
-            lastGroups = groups; lastResults = null;
-            El("FixBtn").Visibility = Visibility.Collapsed;
 
             testWasOn = State == "on";
             testing = true; testShown = 0; testTotal = strategies.Count; testBegan = DateTime.Now;
@@ -258,13 +247,13 @@ namespace ZapretCS
                 if (t.Url != null) for (int k = 0; k < 3; k++) { int kk = k; jobs.Add(() => { var c = Curl(t.Url, kk, timeout); r.Tokens[kk] = c[0]; if (c[1].Length > 0) lock (r) r.Diag += (r.Diag.Length > 0 ? " | " : "") + c[1]; }); }
                 if (t.Ping != null) jobs.Add(() => r.Ping = PingHost(t.Ping));
             }
-            Parallel.ForEach(jobs, new ParallelOptions { MaxDegreeOfParallelism = 48 }, j => { if (!abortChecks) j(); });
+            Parallel.ForEach(jobs, new ParallelOptions { MaxDegreeOfParallelism = 32 }, j => { if (!abortChecks) j(); });
             foreach (var r in res) r.Tokens = r.Tokens.Where(x => x != null).ToArray();
             return res;
         }
         static void TestWorker(TestSync sync, List<string[]> strategies, List<TestTarget> targets, string bin, int timeout)
         {
-            ThreadPool.SetMinThreads(56, 56);
+            ThreadPool.SetMinThreads(40, 40);
             bool first = true;
             try
             {
@@ -322,16 +311,10 @@ namespace ZapretCS
                 eta = left >= 60 ? " · осталось ~" + Math.Round(left / 60.0) + " мин" : " · осталось ~" + left + " с";
             }
             string phase = sync.Phase == "test" ? "проверяю сайты" : sync.Phase == "retry" ? "перепроверяю" : "запускаю";
-            Tb("TestStatus").Text = Translate.T(repairMode ? "Сборка · " + sync.Current + eta : "Стратегия " + Math.Min(done + 1, testTotal) + " из " + testTotal + " · " + sync.Current + " · " + phase + eta);
+            Tb("TestStatus").Text = Translate.T("Стратегия " + Math.Min(done + 1, testTotal) + " из " + testTotal + " · " + sync.Current + " · " + phase + eta);
             lock (sync.Results)
-                while (testShown < sync.Results.Count)
-                {
-                    var r = sync.Results[testShown];
-                    if (r.Apply) AddStrategyItem(r.File);
-                    E<Panel>("TestResults").Children.Insert(repairMode ? E<Panel>("TestResults").Children.Count : 0, r.Info ? InfoRow(r) : ResultRow(r, false, 0));
-                    testShown++;
-                }
-            if (sync.Finished) { if (repairMode) FinishRepair(sync.Cancel); else FinishTest(sync.Cancel); }
+                while (testShown < sync.Results.Count) { E<Panel>("TestResults").Children.Insert(0, ResultRow(sync.Results[testShown], false, 0)); testShown++; }
+            if (sync.Finished) FinishTest(sync.Cancel);
         }
 
         FrameworkElement ResultRow(StratResult r, bool best, int rank)
@@ -346,13 +329,11 @@ namespace ZapretCS
             var nameSp = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
             if (rank > 0) { var rk = Txt(rank.ToString(), 12, "#5A6070"); rk.Width = 22; nameSp.Children.Add(rk); }
             var nm = Txt(r.Name, 13.5, "#E6E8EE"); nm.FontWeight = FontWeights.SemiBold; nameSp.Children.Add(nm);
-            string badge = best ? "★ лучшая" : r.Badge;
-            if (badge != null)
+            if (best)
             {
                 var bd = new Border { Background = Theme.B("#3DDC97"), CornerRadius = new CornerRadius(0), Padding = new Thickness(8, 1, 8, 1), Margin = new Thickness(10, 0, 0, 0) };
-                var bt = Txt(badge, 11, "#0F1115"); bt.FontWeight = FontWeights.SemiBold; bd.Child = bt; nameSp.Children.Add(bd);
+                var bt = Txt("★ лучшая", 11, "#0F1115"); bt.FontWeight = FontWeights.SemiBold; bd.Child = bt; nameSp.Children.Add(bd);
             }
-            if (!string.IsNullOrEmpty(r.Note)) { var nt = Txt(r.Note, 12, "#8A90A0"); nt.Margin = new Thickness(10, 0, 0, 0); nameSp.Children.Add(nt); }
             g.Children.Add(nameSp);
             double ratio = r.Total > 0 ? (double)r.OK / r.Total : 0;
             string col = r.Failed ? "#FF5E62" : ratio >= 0.85 ? "#3DDC97" : ratio >= 0.5 ? "#FFB86B" : "#FF5E62";
@@ -364,7 +345,7 @@ namespace ZapretCS
             var txt = Txt(r.Failed ? "не запустилась" : r.OK + "/" + r.Total + " · " + (int)(ratio * 100) + "%" + (r.PingTotal > 0 ? " · ping " + r.PingOK + "/" + r.PingTotal : ""), 12, col);
             txt.Width = 175; txt.TextAlignment = TextAlignment.Right;
             Grid.SetColumn(txt, 2); g.Children.Add(txt);
-            if (best || r.Apply)
+            if (best)
             {
                 var ap = new Button { Style = (Style)Win.FindResource("AccentBtn"), Content = Translate.T("Включить"), Padding = new Thickness(12, 5, 12, 5), Margin = new Thickness(12, 0, 0, 0) };
                 string file = r.File;
@@ -401,8 +382,6 @@ namespace ZapretCS
             Btn("RunBtn").Content = Translate.T("Новый тест"); Btn("RunBtn").IsEnabled = true;
             List<StratResult> res;
             lock (sync.Results) res = sync.Results.OrderByDescending(r => r.Failed ? -1 : r.OK).ThenByDescending(r => r.PingOK).ToList();
-            lastResults = res;
-            if (res.Count > 0 && S.Bool("betaLan")) { El("FixBtn").Visibility = Visibility.Visible; Translate.Tree(El("FixBtn")); }
             var panel = E<Panel>("TestResults"); panel.Children.Clear();
             int rank = 1;
             foreach (var r in res) { panel.Children.Add(ResultRow(r, rank == 1 && !r.Failed && r.OK > 0, rank)); rank++; }

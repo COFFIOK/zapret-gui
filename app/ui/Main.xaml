@@ -1102,8 +1102,8 @@
                 <DockPanel Margin="0,0,0,14">
                   <Button x:Name="TestClose" DockPanel.Dock="Right" Style="{StaticResource TitleBtn}"><Path Data="{StaticResource PxX}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="10" Height="10" Stretch="None" SnapsToDevicePixels="True"/></Button>
                   <StackPanel>
-                    <TextBlock x:Name="TestTitle" Text="Тест стратегий" Style="{StaticResource PxText}" FontSize="22.22"/>
-                    <TextBlock x:Name="TestSub" Text="Проверяю, какая стратегия лучше открывает твои сайты" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0"/>
+                    <TextBlock Text="Тест стратегий" Style="{StaticResource PxText}" FontSize="22.22"/>
+                    <TextBlock Text="Проверяю, какая стратегия лучше открывает твои сайты" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0"/>
                   </StackPanel>
                 </DockPanel>
 
@@ -1157,16 +1157,7 @@
                       </Grid>
                     </Border>
                   </StackPanel>
-                  <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <!-- своя стратегия Z (бета): появляется после теста, если включено бета-тестирование -->
-                    <Button x:Name="FixBtn" Style="{StaticResource Btn}" Padding="16,10" Margin="0,0,10,0" Visibility="Collapsed">
-                      <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Собрать свою стратегию" VerticalAlignment="Center"/>
-                        <Border Background="#FFB547" Padding="5,0,5,1" Margin="8,0,0,0" VerticalAlignment="Center"><TextBlock Text="бета" FontSize="10" FontWeight="SemiBold" Foreground="#121419"/></Border>
-                      </StackPanel>
-                    </Button>
-                    <Button x:Name="RunBtn" Style="{StaticResource AccentBtn}" Content="Запустить тест" Padding="20,10" MinWidth="150"/>
-                  </StackPanel>
+                  <Button x:Name="RunBtn" Grid.Column="1" Style="{StaticResource AccentBtn}" Content="Запустить тест" Padding="20,10" MinWidth="150"/>
                 </Grid>
 
                 <Grid Grid.Row="3">

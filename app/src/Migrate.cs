@@ -47,22 +47,6 @@ namespace ZapretCS
             }
             return n;
         }
-        // своя стратегия Z (бета «Собрать свою стратегию») и её списки сайтов — тоже переносим
-        int MigFixed()
-        {
-            int n = 0;
-            var files = Directory.GetFiles(migFrom, "general (Z).bat").ToList();
-            var lists = System.IO.Path.Combine(migFrom, "lists");
-            if (Directory.Exists(lists)) files.AddRange(Directory.GetFiles(lists, "zgui-*.txt"));
-            foreach (var f in files)
-            {
-                var dst = migTo.TrimEnd('\\') + f.Substring(migFrom.TrimEnd('\\').Length);
-                if (File.Exists(dst)) continue;
-                Directory.CreateDirectory(System.IO.Path.GetDirectoryName(dst));
-                File.Copy(f, dst); n++;
-            }
-            return n;
-        }
         int MigMergeLists()
         {
             int added = 0;
@@ -134,7 +118,7 @@ namespace ZapretCS
             {
                 case 0: n = MigCopy("lists\\list-general-user.txt"); return n > 0 ? new[] { "ok", "перенесено " + Plural(CountSites(System.IO.Path.Combine(migTo, "lists\\list-general-user.txt"))) } : new[] { "skip", "нечего переносить" };
                 case 1: n = MigCopy("lists\\list-exclude-user.txt", "lists\\ipset-exclude-user.txt"); return n > 0 ? new[] { "ok", "файлов: " + n } : new[] { "skip", "нечего переносить" };
-                case 2: n = MigCopy("utils\\game_filter.enabled", "utils\\check_updates.enabled") + MigFixed(); return n > 0 ? new[] { "ok", "настройки перенесены" } : new[] { "skip", "используются стандартные" };
+                case 2: n = MigCopy("utils\\game_filter.enabled", "utils\\check_updates.enabled"); return n > 0 ? new[] { "ok", "настройки перенесены" } : new[] { "skip", "используются стандартные" };
                 case 3: n = MigMergeLists(); return n > 0 ? new[] { "ok", "добавлено: " + Plural(n) } : new[] { "skip", "в новой версии уже всё есть" };
                 case 4: n = MigTargets(); return n > 0 ? new[] { "ok", "добавлено: " + Plural(n) } : new[] { "skip", "в новой версии уже всё есть" };
                 default:
