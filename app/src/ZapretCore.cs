@@ -120,22 +120,38 @@ namespace ZapretCS
         }
 
         // ---- командная строка winws из батника (как это сделал бы cmd) ----
-        public static string WinwsArgs(string batPath)
+        // строка запуска winws внутри .bat: сами строки файла, где она начинается и кончается, начало «start … winws.exe"» и параметры как есть (с %BIN%, %LISTS%…)
+        public class BatCmd { public string[] Lines; public int Start, End; public string Prefix, Raw; }
+        public static BatCmd ReadBat(string batPath)
         {
-            string buf = null;
-            foreach (var l in File.ReadAllLines(batPath))
+            var lines = File.ReadAllLines(batPath);
+            string buf = null, prefix = null; int start = -1, end = -1;
+            for (int i = 0; i < lines.Length; i++)
             {
+                string l = lines[i];
                 if (buf == null)
                 {
-                    var m = Regex.Match(l, "start\\s+\"zapret[^\"]*\"\\s+/min\\s+\"%BIN%winws\\.exe\"(.*)$");
-                    if (m.Success) buf = m.Groups[1].Value; else continue;
+                    var m = Regex.Match(l, "^(.*?start\\s+\"zapret[^\"]*\"\\s+/min\\s+\"%BIN%winws\\.exe\")(.*)$");
+                    if (!m.Success) continue;
+                    prefix = m.Groups[1].Value; buf = m.Groups[2].Value; start = i;
                 }
                 else buf += l;
+                end = i;
                 if (buf.TrimEnd().EndsWith("^")) { buf = buf.TrimEnd(); buf = buf.Substring(0, buf.Length - 1) + " "; }
                 else break;
             }
-            if (buf == null) return null;
+            return buf == null ? null : new BatCmd { Lines = lines, Start = start, End = end, Prefix = prefix, Raw = buf };
+        }
 
+        public static string WinwsArgs(string batPath)
+        {
+            var b = ReadBat(batPath);
+            return b == null ? null : ResolveArgs(b.Raw);
+        }
+
+        // подстановка %BIN%, %LISTS%, игрового фильтра; снятие кареток — как это сделал бы cmd
+        public static string ResolveArgs(string buf)
+        {
             string mode, tcp, udp; ReadGame(out mode, out tcp, out udp);
             string t = "12", u = "12";
             if (mode == "all") { t = tcp; u = udp; } else if (mode == "tcp") t = tcp; else if (mode == "udp") u = udp;

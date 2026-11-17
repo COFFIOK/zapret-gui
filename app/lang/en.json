@@ -407,9 +407,50 @@
   "ВНЕШНИЙ ВИД": "APPEARANCE",
   "Перезапускаю приложение…": "Restarting the app…",
   "тестовая сборка": "test build",
-  "Удалить Zapret?": "Remove Zapret?"
+  "Удалить Zapret?": "Remove Zapret?",
+  "Починить стратегии": "Repair strategies",
+  "Починка стратегий": "Strategy repair",
+  "Меняю настройки стратегии и проверяю, пока сайты не откроются": "Tweaking strategy settings and re-checking until sites open",
+  "Начать починку": "Start repair",
+  "починено": "repaired",
+  "не удалось улучшить": "couldn't improve",
+  "уже работает на 100%": "already works 100%",
+  "не стратегия zapret": "not a zapret strategy",
+  "остановлено": "stopped",
+  "Идёт починка стратегий…": "Repairing strategies…",
+  "Нужны группы с сайтами — по пингу починка не работает": "Pick groups with sites — repair can't use ping-only targets",
+  "Улучшить не получилось — попробуй другие стратегии": "Couldn't improve — try other strategies",
+  "zapret работает как служба. Удали службу в «Сервис и диагностика», чтобы чинить стратегии.": "zapret runs as a service. Remove the service in “Service & diagnostics” to repair strategies."
  },
  "patterns": [
+  [
+   "^(\\d+) стратегий × до (\\d+) вариантов · примерно (\\d+) мин$",
+   "$1 strategies × up to $2 variants · about $3 min"
+  ],
+  [
+   "^Починка · (.+?) \\((\\d+) из (\\d+)\\) · проверяю как есть(.*)$",
+   "Repair · $1 ($2 of $3) · checking as is$4"
+  ],
+  [
+   "^Починка · (.+?) \\((\\d+) из (\\d+)\\) · вариант (\\d+) из (\\d+) · сейчас (\\d+/\\d+)(.*)$",
+   "Repair · $1 ($2 of $3) · variant $4 of $5 · now $6$7"
+  ],
+  [
+   "^Починка (остановлена|завершена) · улучшено (\\d+) из (\\d+)$",
+   "Repair finished · improved $2 of $3"
+  ],
+  [
+   "^было (\\d+/\\d+)$",
+   "was $1"
+  ],
+  [
+   "^Готово: починено стратегий — (\\d+)\\. Нажми «Включить» у нужной$",
+   "Done: strategies repaired — $1. Press “Turn on” on the one you want"
+  ],
+  [
+   "^Ошибка починки: (.+)$",
+   "Repair error: $1"
+  ],
   [
    "^Обновление до (.+)$",
    "Updating to $1"

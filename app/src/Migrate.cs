@@ -47,6 +47,17 @@ namespace ZapretCS
             }
             return n;
         }
+        // починенные стратегии (бета «Починить стратегии») — тоже переносим
+        int MigFixed()
+        {
+            int n = 0;
+            foreach (var f in Directory.GetFiles(migFrom, "* FIX*.bat"))
+            {
+                var dst = System.IO.Path.Combine(migTo, System.IO.Path.GetFileName(f));
+                if (!File.Exists(dst)) { File.Copy(f, dst); n++; }
+            }
+            return n;
+        }
         int MigMergeLists()
         {
             int added = 0;
@@ -118,7 +129,7 @@ namespace ZapretCS
             {
                 case 0: n = MigCopy("lists\\list-general-user.txt"); return n > 0 ? new[] { "ok", "перенесено " + Plural(CountSites(System.IO.Path.Combine(migTo, "lists\\list-general-user.txt"))) } : new[] { "skip", "нечего переносить" };
                 case 1: n = MigCopy("lists\\list-exclude-user.txt", "lists\\ipset-exclude-user.txt"); return n > 0 ? new[] { "ok", "файлов: " + n } : new[] { "skip", "нечего переносить" };
-                case 2: n = MigCopy("utils\\game_filter.enabled", "utils\\check_updates.enabled"); return n > 0 ? new[] { "ok", "настройки перенесены" } : new[] { "skip", "используются стандартные" };
+                case 2: n = MigCopy("utils\\game_filter.enabled", "utils\\check_updates.enabled") + MigFixed(); return n > 0 ? new[] { "ok", "настройки перенесены" } : new[] { "skip", "используются стандартные" };
                 case 3: n = MigMergeLists(); return n > 0 ? new[] { "ok", "добавлено: " + Plural(n) } : new[] { "skip", "в новой версии уже всё есть" };
                 case 4: n = MigTargets(); return n > 0 ? new[] { "ok", "добавлено: " + Plural(n) } : new[] { "skip", "в новой версии уже всё есть" };
                 default:
