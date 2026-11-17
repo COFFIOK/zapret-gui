@@ -78,7 +78,7 @@ namespace ZapretCS
             testing = true; testShown = 0; testTotal = strategies.Count * (RepairBudget + 1); testBegan = DateTime.Now;
             Btn("PowerBtn").IsEnabled = false; E<ComboBox>("StrategyBox").IsEnabled = false;
             SetVisual("off", "Идёт починка стратегий…");
-            testSync = new TestSync();
+            testSync = new TestSync(); abortChecks = false;
             var sync = testSync; string root = ZapretCore.Root, bin = System.IO.Path.Combine(root, "bin");
             new Thread(() => RepairWorker(sync, strategies, targets, root, bin, 3)) { IsBackground = true, Name = "repair" }.Start();
 
@@ -137,6 +137,7 @@ namespace ZapretCS
             for (int attempt = 1; attempt <= 2; attempt++)
             {
                 details = RunChecks(targets, timeout);
+                if (abortChecks) return -1;
                 ok = 0; total = 0;
                 foreach (var r in details) foreach (var tk in r.Tokens) { if (!tk.Contains("UNSUP")) total++; if (tk.EndsWith(":OK")) ok++; }
                 if (ok > 0 || !wasFirst) break;
@@ -164,6 +165,7 @@ namespace ZapretCS
                     sync.Current = shortName + " (" + index + " из " + strategies.Count + ") · проверяю как есть";
                     int total; List<SiteResult> det;
                     int baseOk = Measure(bat.Raw, bin, targets, timeout, ref first, out total, out det);
+                    if (sync.Cancel) break;
                     sync.Done++;
                     if (baseOk < 0) { Add(sync, new StratResult { Name = shortName, File = file, Failed = true, Note = "не запустилась" }); sync.Done = doneAt + RepairBudget + 1; continue; }
                     if (baseOk >= total) { Add(sync, new StratResult { Name = shortName, File = file, OK = baseOk, Total = total, Details = det, Note = "уже работает на 100%" }); sync.Done = doneAt + RepairBudget + 1; continue; }
@@ -181,12 +183,12 @@ namespace ZapretCS
                         sync.Current = shortName + " (" + index + " из " + strategies.Count + ") · вариант " + used + " из " + RepairBudget + " · сейчас " + bestOk + "/" + total;
                         int t1; List<SiteResult> d1;
                         int sc = Measure(c.Raw, bin, targets, timeout, ref first, out t1, out d1);
-                        if (sc <= bestOk) continue;
+                        if (sync.Cancel || sc <= bestOk) continue;
                         // повторная проверка: случайная удача не считается
                         int t2; List<SiteResult> d2;
                         int sc2 = Measure(c.Raw, bin, targets, timeout, ref first, out t2, out d2);
                         int conf = Math.Min(sc, sc2);
-                        if (conf <= bestOk) continue;
+                        if (sync.Cancel || conf <= bestOk) continue;
                         best = c.Raw; bestOk = conf; bestDet = sc2 <= sc ? d2 : d1; steps.Add(c.What + " → " + conf + "/" + total);
                         cands = Candidates(best, bin, rnd).Where(x => !tried.Contains(x.Raw)).ToList(); ci = 0;
                     }

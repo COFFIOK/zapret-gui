@@ -75,7 +75,7 @@ namespace ZapretCS
             Btn("RunBtn").Click += (s, e) => Safe(() =>
             {
                 var rb = Btn("RunBtn");
-                if (testing) { testSync.Cancel = true; rb.IsEnabled = false; rb.Content = Translate.T("Останавливаю…"); }
+                if (testing) { testSync.Cancel = true; rb.IsEnabled = false; rb.Content = Translate.T("Останавливаю…"); new Thread(AbortChecks) { IsBackground = true }.Start(); }
                 else if ((rb.Content as string) == Translate.T("Новый тест"))
                 {
                     ExitRepairMode();
@@ -177,7 +177,7 @@ namespace ZapretCS
             testing = true; testShown = 0; testTotal = strategies.Count; testBegan = DateTime.Now;
             Btn("PowerBtn").IsEnabled = false; E<ComboBox>("StrategyBox").IsEnabled = false;
             SetVisual("off", "Идёт тест стратегий…");
-            testSync = new TestSync();
+            testSync = new TestSync(); abortChecks = false;
             var sync = testSync; string bin = System.IO.Path.Combine(ZapretCore.Root, "bin");
             new Thread(() => TestWorker(sync, strategies, targets, bin, 3)) { IsBackground = true, Name = "test" }.Start();
 
@@ -199,6 +199,15 @@ namespace ZapretCS
             for (int i = 0; i < 20 && Process.GetProcessesByName("winws").Length > 0; i++) Thread.Sleep(100);
             Thread.Sleep(200);
         }
+        // «Остановить» обрывает проверку сразу: гасим запущенные curl и winws, новые проверки не начинаются
+        static volatile bool abortChecks;
+        static readonly HashSet<Process> liveCurl = new HashSet<Process>();
+        static void AbortChecks()
+        {
+            abortChecks = true;
+            lock (liveCurl) foreach (var p in liveCurl) { try { p.Kill(); } catch { } }
+            foreach (var p in Process.GetProcessesByName("winws")) { try { p.Kill(); } catch { } p.Dispose(); }
+        }
         static readonly string[] Kinds = { "HTTP", "TLS1.2", "TLS1.3" };
         static readonly string[] KindArgs = { "--http1.1", "--tlsv1.2 --tls-max 1.2", "--tlsv1.3 --tls-max 1.3" };
         static string CurlExe()
@@ -210,12 +219,16 @@ namespace ZapretCS
         static string[] Curl(string url, int kind, int timeout)
         {
             string label = Kinds[kind];
+            if (abortChecks) return new[] { label + ":ERR", "" };
             try
             {
                 var psi = new ProcessStartInfo(CurlExe(), "-I -s -m " + timeout + " --connect-timeout " + Math.Min(2, timeout) + " -o NUL -w %{http_code} --show-error " + KindArgs[kind] + " \"" + url + "\"")
                 { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
                 using (var p = Process.Start(psi))
                 {
+                    lock (liveCurl) liveCurl.Add(p);
+                    try
+                    {
                     var errTask = p.StandardError.ReadToEndAsync(); p.StandardOutput.ReadToEnd();
                     if (!p.WaitForExit((timeout + 4) * 1000)) { try { p.Kill(); } catch { } return new[] { label + ":ERR", label + " timeout" }; }
                     string err = errTask.Result.Trim(); int code = p.ExitCode;
@@ -223,6 +236,8 @@ namespace ZapretCS
                     if (code == 35 || Regex.IsMatch(err, "not supported|unsupported|Unknown option|schannel")) return new[] { label + ":UNSUP", "" };
                     if (code == 0) return new[] { label + ":OK", "" };
                     return new[] { label + ":ERR", label + " exit=" + code + " " + err };
+                    }
+                    finally { lock (liveCurl) liveCurl.Remove(p); }
                 }
             }
             catch (Exception ex) { return new[] { label + ":ERR", label + " exception: " + ex.Message }; }
@@ -243,7 +258,7 @@ namespace ZapretCS
                 if (t.Url != null) for (int k = 0; k < 3; k++) { int kk = k; jobs.Add(() => { var c = Curl(t.Url, kk, timeout); r.Tokens[kk] = c[0]; if (c[1].Length > 0) lock (r) r.Diag += (r.Diag.Length > 0 ? " | " : "") + c[1]; }); }
                 if (t.Ping != null) jobs.Add(() => r.Ping = PingHost(t.Ping));
             }
-            Parallel.ForEach(jobs, new ParallelOptions { MaxDegreeOfParallelism = 32 }, j => j());
+            Parallel.ForEach(jobs, new ParallelOptions { MaxDegreeOfParallelism = 32 }, j => { if (!abortChecks) j(); });
             foreach (var r in res) r.Tokens = r.Tokens.Where(x => x != null).ToArray();
             return res;
         }
@@ -273,6 +288,7 @@ namespace ZapretCS
                     for (int attempt = 1; attempt <= 2; attempt++)
                     {
                         res = RunChecks(targets, timeout);
+                        if (sync.Cancel) break;
                         ok = 0; total = 0; pok = 0; ptot = 0;
                         foreach (var r in res)
                         {
@@ -284,6 +300,7 @@ namespace ZapretCS
                         sync.Phase = "retry"; Thread.Sleep(2000);
                     }
                     first = false;
+                    if (sync.Cancel) break;      // недопроверенную стратегию в результаты не пишем
                     lock (sync.Results) sync.Results.Add(new StratResult { Name = s[0], File = s[1], OK = ok, Total = total, PingOK = pok, PingTotal = ptot, Details = res });
                     sync.Done++;
                 }
@@ -385,7 +402,7 @@ namespace ZapretCS
             List<StratResult> res;
             lock (sync.Results) res = sync.Results.OrderByDescending(r => r.Failed ? -1 : r.OK).ThenByDescending(r => r.PingOK).ToList();
             lastResults = res;
-            if (!cancelled && res.Count > 0 && S.Bool("betaLan")) { El("FixBtn").Visibility = Visibility.Visible; Translate.Tree(El("FixBtn")); }
+            if (res.Count > 0 && S.Bool("betaLan")) { El("FixBtn").Visibility = Visibility.Visible; Translate.Tree(El("FixBtn")); }
             var panel = E<Panel>("TestResults"); panel.Children.Clear();
             int rank = 1;
             foreach (var r in res) { panel.Children.Add(ResultRow(r, rank == 1 && !r.Failed && r.OK > 0, rank)); rank++; }
