@@ -89,6 +89,7 @@ namespace ZapretCS
             Step("telegram", WireTelegram);
             Step("settings", WireSettings);
             Step("test", WireTest);
+            Step("fallback", WireFallback);
             Step("migrate", WireMigrate);
             Step("updates", WireUpdates);
             Step("uninstall", WireUninstall);
@@ -167,11 +168,7 @@ namespace ZapretCS
         void Fill()
         {
             Tb("TitleVer").Text = "v" + AppVersion + (WinTasks.IsTestBuild ? "  ·  тест" : "");
-            var box = E<ComboBox>("StrategyBox");
-            foreach (var b in ZapretCore.Strategies())
-                box.Items.Add(new ComboBoxItem { Content = System.IO.Path.GetFileNameWithoutExtension(b), Tag = b });
-            SelectByTag(box, S.Str("strategy", "general") + ".bat");
-            if (box.SelectedItem == null && box.Items.Count > 0) box.SelectedIndex = 0;
+            RefreshStrategyBox();
             string ca = S.Str("closeAction", "ask");
             SelectByTag(E<ComboBox>("CloseBox"), ca);
             loading = false;
@@ -209,7 +206,9 @@ namespace ZapretCS
                 if (loading) return;
                 var it = E<ComboBox>("StrategyBox").SelectedItem as ComboBoxItem;
                 if (it == null) return;
-                S.Set("strategy", it.Content as string); S.Save();
+                S.Set("strategy", StratName(it));
+                if (!fbSwitching) { S.Set("fallbackMain", (string)it.Tag); fbGaveUp = false; }    // выбрал сам — это основная
+                S.Save();
                 if (State == "on" && ZapretCore.ServiceState() != "Running") { HideApply(); RestartZapret(); }
             });
             var cb = E<ComboBox>("CloseBox");
@@ -327,12 +326,14 @@ namespace ZapretCS
         {
             var it = E<ComboBox>("StrategyBox").SelectedItem as ComboBoxItem;
             if (it == null) { Toast("Выбери стратегию", true); return; }
-            SetVisual("starting", it.Content as string);
+            SetVisual("starting", StratName(it));
+            fbWant = true;
             deadline = DateTime.Now.AddSeconds(12);
             ZapretCore.Start((string)it.Tag, S.Bool("showWindow"), out hiddenStart);
         }
         public void StopZapret(bool quiet = false)
         {
+            fbWant = false;
             SetVisual("stopping", "");
             deadline = DateTime.Now.AddSeconds(8);
             bool svc; ZapretCore.Stop(out svc);

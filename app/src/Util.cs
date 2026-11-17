@@ -73,6 +73,7 @@ namespace ZapretCS
             bool b; return bool.TryParse(Convert.ToString(v), out b) && b;
         }
         public void Set(string key, object value) { d[key] = value; }
+        public object Raw(string key) { object v; return d.TryGetValue(key, out v) ? v : null; }
 
         public void Save()
         {

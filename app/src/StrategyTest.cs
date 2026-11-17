@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.NetworkInformation;
@@ -20,7 +21,7 @@ namespace ZapretCS
 {
     class TestTarget { public string Name, Url, Ping, Group; }
     class SiteResult { public string Name, Group, Ping = "n/a", Diag = ""; public string[] Tokens; public bool IsUrl; }
-    class StratResult { public string Name, File; public bool Failed; public int OK, Total, PingOK, PingTotal; public List<SiteResult> Details = new List<SiteResult>(); }
+    class StratResult { public string Name, File; public bool Failed; public int OK, Total, PingOK, PingTotal; public double Speed; public List<SiteResult> Details = new List<SiteResult>(); }
     class TestSync
     {
         public volatile int Done; public volatile string Current = "", Phase = ""; public volatile bool Finished, Cancel; public string Error;
@@ -123,7 +124,7 @@ namespace ZapretCS
                 gp.Children.Add(PickRow(g, g, true, GroupColor(g, false), tg.Count(t => t.Group == g).ToString(), null));
             var cur = E<ComboBox>("StrategyBox").SelectedItem as ComboBoxItem;
             foreach (ComboBoxItem it in E<ComboBox>("StrategyBox").Items)
-                sp.Children.Add(PickRow(ShortName((string)it.Content), (string)it.Tag, true, null, null, it == cur ? "сейчас" : null));
+                sp.Children.Add(PickRow(ShortName(StratName(it)), (string)it.Tag, true, null, null, it == cur ? "сейчас" : null));
             UpdateTestHint();
         }
         void ToggleAllRows(Panel p)
@@ -196,6 +197,38 @@ namespace ZapretCS
             abortChecks = true;
             lock (liveCurl) foreach (var p in liveCurl) { try { p.Kill(); } catch { } }
             foreach (var p in Process.GetProcessesByName("winws")) { try { p.Kill(); } catch { } p.Dispose(); }
+        }
+        // скорость (КБ/с): главная YouTube и большая картинка с её серверов, одновременно; 0 — не загрузилось
+        static readonly string[] SpeedUrls = { "https://www.youtube.com/", "https://i.ytimg.com/vi/aqz-KE-bpKQ/maxresdefault.jpg" };
+        static double MeasureSpeed()
+        {
+            var size = new double[SpeedUrls.Length]; var time = new double[SpeedUrls.Length];
+            Parallel.For(0, SpeedUrls.Length, i =>
+            {
+                if (abortChecks) return;
+                try
+                {
+                    var psi = new ProcessStartInfo(CurlExe(), "-s -o NUL -m 6 --connect-timeout 3 -w \"%{size_download} %{time_total}\" \"" + SpeedUrls[i] + "\"")
+                    { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
+                    using (var p = Process.Start(psi))
+                    {
+                        lock (liveCurl) liveCurl.Add(p);
+                        try
+                        {
+                            var errTask = p.StandardError.ReadToEndAsync();
+                            string o = p.StandardOutput.ReadToEnd();
+                            if (!p.WaitForExit(10000)) { try { p.Kill(); } catch { } return; }
+                            var parts = o.Trim().Split(' ');
+                            double sz, tm;
+                            if (parts.Length == 2 && double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out sz) && double.TryParse(parts[1].Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out tm)) { size[i] = sz; time[i] = tm; }
+                        }
+                        finally { lock (liveCurl) liveCurl.Remove(p); }
+                    }
+                }
+                catch (Exception ex) { Log.Err("speed", ex); }
+            });
+            double t = time.Max(), b = size.Sum();
+            return t > 0.05 && b > 20000 ? b / t / 1024 : 0;
         }
         static readonly string[] Kinds = { "HTTP", "TLS1.2", "TLS1.3" };
         static readonly string[] KindArgs = { "--http1.1", "--tlsv1.2 --tls-max 1.2", "--tlsv1.3 --tls-max 1.3" };
@@ -290,7 +323,15 @@ namespace ZapretCS
                     }
                     first = false;
                     if (sync.Cancel) break;      // недопроверенную стратегию в результаты не пишем
-                    lock (sync.Results) sync.Results.Add(new StratResult { Name = s[0], File = s[1], OK = ok, Total = total, PingOK = pok, PingTotal = ptot, Details = res });
+                    // скорость загрузки YouTube: стратегия может «открывать», но тормозить
+                    double speed = 0;
+                    if (ok > 0 && targets.Any(t => t.Url != null && t.Url.Contains("youtube")))
+                    {
+                        sync.Phase = "speed";
+                        speed = MeasureSpeed();
+                        if (sync.Cancel) break;
+                    }
+                    lock (sync.Results) sync.Results.Add(new StratResult { Name = s[0], File = s[1], OK = ok, Total = total, PingOK = pok, PingTotal = ptot, Details = res, Speed = speed });
                     sync.Done++;
                 }
             }
@@ -310,7 +351,7 @@ namespace ZapretCS
                 double per = (DateTime.Now - testBegan).TotalSeconds / done; int left = (int)(per * (testTotal - done));
                 eta = left >= 60 ? " · осталось ~" + Math.Round(left / 60.0) + " мин" : " · осталось ~" + left + " с";
             }
-            string phase = sync.Phase == "test" ? "проверяю сайты" : sync.Phase == "retry" ? "перепроверяю" : "запускаю";
+            string phase = sync.Phase == "test" ? "проверяю сайты" : sync.Phase == "retry" ? "перепроверяю" : sync.Phase == "speed" ? "замеряю скорость" : "запускаю";
             Tb("TestStatus").Text = Translate.T("Стратегия " + Math.Min(done + 1, testTotal) + " из " + testTotal + " · " + sync.Current + " · " + phase + eta);
             lock (sync.Results)
                 while (testShown < sync.Results.Count) { E<Panel>("TestResults").Children.Insert(0, ResultRow(sync.Results[testShown], false, 0)); testShown++; }
@@ -342,8 +383,8 @@ namespace ZapretCS
             track.Child = new Border { CornerRadius = new CornerRadius(0), Background = Theme.B(col), RenderTransformOrigin = new Point(0, 0.5), RenderTransform = sc };
             Grid.SetColumn(track, 1); g.Children.Add(track);
             Anim.D(sc, Anim.SX, ratio, 700, 0, begin: 150);
-            var txt = Txt(r.Failed ? "не запустилась" : r.OK + "/" + r.Total + " · " + (int)(ratio * 100) + "%" + (r.PingTotal > 0 ? " · ping " + r.PingOK + "/" + r.PingTotal : ""), 12, col);
-            txt.Width = 175; txt.TextAlignment = TextAlignment.Right;
+            var txt = Txt(r.Failed ? "не запустилась" : r.OK + "/" + r.Total + " · " + (int)(ratio * 100) + "%" + (r.PingTotal > 0 ? " · ping " + r.PingOK + "/" + r.PingTotal : "") + (r.Speed > 0 ? " · " + SpeedText(r.Speed) : ""), 12, col);
+            txt.Width = 235; txt.TextAlignment = TextAlignment.Right;
             Grid.SetColumn(txt, 2); g.Children.Add(txt);
             if (best)
             {
@@ -381,7 +422,9 @@ namespace ZapretCS
             Btn("PowerBtn").IsEnabled = true; E<ComboBox>("StrategyBox").IsEnabled = true;
             Btn("RunBtn").Content = Translate.T("Новый тест"); Btn("RunBtn").IsEnabled = true;
             List<StratResult> res;
-            lock (sync.Results) res = sync.Results.OrderByDescending(r => r.Failed ? -1 : r.OK).ThenByDescending(r => r.PingOK).ToList();
+            lock (sync.Results) res = sync.Results.OrderByDescending(r => r.Failed ? -1 : r.OK).ThenByDescending(r => r.PingOK).ThenByDescending(r => r.Speed).ToList();
+            abortChecks = false;
+            try { SaveScores(res); RefreshStrategyBox(); } catch (Exception scEx) { Log.Err("scores", scEx); }
             var panel = E<Panel>("TestResults"); panel.Children.Clear();
             int rank = 1;
             foreach (var r in res) { panel.Children.Add(ResultRow(r, rank == 1 && !r.Failed && r.OK > 0, rank)); rank++; }

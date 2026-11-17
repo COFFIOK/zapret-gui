@@ -928,6 +928,27 @@
                         </Grid>
                       </StackPanel>
                     </Border>
+                    <!-- запасные стратегии: включаются сами, если основная перестала работать -->
+                    <Border Style="{StaticResource SetCard}" Margin="0,12,0,0">
+                      <StackPanel>
+                        <Grid Margin="0,0,0,12">
+                          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions>
+                          <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Запасная стратегия" FontSize="13"/>
+                            <TextBlock Text="если основная перестанет работать" Foreground="{StaticResource Muted}" FontSize="11"/>
+                          </StackPanel>
+                          <ComboBox x:Name="Fallback1Box" Grid.Column="1"/>
+                        </Grid>
+                        <Grid>
+                          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions>
+                          <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Вторая запасная" FontSize="13"/>
+                            <TextBlock Text="если не поможет и первая" Foreground="{StaticResource Muted}" FontSize="11"/>
+                          </StackPanel>
+                          <ComboBox x:Name="Fallback2Box" Grid.Column="1"/>
+                        </Grid>
+                      </StackPanel>
+                    </Border>
                   </StackPanel>
 
                   <!-- 1: Запуск -->

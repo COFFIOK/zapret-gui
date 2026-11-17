@@ -163,6 +163,7 @@ namespace ZapretCS
         }
         void OpenSettings()
         {
+            FillFallbackBoxes();
             OverlayOpened("Settings");
             El("SettingsOverlay").Visibility = Visibility.Visible;
             Anim.D(A("Dim"), Anim.OP, 1, 260, 0);

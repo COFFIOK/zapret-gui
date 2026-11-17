@@ -407,9 +407,30 @@
   "ВНЕШНИЙ ВИД": "APPEARANCE",
   "Перезапускаю приложение…": "Restarting the app…",
   "тестовая сборка": "test build",
-  "Удалить Zapret?": "Remove Zapret?"
+  "Удалить Zapret?": "Remove Zapret?",
+  "Запасная стратегия": "Backup strategy",
+  "если основная перестанет работать": "if the main one stops working",
+  "Вторая запасная": "Second backup",
+  "если не поможет и первая": "if the first one doesn't help either",
+  "Запасные стратегии тоже не помогли — запусти тест стратегий": "Backup strategies didn't help either — run the strategy test"
  },
  "patterns": [
+  [
+   "^(.+?) перестала работать — включил запасную (.+)$",
+   "$1 stopped working — switched to backup $2"
+  ],
+  [
+   "^(.+)  ·  не запустилась$",
+   "$1  ·  failed to start"
+  ],
+  [
+   "^(.*) · ([\\d,]+) МБ/с$",
+   "$1 · $2 MB/s"
+  ],
+  [
+   "^(.*) · (\\d+) КБ/с$",
+   "$1 · $2 KB/s"
+  ],
   [
    "^Обновление до (.+)$",
    "Updating to $1"
