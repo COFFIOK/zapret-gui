@@ -50,7 +50,7 @@ namespace ZapretCS
         }
 
         // домены для списка группы: свои группы — все сайты группы, встроенные — домены проверочных адресов
-        static string BaseDomain(string host)
+        static string ZListDomain(string host)
         {
             var p = host.Trim('.').Split('.');
             if (p.Length <= 2) return host;
@@ -67,7 +67,7 @@ namespace ZapretCS
                 if (ug != null && ug.Has(g)) set.AddRange(ug[g].Where(x => !x.StartsWith("#")).Select(x => x.Trim()));
                 foreach (var t in targets.Where(t => t.Group == g))
                 {
-                    Uri u; if (Uri.TryCreate(t.Url, UriKind.Absolute, out u)) set.Add(BaseDomain(u.Host));
+                    Uri u; if (Uri.TryCreate(t.Url, UriKind.Absolute, out u)) set.Add(ZListDomain(u.Host));
                 }
                 res[g] = set.Where(x => x.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
             }
