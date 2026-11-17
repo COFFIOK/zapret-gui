@@ -440,7 +440,12 @@ namespace ZapretDevTool
         {
             return Row(
                 Btn("СОБРАТЬ", true, () => Run("Сборка", () => Compile())),
-                Btn("ЗАПУСТИТЬ ТЕСТОВУЮ КОПИЮ", false, () => { if (File.Exists(P("out\\ZapretCS.exe"))) Open(P("out\\ZapretCS.exe")); else Log("Сначала собери."); }),
+                Btn("ЗАПУСТИТЬ ТЕСТОВУЮ КОПИЮ", false, () =>
+                {
+                    if (TestCopyRunning()) Log("Тестовая копия уже открыта. Чтобы открыть свежую сборку, закрой её (значок в трее → Выход) и нажми ещё раз.");
+                    else if (File.Exists(P("out\\ZapretCS.exe"))) Open(P("out\\ZapretCS.exe"));
+                    else Log("Сначала собери.");
+                }),
                 Btn("САМОПРОВЕРКА", false, () => Run("Самопроверка", () => { if (!Compile()) return; SelfTest(); })),
                 Btn("ОТЧЁТ И СКРИНШОТЫ", false, () => { if (Directory.Exists(P("selftest"))) Open(P("selftest")); else Log("Самопроверку ещё не запускали."); }),
                 Btn("ЖУРНАЛ ОШИБОК", false, () => { if (File.Exists(P("out\\gui-error.log"))) Open(P("out\\gui-error.log")); else Log("Журнала пока нет."); }),
@@ -460,6 +465,14 @@ namespace ZapretDevTool
             }) { IsBackground = true }.Start();
         }
 
+        // тестовая копия запускается как ZapretCS.exe (установленная программа — Zapret.exe)
+        static bool TestCopyRunning()
+        {
+            var ps = Process.GetProcessesByName("ZapretCS");
+            foreach (var p in ps) p.Dispose();
+            return ps.Length > 0;
+        }
+
         bool Compile()
         {
             var sw = Stopwatch.StartNew();
@@ -469,6 +482,7 @@ namespace ZapretDevTool
             foreach (var line in bl.Split('\n').Select(l => l.TrimEnd()).Where(l => l.Length > 0 && !l.Contains("build start"))) Log("  " + line);
             bool ok = bl.Contains("BUILD OK");
             Log(ok ? "Собрано за " + sw.Elapsed.TotalSeconds.ToString("0.0") + " с" : "НЕ СОБРАЛОСЬ — ошибки выше");
+            if (ok && TestCopyRunning()) Log("Тестовая копия ещё открыта — в ней старая сборка. Закрой её (значок в трее → Выход) и запусти заново.");
             return ok;
         }
 
