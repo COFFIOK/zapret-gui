@@ -935,7 +935,7 @@
                           <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions>
                           <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="Запасная стратегия" FontSize="13"/>
-                            <TextBlock Text="если основная перестанет работать" Foreground="{StaticResource Muted}" FontSize="11"/>
+                            <TextBlock Text="если основная не работает" Foreground="{StaticResource Muted}" FontSize="11"/>
                           </StackPanel>
                           <ComboBox x:Name="Fallback1Box" Grid.Column="1"/>
                         </Grid>
@@ -943,7 +943,7 @@
                           <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions>
                           <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="Вторая запасная" FontSize="13"/>
-                            <TextBlock Text="если не поможет и первая" Foreground="{StaticResource Muted}" FontSize="11"/>
+                            <TextBlock Text="если не помогла первая" Foreground="{StaticResource Muted}" FontSize="11"/>
                           </StackPanel>
                           <ComboBox x:Name="Fallback2Box" Grid.Column="1"/>
                         </Grid>
