@@ -89,7 +89,7 @@ namespace ZapretCS
                 else if (repairMode) StartRepair();
                 else StartTest();
             });
-            Btn("FixBtn").Click += (s, e) => Safe(EnterRepairMode);
+            Btn("FixBtn").Click += (s, e) => Safe(StartRepair);
             testTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
             testTimer.Tick += (s, e) => { try { TestTick(); } catch (Exception ex) { Log.Write("test: " + ex); } };
         }
@@ -151,9 +151,8 @@ namespace ZapretCS
             }
             var groups = Picked(E<Panel>("GroupChips")); var strats = Picked(E<Panel>("StratChips"));
             int sites = TestTargets().Count(t => groups.Contains(t.Group));
-            int sec = repairMode ? (int)(strats.Count * (RepairBudget * 4.5 + 3 * (5 + Math.Ceiling(sites / 45.0)))) : (int)(strats.Count * (5 + Math.Ceiling(sites / 30.0)) + 3);
+            int sec = (int)(strats.Count * (5 + Math.Ceiling(sites / 30.0)) + 3);
             Tb("TestStatus").Text = Translate.T(strats.Count == 0 || sites == 0 ? "Выбери хотя бы одну группу и одну стратегию"
-                : repairMode ? strats.Count + " стратегий × до " + RepairBudget + " вариантов · примерно " + Math.Max(1, (int)Math.Round(sec / 60.0)) + " мин"
                 : strats.Count + " стратегий × " + sites + " сайтов · примерно " + Math.Max(1, (int)Math.Round(sec / 60.0)) + " мин");
             Btn("RunBtn").IsEnabled = strats.Count > 0 && sites > 0;
         }
@@ -322,7 +321,7 @@ namespace ZapretCS
                 eta = left >= 60 ? " · осталось ~" + Math.Round(left / 60.0) + " мин" : " · осталось ~" + left + " с";
             }
             string phase = sync.Phase == "test" ? "проверяю сайты" : sync.Phase == "retry" ? "перепроверяю" : "запускаю";
-            Tb("TestStatus").Text = Translate.T(repairMode ? "Починка · " + sync.Current + eta : "Стратегия " + Math.Min(done + 1, testTotal) + " из " + testTotal + " · " + sync.Current + " · " + phase + eta);
+            Tb("TestStatus").Text = Translate.T(repairMode ? "Сборка · " + sync.Current + eta : "Стратегия " + Math.Min(done + 1, testTotal) + " из " + testTotal + " · " + sync.Current + " · " + phase + eta);
             lock (sync.Results)
                 while (testShown < sync.Results.Count)
                 {

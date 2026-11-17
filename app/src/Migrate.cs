@@ -47,14 +47,19 @@ namespace ZapretCS
             }
             return n;
         }
-        // починенные стратегии (бета «Починить стратегии») — тоже переносим
+        // своя стратегия Z (бета «Собрать свою стратегию») и её списки сайтов — тоже переносим
         int MigFixed()
         {
             int n = 0;
-            foreach (var f in Directory.GetFiles(migFrom, "* FIX*.bat"))
+            var files = Directory.GetFiles(migFrom, "general (Z).bat").ToList();
+            var lists = System.IO.Path.Combine(migFrom, "lists");
+            if (Directory.Exists(lists)) files.AddRange(Directory.GetFiles(lists, "zgui-*.txt"));
+            foreach (var f in files)
             {
-                var dst = System.IO.Path.Combine(migTo, System.IO.Path.GetFileName(f));
-                if (!File.Exists(dst)) { File.Copy(f, dst); n++; }
+                var dst = migTo.TrimEnd('\\') + f.Substring(migFrom.TrimEnd('\\').Length);
+                if (File.Exists(dst)) continue;
+                Directory.CreateDirectory(System.IO.Path.GetDirectoryName(dst));
+                File.Copy(f, dst); n++;
             }
             return n;
         }

@@ -1158,10 +1158,10 @@
                     </Border>
                   </StackPanel>
                   <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <!-- починка стратегий (бета): появляется после теста, если включено бета-тестирование -->
+                    <!-- своя стратегия Z (бета): появляется после теста, если включено бета-тестирование -->
                     <Button x:Name="FixBtn" Style="{StaticResource Btn}" Padding="16,10" Margin="0,0,10,0" Visibility="Collapsed">
                       <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Починить стратегии" VerticalAlignment="Center"/>
+                        <TextBlock Text="Собрать свою стратегию" VerticalAlignment="Center"/>
                         <Border Background="#FFB547" Padding="5,0,5,1" Margin="8,0,0,0" VerticalAlignment="Center"><TextBlock Text="бета" FontSize="10" FontWeight="SemiBold" Foreground="#121419"/></Border>
                       </StackPanel>
                     </Button>
