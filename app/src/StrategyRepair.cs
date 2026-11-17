@@ -18,8 +18,9 @@ namespace ZapretCS
 {
     partial class MainUi
     {
-        const int RepairBudget = 24;            // сколько изменённых вариантов пробуем при доводке
-        const int Donors = 4;                   // сколько лучших стратегий из теста берём за основу
+        const int RepairBudget = 60;            // сколько изменённых вариантов пробуем при доводке (всего)
+        const int GroupStale = 20;              // столько вариантов подряд без улучшения — группу больше не доводим
+        const int Donors = 6;                   // сколько лучших стратегий из теста берём за основу
         const string ZFile = "general (Z).bat";
         bool repairMode;                        // окно теста сейчас в режиме сборки своей стратегии
         List<string> lastGroups;
@@ -88,7 +89,7 @@ namespace ZapretCS
             EnterRepairMode();
             El("FixBtn").Visibility = Visibility.Collapsed;
             testWasOn = State == "on";
-            testing = true; testShown = 0; testTotal = 2 + donors.Count * 3 + RepairBudget; testBegan = DateTime.Now;
+            testing = true; testShown = 0; testTotal = 4 + donors.Count * 3 + RepairBudget; testBegan = DateTime.Now;
             Btn("PowerBtn").IsEnabled = false; E<ComboBox>("StrategyBox").IsEnabled = false;
             SetVisual("off", "Собираю свою стратегию…");
             testSync = new TestSync(); abortChecks = false;
@@ -179,10 +180,12 @@ namespace ZapretCS
         // ---- варианты: одна правка в одном профиле (между --new), который обходит сайты (TCP 80/443) ----
         static readonly string[] RModes = { "fake", "multisplit", "multidisorder", "fakedsplit", "fakeddisorder", "hostfakesplit", "fake,multisplit", "fake,multidisorder", "fake,fakedsplit", "fake,hostfakesplit" };
         static readonly string[] RSplitPos = { "1", "2", "midsld", "1,midsld", "sniext+1", "host+1" };
-        static readonly string[] RRepeats = { "2", "4", "6", "8", "11" };
+        static readonly string[] RRepeats = { "2", "3", "4", "6", "8", "10", "11", "12" };
         static readonly string[] RFooling = { "ts", "badseq", "md5sig", "badsum", "badseq,ts" };
         static readonly string[] RSeqovl = { "1", "336", "568", "681" };
-        static readonly string[] RTlsMod = { "rnd,dupsid,sni=www.google.com", "rnd,rndsni" };
+        static readonly string[] RTlsMod = { "rnd,dupsid,sni=www.google.com", "rnd,dupsid,sni=ya.ru", "rnd,sni=vk.com", "rnd,rndsni", "none" };
+        static readonly string[] RHostMod = { "host=www.google.com,altorder=1", "host=ya.ru,altorder=1", "host=vk.com,altorder=1", "host=www.google.com" };
+        static readonly string[] RCutoff = { "n2", "n3", "d3" };
 
         static string OptRx(string name) { return @"(?<=\s|^)--" + Regex.Escape(name) + @"=(""[^""]*""|\S*)"; }
         static string GetOpt(string p, string name) { var m = Regex.Match(p, OptRx(name)); return m.Success ? m.Groups[1].Value : null; }
@@ -206,7 +209,9 @@ namespace ZapretCS
             var parts = Regex.Split(raw, @"(?<=\s)--new(?=\s)");
             var list = new List<Cand>();
             string[] fakes = new string[0];
+            string[] httpFakes = new string[0];
             try { fakes = Directory.GetFiles(bin, "tls_clienthello*.bin").Select(f => System.IO.Path.GetFileName(f)).ToArray(); } catch { }
+            try { httpFakes = Directory.GetFiles(bin, "http*.bin").Select(f => System.IO.Path.GetFileName(f)).ToArray(); } catch { }
             for (int i = 0; i < parts.Length; i++)
             {
                 string p = parts[i];
@@ -224,12 +229,18 @@ namespace ZapretCS
                 foreach (var v in RRepeats) add(SetOpt(p, "dpi-desync-repeats", v), "повторы " + v, 0);
                 foreach (var v in RSplitPos) add(SetOpt(p, "dpi-desync-split-pos", v), "разрез " + v, 0);
                 foreach (var f in fakes) add(SetOpt(p, "dpi-desync-fake-tls", "\"%BIN%" + f + "\""), "подделка " + f, 0);
+                foreach (var v in new[] { "0x00000000", "!" }) add(SetOpt(p, "dpi-desync-fake-tls", v), "подделка " + v, 0);
                 foreach (var v in RTlsMod) add(SetOpt(p, "dpi-desync-fake-tls-mod", v), "вид подделки " + v, 1);
+                if ((GetOpt(p, "dpi-desync") ?? "").Contains("hostfakesplit")) foreach (var v in RHostMod) add(SetOpt(p, "dpi-desync-hostfakesplit-mod", v), "подмена хоста " + v, 0);
+                foreach (var f in httpFakes) add(SetOpt(p, "dpi-desync-fake-http", "\"%BIN%" + f + "\""), "подделка http " + f, 1);
+                foreach (var v in RCutoff) add(SetOpt(p, "dpi-desync-cutoff", v), "отсечка " + v, 1);
+                if (GetOpt(p, "dpi-desync-split-seqovl") != null && GetOpt(p, "dpi-desync-split-seqovl-pattern") == null)
+                    foreach (var f in fakes.Take(3)) add(SetOpt(p, "dpi-desync-split-seqovl-pattern", "\"%BIN%" + f + "\""), "узор перекрытия " + f, 1);
                 if (GetOpt(p, "dpi-desync-split-seqovl") != null) add(RemoveOpt(RemoveOpt(p, "dpi-desync-split-seqovl"), "dpi-desync-split-seqovl-pattern"), "без перекрытия", 1);
                 foreach (var v in RSeqovl) add(SetOpt(p, "dpi-desync-split-seqovl", v), "перекрытие " + v, 1);
                 if (GetOpt(p, "dpi-desync-ttl") != null || GetOpt(p, "dpi-desync-autottl") != null) add(RemoveOpt(RemoveOpt(p, "dpi-desync-ttl"), "dpi-desync-autottl"), "без ttl", 1);
-                foreach (var v in new[] { "3", "5" }) add(SetOpt(RemoveOpt(p, "dpi-desync-autottl"), "dpi-desync-ttl", v), "ttl " + v, 1);
-                add(SetOpt(RemoveOpt(p, "dpi-desync-ttl"), "dpi-desync-autottl", "2"), "autottl 2", 1);
+                foreach (var v in new[] { "1", "2", "3", "4", "5" }) add(SetOpt(RemoveOpt(p, "dpi-desync-autottl"), "dpi-desync-ttl", v), "ttl " + v, 1);
+                foreach (var v in new[] { "1", "2", "3" }) add(SetOpt(RemoveOpt(p, "dpi-desync-ttl"), "dpi-desync-autottl", v), "autottl " + v, 1);
                 foreach (var v in RModes) add(SetOpt(p, "dpi-desync", v), "режим " + v, 2);
             }
             return list.OrderBy(c => c.Order).ToList();
@@ -304,7 +315,7 @@ namespace ZapretCS
                 {
                     if (sync.Cancel) return;
                     si++; sync.Current = "Z · настройки из " + set[1] + " (" + si + " из " + sets.Count + ")";
-                    if (sync.Done < total - RepairBudget - 1) sync.Done++;
+                    if (sync.Done < total - RepairBudget - 3) sync.Done++;
                     string args = ZapretCore.ResolveArgs(TestHead + set[0]);
                     if (args == null || !StartWinws(bin, args, false)) continue;
                     var d = FullCheck(fx, timeout, false); if (d == null) return;
@@ -315,25 +326,40 @@ namespace ZapretCS
                             best[kv.Key] = new GBest { Opts = set[0], From = set[1], Ok = kv.Value[0], Total = kv.Value[1], Det = Enumerable.Range(0, fx.Count).Where(i => fx[i].Group == kv.Key).Select(i => d[i]).ToList() };
                     }
                 }
-                sync.Done = total - RepairBudget - 1;
+                sync.Done = total - RepairBudget - 3;
 
-                // 2. доводка слабых групп: меняем по одной настройке, быстрая проверка → полная проверка группы
-                var tried = new HashSet<string>(sets.Select(x => x[0]));
+                // 2. доводка: группы, где лучшие настройки не открывают всё, — меняем по одной настройке;
+                //    быстрая проверка (только то, что не открывается, + контрольные) → полная проверка группы.
+                //    Если одиночные правки кончились — идём от самого «многообещающего» варианта (вторые правки).
+                var gBase = GroupScore(detB, fx);
+                var tried = new HashSet<string>(sets.SelectMany(x => groups.Select(g => g + "|" + x[0])));
                 var queues = new Dictionary<string, List<Cand>>();
-                int used = 0;
+                var stale = groups.ToDictionary(g => g, g => 0);
+                var promising = groups.ToDictionary(g => g, g => new List<KeyValuePair<int, string>>());
+                var expanded = new HashSet<string>();
+                int used = 0, turn = 0;
                 while (used < RepairBudget && !sync.Cancel)
                 {
-                    var weak = groups.Where(g => best[g] != null && best[g].Ok < best[g].Total && (!queues.ContainsKey(g) || queues[g].Count > 0))
-                        .OrderBy(g => (double)best[g].Ok / Math.Max(1, best[g].Total)).ToList();
+                    var weak = groups.Where(g => best[g] != null && best[g].Ok < best[g].Total && stale[g] < GroupStale).ToList();
+                    // очередь пуста — пробуем продолжить от многообещающего варианта
+                    foreach (var g in weak.ToList())
+                    {
+                        if (queues.ContainsKey(g) && queues[g].Count > 0) continue;
+                        string from = !queues.ContainsKey(g) ? best[g].Opts
+                            : promising[g].OrderByDescending(x => x.Key).Select(x => x.Value).FirstOrDefault(o => !expanded.Contains(g + "|" + o));
+                        if (from == null) { weak.Remove(g); continue; }
+                        expanded.Add(g + "|" + from);
+                        queues[g] = Candidates(TestHead + from, bin, rnd).Where(cd => !tried.Contains(g + "|" + DesyncOpts(cd.Raw))).ToList();
+                        if (queues[g].Count == 0) weak.Remove(g);
+                    }
                     if (weak.Count == 0) break;
-                    string grp = weak[used % weak.Count];
+                    string grp = weak.OrderBy(g => (double)best[g].Ok / Math.Max(1, best[g].Total)).ElementAt(turn++ % weak.Count);
                     var gb = best[grp];
-                    if (!queues.ContainsKey(grp)) queues[grp] = Candidates(TestHead + gb.Opts, bin, rnd);
                     var q = queues[grp];
                     var c = q[0]; q.RemoveAt(0);
                     string opts = DesyncOpts(c.Raw);
                     if (!tried.Add(grp + "|" + opts)) continue;
-                    used++; sync.Done++;
+                    used++; stale[grp]++; if (sync.Done < total - 2) sync.Done++;
                     sync.Current = "Z · доводка «" + grp + "» · вариант " + used + " из " + RepairBudget + " · сейчас " + gb.Ok + "/" + gb.Total;
                     string args = ZapretCore.ResolveArgs(TestHead + opts);
                     if (args == null || !StartWinws(bin, args, false) || sync.Cancel) continue;
@@ -349,60 +375,79 @@ namespace ZapretCS
                     if (r == null) return;
                     int fixedN = 0, broke = 0;
                     for (int i = 0; i < r.Length; i++) { if (i < fail.Count) { if (r[i]) fixedN++; } else if (!r[i]) broke++; }
+                    if (fixedN > 0) promising[grp].Add(new KeyValuePair<int, string>(fixedN - broke, opts));
                     if (fixedN == 0 || broke > 0) continue;
                     sync.Current = "Z · доводка «" + grp + "» · вариант " + used + " из " + RepairBudget + " · полная проверка";
                     var d = FullCheck(gfx, timeout, false); if (d == null) return;
                     int tt; int sc = Score(d, out tt);
                     if (sc <= gb.Ok) continue;
                     best[grp] = new GBest { Opts = opts, From = gb.From.EndsWith("*") ? gb.From : gb.From + "*", Ok = sc, Total = tt, Det = d };
-                    queues.Remove(grp);
+                    queues.Remove(grp); stale[grp] = 0; promising[grp].Clear();
                     note("«" + grp + "»: " + c.What + " → " + sc + "/" + tt);
                 }
                 if (sync.Cancel) return;
-                sync.Done = total - 1;
+                sync.Done = total - 2;
 
-                // 3. сборка: свой профиль (со своим списком сайтов) на каждый набор настроек — ПЕРЕД профилями лучшей готовой
+                // 3. сборка: свой профиль (со своим списком сайтов) — только для групп, где найденное лучше лучшей готовой как есть;
+                //    профили стоят ПЕРЕД профилями лучшей готовой, всё остальное (голос, QUIC, игры) — без изменений
                 var listDir = System.IO.Path.Combine(root, "lists");
-                foreach (var f in Directory.GetFiles(listDir, "zgui-*.txt")) { try { File.Delete(f); } catch (Exception ex) { Log.Err("z lists", ex); } }
-                var profiles = new List<string>(); int n = 0;
-                foreach (var byOpts in groups.Where(g => best[g] != null && best[g].Ok > 0).GroupBy(g => best[g].Opts))
-                {
-                    var lists = new List<string>();
-                    foreach (var g in byOpts)
-                    {
-                        List<string> h; if (!hosts.TryGetValue(g, out h) || h.Count == 0) continue;
-                        n++; string lf = "zgui-" + n + ".txt";
-                        File.WriteAllLines(System.IO.Path.Combine(listDir, lf), h, new UTF8Encoding(false));
-                        lists.Add("--hostlist=\"%LISTS%" + lf + "\"");
-                    }
-                    if (lists.Count > 0) profiles.Add("--filter-tcp=80,443 " + string.Join(" ", lists) + " " + byOpts.Key);
-                }
+                var use = groups.Where(g => best[g] != null && best[g].Ok > (gBase.ContainsKey(g) ? gBase[g][0] : 0)).ToList();
+                foreach (var g in groups) note("«" + g + "»: как есть " + (gBase.ContainsKey(g) ? gBase[g][0] + "/" + gBase[g][1] : "-") + ", найдено " + (best[g] == null ? "-" : best[g].Ok + "/" + best[g].Total + " (" + best[g].From + ")") + (use.Contains(g) ? " → свой профиль" : ""));
                 var parts = Regex.Split(bat0.Raw, @"(?<=\s)--new(?=\s)");
-                string first = WithoutGlobals(parts[0]).Trim();
-                var tail = new List<string>(profiles);
-                if (first.Length > 0) tail.Add(first);
-                tail.AddRange(parts.Skip(1).Select(x => x.Trim()).Where(x => x.Length > 0));
-                string raw = " " + Globals(parts[0]) + " " + string.Join(" --new ", tail);
+                string raw = null; List<SiteResult> dF = null; int okF = 0, tf = 0;
+                for (int round = 1; round <= 3 && !sync.Cancel; round++)
+                {
+                    foreach (var f in Directory.GetFiles(listDir, "zgui-*.txt")) { try { File.Delete(f); } catch (Exception ex) { Log.Err("z lists", ex); } }
+                    var profiles = new List<string>(); int n = 0;
+                    foreach (var byOpts in use.GroupBy(g => best[g].Opts))
+                    {
+                        var lists = new List<string>();
+                        foreach (var g in byOpts)
+                        {
+                            List<string> h; if (!hosts.TryGetValue(g, out h) || h.Count == 0) continue;
+                            n++; string lf = "zgui-" + n + ".txt";
+                            File.WriteAllLines(System.IO.Path.Combine(listDir, lf), h, new UTF8Encoding(false));
+                            lists.Add("--hostlist=\"%LISTS%" + lf + "\"");
+                        }
+                        if (lists.Count > 0) profiles.Add("--filter-tcp=80,443 " + string.Join(" ", lists) + " " + byOpts.Key);
+                    }
+                    if (profiles.Count == 0) { raw = null; break; }
+                    string first = WithoutGlobals(parts[0]).Trim();
+                    var tail = new List<string>(profiles);
+                    if (first.Length > 0) tail.Add(first);
+                    tail.AddRange(parts.Skip(1).Select(x => x.Trim()).Where(x => x.Length > 0));
+                    raw = " " + Globals(parts[0]) + " " + string.Join(" --new ", tail);
 
-                // 4. финальная проверка всех сайтов
-                sync.Current = "Z · финальная проверка";
-                string af = ZapretCore.ResolveArgs(raw);
-                if (af == null || !StartWinws(bin, af, false)) { sync.Error = "собранная стратегия не запустилась"; return; }
-                var dF = FullCheck(fx, timeout, false); if (dF == null) return;
-                int tf; int okF = Score(dF, out tf);
+                    // 4. проверка собранной; группы, которые стали хуже, чем в лучшей готовой, отдаём обратно ей и проверяем снова
+                    sync.Current = "Z · финальная проверка" + (round > 1 ? " (" + round + ")" : "");
+                    string af = ZapretCore.ResolveArgs(raw);
+                    if (af == null || !StartWinws(bin, af, false)) { sync.Error = "собранная стратегия не запустилась"; return; }
+                    dF = FullCheck(fx, timeout, false); if (dF == null) return;
+                    okF = Score(dF, out tf);
+                    var gsF = GroupScore(dF, fx);
+                    var worse = use.Where(g => gsF.ContainsKey(g) && gBase.ContainsKey(g) && gsF[g][0] < gBase[g][0]).ToList();
+                    note("сборка " + round + ": " + okF + "/" + tf + (worse.Count > 0 ? ", хуже в: " + string.Join(", ", worse) : ""));
+                    if (worse.Count == 0) break;
+                    use = use.Except(worse).ToList();
+                    if (use.Count == 0) { raw = null; break; }
+                }
+                if (sync.Cancel) return;
                 sync.Done = total;
-                note("Z: " + okF + "/" + tf + " (лучшая готовая " + baseOk + "/" + totalT + "), профилей: " + profiles.Count);
-                var gs = GroupScore(dF, fx);
-                if (okF > baseOk || (okF == baseOk && profiles.Count > 0 && okF == tf))
+                if (raw == null || dF == null)
+                {
+                    Add(sync, new StratResult { Name = "Z", File = ZFile, OK = baseOk, Total = totalT, Details = detB, Note = ShortName(donors[0][0]) + " и так лучшая для твоих сайтов — не сохранено" });
+                }
+                else if (okF > baseOk)
                 {
                     SaveAs(root, ZFile, donors[0][1], bat0, raw);
                     Add(sync, new StratResult { Name = "Z", File = ZFile, OK = okF, Total = tf, Details = dF, Badge = "собрано", Note = "лучшая готовая " + ShortName(donors[0][0]) + ": " + baseOk + "/" + totalT + dropNote, Apply = true });
                 }
                 else Add(sync, new StratResult { Name = "Z", File = ZFile, OK = okF, Total = tf, Details = dF, Note = "не лучше " + ShortName(donors[0][0]) + " (" + baseOk + "/" + totalT + ") — не сохранено" });
+                var gsR = GroupScore(dF ?? detB, fx);
                 foreach (var g in groups)
                 {
-                    var b = best[g]; int[] sc; gs.TryGetValue(g, out sc);
-                    string from = b == null || b.Ok == 0 ? "как в " + ShortName(donors[0][0]) : "настройки " + b.From.TrimEnd('*') + (b.From.EndsWith("*") ? " (доведены)" : "");
+                    var b = best[g]; int[] sc; gsR.TryGetValue(g, out sc);
+                    string from = !use.Contains(g) || raw == null ? "как в " + ShortName(donors[0][0]) : "настройки " + b.From.TrimEnd('*') + (b.From.EndsWith("*") ? " (доведены)" : "");
                     Add(sync, new StratResult { Name = g, File = ZFile, OK = sc != null ? sc[0] : 0, Total = sc != null ? sc[1] : 0, Note = from });
                 }
             }

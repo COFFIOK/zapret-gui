@@ -424,6 +424,14 @@
  },
  "patterns": [
   [
+   "^Сборка · Z · финальная проверка \\((\\d+)\\)(.*)$",
+   "Build · Z · final check ($1)$2"
+  ],
+  [
+   "^(.+?) и так лучшая для твоих сайтов — не сохранено$",
+   "$1 is already the best for your sites — not saved"
+  ],
+  [
    "^Сборка · Z · проверяю лучшую готовую \\((.+?)\\)(.*)$",
    "Build · Z · checking best ready-made ($1)$2"
   ],
